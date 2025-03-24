@@ -1,0 +1,42 @@
+// For format details, see https://aka.ms/devcontainer.json.
+{
+	"name": "bayesianmodeldiscovery",
+
+	"containerUser": "docker_user",
+
+	"build": {
+        "dockerfile": "Dockerfile",
+		"context": "..",
+		"args": {
+			"username": "docker_user",
+			"uid": "10001",
+			"gid": "10001",
+			"requirements": "requirements-docker.txt",
+			"dev_requirements": "requirements-docker-dev.txt"
+		}
+    },
+
+	"mounts": [
+		"source=${localWorkspaceFolder}/../output,target=/home/docker_user/output,type=bind,consistency=cached",
+		"source=${localWorkspaceFolder}/../input,target=/home/docker_user/input,type=bind,consistency=cached"
+	],
+
+	"customizations": {
+		// Configure properties specific to VS Code.
+		"vscode": {
+			// Add the IDs of extensions you want installed when the container is created.
+			"extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-python.black-formatter",
+				"ms-python.mypy-type-checker",
+				"ms-python.isort",
+				"ms-azuretools.vscode-docker",
+				"mhutchie.git-graph",
+				"eamodio.gitlens",
+				"bierner.markdown-preview-github-styles",
+				"bierner.github-markdown-preview"
+			]
+		}
+	}
+}

@@ -1,0 +1,7 @@
+torch==2.6.0
+numpy==2.2.4
+pandas==2.2.3
+matplotlib==3.10.1
+scipy==1.15.2
+gpytorch==1.14
+normflows==1.7.3
