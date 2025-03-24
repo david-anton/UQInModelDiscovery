@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Iterator
 
 import pytest
+
 from bayesianmdisc.errors import DirectoryNotFoundError, FileNotFoundError
 from bayesianmdisc.io.projectdirectory import ProjectDirectory
 from bayesianmdisc.settings import Settings
