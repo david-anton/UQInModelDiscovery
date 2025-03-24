@@ -50,6 +50,11 @@ class ProjectDirectory:
             )
         return self._join_path_to_existing_file(subdir_path, file_name)
 
+    def get_input_subdirectory_path(self, subdir_name: str) -> Path:
+        return self._join_path_to_existing_subdir(
+            dir_path=self._input_subdir, subdir_name=subdir_name
+        )
+
     def check_if_file_exists(
         self,
         file_name: str,

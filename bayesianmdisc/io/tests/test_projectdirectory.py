@@ -146,61 +146,16 @@ def test_get_input_file_path_with_additional_input_subdirectory(
     assert expected == actual
 
 
-# Errors
-def test_get_output_file_path_for_not_existing_subdirectory(
-    sut: ProjectDirectory,
-) -> None:
-    file_name = "output_file"
-    subdir_name = "not_existing_output_subdirectory"
-
-    with pytest.raises(DirectoryNotFoundError, match=subdir_name):
-        sut.get_output_file_path(
-            file_name=file_name,
-            subdir_name=subdir_name,
-        )
-
-
-def test_get_output_file_path_for_not_existing_output_file(
-    sut: ProjectDirectory,
-) -> None:
-    file_name = "not_existing_output_file"
-    subdir_name = "output_subdirectory"
-    subdir_path = settings.PROJECT_DIR / settings.OUTPUT_SUBDIR / subdir_name
-    Path.mkdir(subdir_path, parents=True)
-
-    with pytest.raises(FileNotFoundError, match=file_name):
-        sut.get_output_file_path(
-            file_name=file_name,
-            subdir_name=subdir_name,
-        )
-
-
-def test_get_input_file_path_for_not_existing_subdirectory(
-    sut: ProjectDirectory,
-) -> None:
-    file_name = "input_file"
-    subdir_name = "not_existing_input_subdirectory"
-
-    with pytest.raises(DirectoryNotFoundError, match=subdir_name):
-        sut.get_input_file_path(
-            file_name=file_name,
-            subdir_name=subdir_name,
-        )
-
-
-def test_get_input_file_path_for_not_existing_input_file(
-    sut: ProjectDirectory,
-) -> None:
-    file_name = "not_existing_input_file"
+# Path to existing input subdirectory
+def test_get_input_subdirectory_path(sut: ProjectDirectory) -> None:
     subdir_name = "input_subdirectory"
     subdir_path = settings.PROJECT_DIR / settings.INPUT_SUBDIR / subdir_name
     Path.mkdir(subdir_path, parents=True)
+    expected = subdir_path
 
-    with pytest.raises(FileNotFoundError, match=file_name):
-        sut.get_input_file_path(
-            file_name=file_name,
-            subdir_name=subdir_name,
-        )
+    actual = sut.get_input_subdirectory_path(subdir_name=subdir_name)
+
+    assert expected == actual
 
 
 # Check if file exists
@@ -266,3 +221,60 @@ def test_check_if_file_exists_for_not_existing_intput_file(
 
     expected = False
     assert expected == actual
+
+
+# Errors
+def test_get_output_file_path_for_not_existing_subdirectory(
+    sut: ProjectDirectory,
+) -> None:
+    file_name = "output_file"
+    subdir_name = "not_existing_output_subdirectory"
+
+    with pytest.raises(DirectoryNotFoundError, match=subdir_name):
+        sut.get_output_file_path(
+            file_name=file_name,
+            subdir_name=subdir_name,
+        )
+
+
+def test_get_output_file_path_for_not_existing_output_file(
+    sut: ProjectDirectory,
+) -> None:
+    file_name = "not_existing_output_file"
+    subdir_name = "output_subdirectory"
+    subdir_path = settings.PROJECT_DIR / settings.OUTPUT_SUBDIR / subdir_name
+    Path.mkdir(subdir_path, parents=True)
+
+    with pytest.raises(FileNotFoundError, match=file_name):
+        sut.get_output_file_path(
+            file_name=file_name,
+            subdir_name=subdir_name,
+        )
+
+
+def test_get_input_file_path_for_not_existing_subdirectory(
+    sut: ProjectDirectory,
+) -> None:
+    file_name = "input_file"
+    subdir_name = "not_existing_input_subdirectory"
+
+    with pytest.raises(DirectoryNotFoundError, match=subdir_name):
+        sut.get_input_file_path(
+            file_name=file_name,
+            subdir_name=subdir_name,
+        )
+
+
+def test_get_input_file_path_for_not_existing_input_file(
+    sut: ProjectDirectory,
+) -> None:
+    file_name = "not_existing_input_file"
+    subdir_name = "input_subdirectory"
+    subdir_path = settings.PROJECT_DIR / settings.INPUT_SUBDIR / subdir_name
+    Path.mkdir(subdir_path, parents=True)
+
+    with pytest.raises(FileNotFoundError, match=file_name):
+        sut.get_input_file_path(
+            file_name=file_name,
+            subdir_name=subdir_name,
+        )
