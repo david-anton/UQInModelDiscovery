@@ -1,0 +1,1 @@
+BayesianModelDiscovery has been developed at the Institute of Applied Mechanics (IAM) at Technische Universität Braunschweig.
