@@ -1,9 +1,8 @@
 from dataclasses import dataclass
-from typing import Protocol, TypeAlias, Union
+from typing import Protocol, TypeAlias
 
 import gpytorch
 import normflows as nf
-import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import torch
@@ -39,3 +38,9 @@ PDIndex: TypeAlias = pd.Index
 # Matplotlib
 PLTFigure: TypeAlias = figure.Figure
 PLTAxes: TypeAlias = axes.Axes
+
+
+# dataclass
+@dataclass
+class DataClass(Protocol):
+    pass
