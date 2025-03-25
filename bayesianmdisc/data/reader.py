@@ -17,6 +17,7 @@ class LinkaDataReader:
         self._project_directory = project_directory
 
     def read(self) -> LinkaData:
+        print("Start reading synthetic data from Linka et al.")
         input_directory_path = self._join_input_directory_path()
         deformation_gradients_list = []
         flattened_stresses_list = []
@@ -41,28 +42,28 @@ class LinkaDataReader:
                 deformation_gradient[2, 2] = F33
                 deformation_gradients_list.append(deformation_gradient)
 
-                flattened_stress_tensor = np.array([P11, P22, P33, P12, P21])
-                flattened_stresses_list.append(flattened_stress_tensor)
-
                 stretches = np.array([F11, F22])
                 stretches_list.append(stretches)
+
+                flattened_stress_tensor = np.array([P11, P22, P33, P12, P21])
+                flattened_stresses_list.append(flattened_stress_tensor)
 
         deformation_gradients_data = torch.from_numpy(
             np.stack(deformation_gradients_list),
         ).type(torch.get_default_dtype())
-        flattened_stresses_data = torch.from_numpy(
-            np.stack(flattened_stresses_list),
-        ).type(torch.get_default_dtype())
         stretches_data = torch.from_numpy(
             np.stack(stretches_list),
+        ).type(torch.get_default_dtype())
+        flattened_stresses_data = torch.from_numpy(
+            np.stack(flattened_stresses_list),
         ).type(torch.get_default_dtype())
 
         num_samples = len(deformation_gradients_list)
         self._validate_number_of_samples(num_samples)
         return (
             deformation_gradients_data,
-            flattened_stresses_data,
             stretches_data,
+            flattened_stresses_data,
         )
 
     def _join_input_directory_path(self) -> Path:
