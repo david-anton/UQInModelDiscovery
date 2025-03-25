@@ -20,3 +20,8 @@ class DirectoryNotFoundError(Error):
     def __init__(self, path_to_directory: Path) -> None:
         self._message = f"The directory {path_to_directory} could not be found"
         super().__init__(self._message)
+
+
+class ProbabilityDistributionError(Error):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
