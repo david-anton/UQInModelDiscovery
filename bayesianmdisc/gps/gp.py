@@ -35,7 +35,6 @@ class GP(gpytorch.models.ExactGP):
         super().__init__(inputs, targets, likelihood)
         self._mean = mean
         self._kernel = kernel
-        self._is_zero_mean = isinstance(self._mean, ZeroMean)
         self._input_normalizer = input_normalizer
         self.num_gps = 1
         self.num_hyperparameters = mean.num_hyperparameters + kernel.num_hyperparameters
@@ -62,20 +61,10 @@ class GP(gpytorch.models.ExactGP):
 
     def set_parameters(self, parameters: Tensor) -> None:
         validate_parameters_size(parameters, self.num_hyperparameters)
-        if self._is_zero_mean:
-            self._kernel.set_parameters(parameters)
-        else:
-            num_parameters_mean = self._mean.num_hyperparameters
-            self._mean.set_parameters(parameters[:num_parameters_mean])
-            self._kernel.set_parameters(parameters[num_parameters_mean:])
+        self._kernel.set_parameters(parameters)
 
     def get_named_parameters(self) -> NamedParameters:
-        parameters_kernel = self._kernel.get_named_parameters()
-        if self._is_zero_mean:
-            return parameters_kernel
-        else:
-            parameters_mean = self._mean.get_named_parameters()
-            return parameters_mean | parameters_kernel
+        return self._kernel.get_named_parameters()
 
     # @override
     def set_train_data(

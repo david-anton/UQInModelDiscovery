@@ -25,3 +25,13 @@ class DirectoryNotFoundError(Error):
 class ProbabilityDistributionError(Error):
     def __init__(self, message: str) -> None:
         super().__init__(message)
+
+
+class DataError(Error):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
+class GPPriorError(Error):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
