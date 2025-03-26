@@ -217,14 +217,14 @@ class LinkaHeartDataReader:
 
         deformation_gradients_torch = torch.stack(
             [
-                self._convert_to_torch_tensor(array)
+                self._convert_to_torch_tensor(flatten_array(array))
                 for array in all_deformation_gradients
             ],
             dim=0,
         )
         cauchy_stress_tensors_torch = torch.stack(
             [
-                self._convert_to_torch_tensor(array)
+                self._convert_to_torch_tensor(flatten_array(array))
                 for array in all_cauchy_stress_tensors
             ],
             dim=0,
@@ -311,14 +311,14 @@ class LinkaHeartDataReader:
 
         deformation_gradients_torch = torch.stack(
             [
-                self._convert_to_torch_tensor(array)
+                self._convert_to_torch_tensor(flatten_array(array))
                 for array in all_deformation_gradients
             ],
             dim=0,
         )
         cauchy_stress_tensors_torch = torch.stack(
             [
-                self._convert_to_torch_tensor(array)
+                self._convert_to_torch_tensor(flatten_array(array))
                 for array in all_cauchy_stress_tensors
             ],
             dim=0,
@@ -331,14 +331,6 @@ class LinkaHeartDataReader:
             deformation_gradients_torch,
             cauchy_stress_tensors_torch,
             hydrostatic_pressures_torch,
-        )
-
-    def _calculate_hydrostatic_pressure(
-        self, cauchy_stress_tensors: list[NPArray]
-    ) -> NPArray:
-        return np.array(
-            [-1 / 3 * np.trace(array) for array in cauchy_stress_tensors],
-            dtype=self._np_data_type,
         )
 
     def _init_data_frame(self) -> PDDataFrame:
@@ -358,5 +350,17 @@ class LinkaHeartDataReader:
             .values
         )
 
+    def _calculate_hydrostatic_pressure(
+        self, cauchy_stress_tensors: list[NPArray]
+    ) -> NPArray:
+        return np.array(
+            [-1 / 3 * np.trace(array) for array in cauchy_stress_tensors],
+            dtype=self._np_data_type,
+        )
+
     def _convert_to_torch_tensor(self, array: NPArray) -> Tensor:
         return torch.from_numpy(array).type(torch.get_default_dtype())
+
+
+def flatten_array(array: NPArray) -> NPArray:
+    return array.reshape(-1)
