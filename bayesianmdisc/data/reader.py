@@ -4,19 +4,20 @@ from typing import TypeAlias
 
 import numpy as np
 import torch
+import pandas as pd
 
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.types import NPArray, Tensor
+from bayesianmdisc.types import NPArray, Tensor, PDDataFrame
 
-LinkaData: TypeAlias = tuple[Tensor, Tensor, Tensor]
+UrreatoData: TypeAlias = tuple[Tensor, Tensor, Tensor]
 
 
-class LinkaDataReader:
+class UrreaSyntheticDataReader:
     def __init__(self, input_directory: str, project_directory: ProjectDirectory):
         self._input_directory = input_directory
         self._project_directory = project_directory
 
-    def read(self) -> LinkaData:
+    def read(self) -> UrreatoData:
         print("Start reading synthetic data from Linka et al.")
         input_directory_path = self._join_input_directory_path()
         deformation_gradients_list = []
@@ -98,3 +99,223 @@ class LinkaDataReader:
         print(f"Found {num_samples} samples in {self._input_directory}")
         if num_samples == 0:
             raise RuntimeError("No valid data loaded!")
+
+
+DeformationGradients: TypeAlias = Tensor
+StressTensors: TypeAlias = Tensor
+LinkaHeartData: TypeAlias = tuple[DeformationGradients, StressTensors]
+
+
+class LinkaHeartDataReader:
+    def __init__(
+        self, file_name: str, input_directory: str, project_directory: ProjectDirectory
+    ):
+        self._file_name = file_name
+        self._input_directory = input_directory
+        self._project_directory = project_directory
+        self._excel_sheet_name = "Sheet1"
+        self._row_offset = 3
+        self._start_column_shear = 0
+        self._start_column_biaxial = 15
+        self._np_data_type = np.float64
+        self._data_frame = self._init_data_frame()
+
+    def read(self) -> LinkaHeartData:
+        deformation_gradients_shear, cauchy_stress_tensors_shear = (
+            self.read_shear_data()
+        )
+        deformation_gradients_biaxial, cauchy_stress_tensors_biaxial = (
+            self.read_biaxial_data()
+        )
+
+        deformation_gradients = torch.concat(
+            (deformation_gradients_shear, deformation_gradients_biaxial), dim=0
+        )
+        cauchy_stress_tensors = torch.concat(
+            (cauchy_stress_tensors_shear, cauchy_stress_tensors_biaxial), dim=0
+        )
+        return deformation_gradients, cauchy_stress_tensors
+
+    def read_shear_data(self) -> LinkaHeartData:
+        all_deformation_gradients = []
+        all_cauchy_stress_tensors = []
+
+        def read_data(
+            start_column: int, tensor_row: int, tensor_column: int
+        ) -> tuple[list[NPArray], list[NPArray]]:
+            deformation_gradients: list[NPArray] = []
+            cauchy_stress_tensors: list[NPArray] = []
+            gammas = self._read_column(start_column)
+            sigmas = self._read_column(start_column + 1)
+
+            for gamma, sigma in zip(gammas, sigmas):
+                deformation_gradient = np.eye(3, dtype=self._np_data_type)
+                deformation_gradient[tensor_row, tensor_column] = gamma
+                deformation_gradients += [deformation_gradient]
+                cauchy_stress_tensor = np.zeros((3, 3), dtype=self._np_data_type)
+                cauchy_stress_tensor[tensor_row, tensor_column] = sigma
+                cauchy_stress_tensor[tensor_column, tensor_row] = sigma
+                cauchy_stress_tensors += [cauchy_stress_tensor]
+            return deformation_gradients, cauchy_stress_tensors
+
+        column = self._start_column_shear
+        deformation_gradients, cauchy_stress_tensors = read_data(
+            column, tensor_row=0, tensor_column=1
+        )
+        all_deformation_gradients += deformation_gradients
+        all_cauchy_stress_tensors += cauchy_stress_tensors
+
+        column = column + 2
+        deformation_gradients, cauchy_stress_tensors = read_data(
+            column, tensor_row=0, tensor_column=2
+        )
+        all_deformation_gradients += deformation_gradients
+        all_cauchy_stress_tensors += cauchy_stress_tensors
+
+        column = column + 3
+        deformation_gradients, cauchy_stress_tensors = read_data(
+            column, tensor_row=1, tensor_column=0
+        )
+        all_deformation_gradients += deformation_gradients
+        all_cauchy_stress_tensors += cauchy_stress_tensors
+
+        column = column + 2
+        deformation_gradients, cauchy_stress_tensors = read_data(
+            column, tensor_row=1, tensor_column=2
+        )
+        all_deformation_gradients += deformation_gradients
+        all_cauchy_stress_tensors += cauchy_stress_tensors
+
+        column = column + 3
+        deformation_gradients, cauchy_stress_tensors = read_data(
+            column, tensor_row=2, tensor_column=0
+        )
+        all_deformation_gradients += deformation_gradients
+        all_cauchy_stress_tensors += cauchy_stress_tensors
+
+        column = column + 2
+        deformation_gradients, cauchy_stress_tensors = read_data(
+            column, tensor_row=2, tensor_column=1
+        )
+        all_deformation_gradients += deformation_gradients
+        all_cauchy_stress_tensors += cauchy_stress_tensors
+
+        deformation_gradients_torch = torch.stack(
+            [
+                self._convert_to_torch_tensor(array)
+                for array in all_deformation_gradients
+            ],
+            dim=0,
+        )
+        cauchy_stress_tensors_torch = torch.stack(
+            [
+                self._convert_to_torch_tensor(array)
+                for array in all_cauchy_stress_tensors
+            ],
+            dim=0,
+        )
+
+        return deformation_gradients_torch, cauchy_stress_tensors_torch
+
+    def read_biaxial_data(self) -> LinkaHeartData:
+        all_deformation_gradients = []
+        all_cauchy_stress_tensors = []
+
+        def add_data(
+            start_column: int, ratio_fiber: float, ratio_normal: float
+        ) -> tuple[list[NPArray], list[NPArray]]:
+            deformation_gradients: list[NPArray] = []
+            cauchy_stress_tensors: list[NPArray] = []
+            stretches = self._read_column(start_column)
+            sigmas_fiber = self._read_column(start_column + 1)
+            sigmas_normal = self._read_column(start_column + 3)
+
+            for stretch, sigma_fiber, sigma_normal in zip(
+                stretches, sigmas_fiber, sigmas_normal
+            ):
+                stretch_fiber = ratio_fiber * stretch
+                stretch_normal = ratio_normal * stretch
+                stretch_sheet = 1 / (stretch_fiber * stretch_normal)
+
+                deformation_gradient = np.zeros((3, 3), dtype=self._np_data_type)
+                deformation_gradient[0, 0] = stretch_fiber
+                deformation_gradient[1, 1] = stretch_sheet
+                deformation_gradient[2, 2] = stretch_normal
+                deformation_gradients += [deformation_gradient]
+                cauchy_stress_tensor = np.zeros((3, 3), dtype=self._np_data_type)
+                cauchy_stress_tensor[0, 0] = sigma_fiber
+                cauchy_stress_tensor[2, 2] = sigma_normal
+                cauchy_stress_tensors += [cauchy_stress_tensor]
+            return deformation_gradients, cauchy_stress_tensors
+
+        column = self._start_column_biaxial
+        deformation_gradients, cauchy_stress_tensors = add_data(
+            column, ratio_fiber=1.0, ratio_normal=1.0
+        )
+        all_deformation_gradients += deformation_gradients
+        all_cauchy_stress_tensors += cauchy_stress_tensors
+
+        column = column + 5
+        deformation_gradients, cauchy_stress_tensors = add_data(
+            column, ratio_fiber=1.0, ratio_normal=0.75
+        )
+        all_deformation_gradients += deformation_gradients
+        all_cauchy_stress_tensors += cauchy_stress_tensors
+
+        column = column + 5
+        deformation_gradients, cauchy_stress_tensors = add_data(
+            column, ratio_fiber=0.75, ratio_normal=1.0
+        )
+        all_deformation_gradients += deformation_gradients
+        all_cauchy_stress_tensors += cauchy_stress_tensors
+
+        column = column + 5
+        deformation_gradients, cauchy_stress_tensors = add_data(
+            column, ratio_fiber=1.0, ratio_normal=0.5
+        )
+        all_deformation_gradients += deformation_gradients
+        all_cauchy_stress_tensors += cauchy_stress_tensors
+
+        column = column + 5
+        deformation_gradients, cauchy_stress_tensors = add_data(
+            column, ratio_fiber=0.5, ratio_normal=1.0
+        )
+        all_deformation_gradients += deformation_gradients
+        all_cauchy_stress_tensors += cauchy_stress_tensors
+
+        deformation_gradients_torch = torch.stack(
+            [
+                self._convert_to_torch_tensor(array)
+                for array in all_deformation_gradients
+            ],
+            dim=0,
+        )
+        cauchy_stress_tensors_torch = torch.stack(
+            [
+                self._convert_to_torch_tensor(array)
+                for array in all_cauchy_stress_tensors
+            ],
+            dim=0,
+        )
+
+        return deformation_gradients_torch, cauchy_stress_tensors_torch
+
+    def _init_data_frame(self) -> PDDataFrame:
+        input_path = self._join_input_path()
+        return pd.read_excel(input_path, sheet_name=self._excel_sheet_name)
+
+    def _join_input_path(self) -> Path:
+        return self._project_directory.get_input_file_path(
+            file_name=self._file_name, subdir_name=self._input_directory
+        )
+
+    def _read_column(self, column: int) -> Tensor:
+        return (
+            self._data_frame.iloc[self._row_offset :, column]
+            .dropna()
+            .astype(self._np_data_type)
+            .values
+        )
+
+    def _convert_to_torch_tensor(self, array: NPArray) -> Tensor:
+        return torch.from_numpy(array).type(torch.get_default_dtype())
