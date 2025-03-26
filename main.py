@@ -33,7 +33,11 @@ noise_stddev = 1e-2
 
 
 data_reader = LinkaHeartDataReader(input_file_name, input_directory, project_directory)
-deformation_gradients, stress_tensors = data_reader.read()
+deformation_gradients, stress_tensors, hydrostatic_pressures = data_reader.read()
+
+print(deformation_gradients.shape)
+print(stress_tensors.shape)
+print(hydrostatic_pressures.shape)
 
 
 # def create_gp_prior(stretches: Tensor, stresses: Tensor) -> PriorProtocol:

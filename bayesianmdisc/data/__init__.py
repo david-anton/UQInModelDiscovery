@@ -1,3 +1,3 @@
-from .reader import UrreaSyntheticDataReader, LinkaHeartDataReader
+from .reader import LinkaHeartDataReader
 
-__all__ = ["UrreaSyntheticDataReader", "LinkaHeartDataReader"]
+__all__ = ["LinkaHeartDataReader"]
