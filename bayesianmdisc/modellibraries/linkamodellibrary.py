@@ -44,6 +44,7 @@ class ModelLibraryProtocol(Protocol):
 class LinkaOrthotropicIncompressibleCANN:
 
     def __init__(self, device: Device):
+        self.output_dim = 9
         self.num_parameters = 48
         self._device = device
         self._num_invariants = 8

@@ -17,6 +17,7 @@ SplittedParameters: TypeAlias = tuple[Parameters, ...]
 
 
 class ModelLibraryProtocol(Protocol):
+    output_dim: int
     num_parameters: int
 
     def __call__(
