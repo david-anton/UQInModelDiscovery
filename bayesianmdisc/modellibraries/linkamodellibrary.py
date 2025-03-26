@@ -1,0 +1,136 @@
+from typing import TypeAlias
+
+import torch
+from bayesianmdisc.types import Tensor, Device
+from bayesianmdisc.errors import ModelLibraryError
+
+
+DeformationGradient: TypeAlias = Tensor
+Invariant: TypeAlias = Tensor
+Invariants: TypeAlias = tuple[Invariant, ...]
+StrainEnergy: TypeAlias = Tensor
+CauchyStressTensor: TypeAlias = Tensor
+Parameters: TypeAlias = Tensor
+SplittedParameters: TypeAlias = tuple[Invariant, ...]
+
+
+class LinkaOrthotropicIncompressibleCANN:
+
+    def __init__(self, device: Device):
+        self._device = device
+        self._num_parameters = 48
+        self._num_invariants = 8
+        self._fiber_direction_ref = torch.tensor([1.0, 0.0, 0.0], device=device)
+        self._sheet_direction_ref = torch.tensor([0.0, 1.0, 0.0], device=device)
+        self._normal_direction_ref = torch.tensor([1.0, 0.0, 0.0], device=device)
+
+    def forward(
+        self, deformation_gradient: DeformationGradient, parameters: Parameters
+    ) -> CauchyStressTensor:
+        self._validate_parameters(parameters)
+        strain_energy = self._calculate_strain_energy(deformation_gradient, parameters)
+
+    def _calculate_strain_energy(
+        self, deformation_gradient: DeformationGradient, parameters: Parameters
+    ) -> StrainEnergy:
+
+        def calculate_invaraint_terms(
+            invariant: Invariant, parameters: Parameters
+        ) -> StrainEnergy:
+            one = torch.tensor(1.0, device=self._device)
+            sub_term_1 = parameters[0] * invariant
+            sub_term_2 = parameters[1] * (torch.exp(parameters[2] * invariant) - one)
+            sub_term_3 = parameters[3] * invariant**2
+            sub_term_4 = parameters[4] * (torch.exp(parameters[5] * invariant**2) - one)
+            return sub_term_1 + sub_term_2 + sub_term_3 + sub_term_4
+
+        (
+            I_1_cor,
+            I_2_cor,
+            I_4f_cor,
+            I_4s_cor,
+            I_4n_cor,
+            I_8fs_cor,
+            I_8fn_cor,
+            I_8sn_cor,
+        ) = self._calculate_invariants(deformation_gradient)
+
+        (
+            parameters_I_1_cor,
+            parameters_I_2_cor,
+            parameters_I_4f_cor,
+            parameters_I_4s_cor,
+            parameters_I_4n_cor,
+            parameters_I_8fs_cor,
+            parameters_I_8fn_cor,
+            parameters_I_8sn_cor,
+        ) = self._split_parameters(parameters)
+
+        return (
+            calculate_invaraint_terms(I_1_cor, parameters_I_1_cor)
+            + calculate_invaraint_terms(I_2_cor, parameters_I_2_cor)
+            + calculate_invaraint_terms(I_4f_cor, parameters_I_4f_cor)
+            + calculate_invaraint_terms(I_4s_cor, parameters_I_4s_cor)
+            + calculate_invaraint_terms(I_4n_cor, parameters_I_4n_cor)
+            + calculate_invaraint_terms(I_8fs_cor, parameters_I_8fs_cor)
+            + calculate_invaraint_terms(I_8fn_cor, parameters_I_8fn_cor)
+            + calculate_invaraint_terms(I_8sn_cor, parameters_I_8sn_cor)
+        )
+
+    def _calculate_invariants(
+        self, deformation_gradient: DeformationGradient
+    ) -> Invariants:
+        # Deformation tensors
+        F = deformation_gradient
+        b = torch.matmul(F, F.transpose(0, 1))  # left Cauchy-Green deformation tensor
+        # Direction tensors
+        f = torch.matmul(F, self._fiber_direction_ref)
+        s = torch.matmul(F, self._sheet_direction_ref)
+        n = torch.matmul(F, self._normal_direction_ref)
+        # Constants
+        one = torch.tensor(1.0, device=self._device)
+        three = torch.tensor(3.0, device=self._device)
+
+        # Isotropic invariants
+        I_1 = torch.trace(b)
+        I_2 = 1 / 2 * (I_1**2 - torch.inner(b, b))
+        I_1_cor = I_1 - three
+        I_2_cor = I_2 - three
+
+        # Anisotropic invariants
+        I_4f = torch.inner(f, f)
+        I_4s = torch.inner(s, s)
+        I_4n = torch.inner(n, n)
+        I_4f_cor = I_4f - one
+        I_4s_cor = I_4s - one
+        I_4n_cor = I_4n - one
+
+        # Coupling invariants
+        I_8fs = torch.inner(f, s)
+        I_8fn = torch.inner(f, n)
+        I_8sn = torch.inner(s, n)
+        I_8fs_cor = I_8fs
+        I_8fn_cor = I_8fn
+        I_8sn_cor = I_8sn
+        return (
+            I_1_cor,
+            I_2_cor,
+            I_4f_cor,
+            I_4s_cor,
+            I_4n_cor,
+            I_8fs_cor,
+            I_8fn_cor,
+            I_8sn_cor,
+        )
+
+    def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
+        return torch.chunk(parameters, self._num_invariants)
+
+    def _validate_parameters(self, parameters: Parameters) -> None:
+        parameter_size = parameters.size
+        expected_size = torch.Size([self._num_parameters])
+        if not parameter_size() == expected_size:
+            raise ModelLibraryError(
+                f"""Size of parameters is expected to be {expected_size}, 
+                but is {parameter_size}"""
+            )
