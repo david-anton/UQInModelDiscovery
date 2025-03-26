@@ -1,34 +1,97 @@
-from typing import TypeAlias
+from typing import TypeAlias, Protocol
 
 import torch
-from bayesianmdisc.types import Tensor, Device
+from torch import vmap
+from torch.func import grad
+
+from bayesianmdisc.types import Device
 from bayesianmdisc.errors import ModelLibraryError
+from bayesianmdisc.modellibraries.base import (
+    DeformationGradient,
+    DeformationGradients,
+    HydrostaticPressure,
+    HydrostaticPressures,
+    Invariant,
+    Invariants,
+    CauchyStressTensor,
+    CauchyStressTensors,
+    StrainEnergy,
+    Parameters,
+    SplittedParameters,
+)
 
 
-DeformationGradient: TypeAlias = Tensor
-Invariant: TypeAlias = Tensor
-Invariants: TypeAlias = tuple[Invariant, ...]
-StrainEnergy: TypeAlias = Tensor
-CauchyStressTensor: TypeAlias = Tensor
-Parameters: TypeAlias = Tensor
-SplittedParameters: TypeAlias = tuple[Invariant, ...]
+class ModelLibraryProtocol(Protocol):
+    num_parameters: int
+
+    def __call__(
+        self,
+        deformation_gradients: DeformationGradients,
+        hydrostatic_pressures: HydrostaticPressures,
+        parameters: Parameters,
+    ) -> CauchyStressTensors:
+        pass
+
+    def forward(
+        self,
+        deformation_gradients: DeformationGradients,
+        hydrostatic_pressures: HydrostaticPressures,
+        parameters: Parameters,
+    ) -> CauchyStressTensors:
+        pass
 
 
 class LinkaOrthotropicIncompressibleCANN:
 
     def __init__(self, device: Device):
+        self.num_parameters = 48
         self._device = device
-        self._num_parameters = 48
         self._num_invariants = 8
         self._fiber_direction_ref = torch.tensor([1.0, 0.0, 0.0], device=device)
         self._sheet_direction_ref = torch.tensor([0.0, 1.0, 0.0], device=device)
         self._normal_direction_ref = torch.tensor([1.0, 0.0, 0.0], device=device)
 
+    def __call__(
+        self,
+        deformation_gradients: DeformationGradients,
+        hydrostatic_pressures: HydrostaticPressures,
+        parameters: Parameters,
+    ) -> CauchyStressTensors:
+        return self.forward(deformation_gradients, hydrostatic_pressures, parameters)
+
     def forward(
-        self, deformation_gradient: DeformationGradient, parameters: Parameters
-    ) -> CauchyStressTensor:
+        self,
+        deformation_gradients: DeformationGradients,
+        hydrostatic_pressures: HydrostaticPressures,
+        parameters: Parameters,
+    ) -> CauchyStressTensors:
         self._validate_parameters(parameters)
-        strain_energy = self._calculate_strain_energy(deformation_gradient, parameters)
+
+        def vmap_func(
+            deformation_gradient: DeformationGradient,
+            hydrostatic_pressure: HydrostaticPressure,
+        ) -> CauchyStressTensor:
+            strain_energy_gradient = grad(self._calculate_strain_energy, argnums=0)(
+                deformation_gradient, parameters
+            )
+            deformation_gradient_transposed = deformation_gradient.transpose(0, 1)
+            pressure_tensor = hydrostatic_pressure * torch.eye(3, device=self._device)
+
+            return (
+                torch.matmul(strain_energy_gradient, deformation_gradient_transposed)
+                - pressure_tensor
+            )
+
+        return vmap(vmap_func)(deformation_gradients, hydrostatic_pressures)
+
+    def _validate_parameters(self, parameters: Parameters) -> None:
+        parameter_size = parameters.size
+        expected_size = torch.Size([self.num_parameters])
+        if not parameter_size() == expected_size:
+            raise ModelLibraryError(
+                f"""Size of parameters is expected to be {expected_size}, 
+                but is {parameter_size}"""
+            )
 
     def _calculate_strain_energy(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
@@ -125,12 +188,3 @@ class LinkaOrthotropicIncompressibleCANN:
 
     def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
         return torch.chunk(parameters, self._num_invariants)
-
-    def _validate_parameters(self, parameters: Parameters) -> None:
-        parameter_size = parameters.size
-        expected_size = torch.Size([self._num_parameters])
-        if not parameter_size() == expected_size:
-            raise ModelLibraryError(
-                f"""Size of parameters is expected to be {expected_size}, 
-                but is {parameter_size}"""
-            )

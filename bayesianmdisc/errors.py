@@ -5,11 +5,6 @@ class Error(Exception):
     pass
 
 
-class GPError(Error):
-    def __init__(self, message: str) -> None:
-        super().__init__(message)
-
-
 class FileNotFoundError(Error):
     def __init__(self, path_to_file: Path) -> None:
         self._message = f"The requested file {path_to_file} could not be found!"
@@ -32,6 +27,16 @@ class DataError(Error):
         super().__init__(message)
 
 
+class GPError(Error):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
 class GPPriorError(Error):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
+class ModelLibraryError(Error):
     def __init__(self, message: str) -> None:
         super().__init__(message)
