@@ -5,3 +5,4 @@ matplotlib==3.10.1
 scipy==1.15.2
 gpytorch==1.14
 normflows==1.7.3
+openpyxl==3.1.5
