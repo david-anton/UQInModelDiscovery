@@ -17,7 +17,7 @@ from bayesianmdisc.modellibraries.base import (
     SplittedParameters,
     StrainEnergy,
 )
-from bayesianmdisc.types import Device
+from bayesianmdisc.types import Device, Tensor
 
 
 class LinkaOrthotropicIncompressibleCANN:
@@ -44,6 +44,7 @@ class LinkaOrthotropicIncompressibleCANN:
             deformation_gradient: DeformationGradient,
             hydrostatic_pressure: HydrostaticPressure,
         ) -> CauchyStressTensor:
+            deformation_gradient = reshape_deformation_gradient(deformation_gradient)
             strain_energy_gradient = grad(self._calculate_strain_energy, argnums=0)(
                 deformation_gradient, parameters
             )
@@ -129,7 +130,7 @@ class LinkaOrthotropicIncompressibleCANN:
 
         # Isotropic invariants
         I_1 = torch.trace(b)
-        I_2 = 1 / 2 * (I_1**2 - torch.inner(b, b))
+        I_2 = 1 / 2 * (I_1**2 - torch.tensordot(b, b))
         I_1_cor = I_1 - three
         I_2_cor = I_2 - three
 
@@ -161,3 +162,7 @@ class LinkaOrthotropicIncompressibleCANN:
 
     def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
         return torch.chunk(parameters, self._num_invariants)
+
+
+def reshape_deformation_gradient(deformation_gradient: Tensor) -> Tensor:
+    return deformation_gradient.reshape((3, 3))
