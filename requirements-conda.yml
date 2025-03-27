@@ -4,7 +4,7 @@ channels:
   - conda-forge
   - nvidia
 dependencies:
-  - python=3.13.2
+  - python=3.12.3
   - pytorch::pytorch=2.5.1
   - pytorch::pytorch-cuda=12.1
   - gpytorch=1.14
