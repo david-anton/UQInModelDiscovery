@@ -6,14 +6,14 @@ import torch
 from bayesianmdisc.bayes.prior import PriorProtocol
 from bayesianmdisc.data import LinkaHeartDataReader
 from bayesianmdisc.errors import DataError
+from bayesianmdisc.gppriors import infer_gp_induced_prior
 from bayesianmdisc.gps import (
     IndependentMultiOutputGP,
     create_scaled_rbf_gaussian_process,
     optimize_gp_hyperparameters,
 )
-from bayesianmdisc.modellibraries import LinkaOrthotropicIncompressibleCANN
-from bayesianmdisc.gppriors import infer_gp_induced_prior
 from bayesianmdisc.io import ProjectDirectory
+from bayesianmdisc.modellibraries import LinkaOrthotropicIncompressibleCANN
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.types import Tensor
 

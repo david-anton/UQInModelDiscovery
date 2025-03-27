@@ -6,12 +6,10 @@ from torch.func import grad
 
 from bayesianmdisc.errors import ModelLibraryError
 from bayesianmdisc.modellibraries.base import (
-    CauchyStressTensor,
     CauchyStress,
     CauchyStresses,
+    CauchyStressTensor,
     DeformationGradient,
-    Stretches,
-    Stretch,
     HydrostaticPressure,
     Inputs,
     Invariant,
@@ -20,11 +18,12 @@ from bayesianmdisc.modellibraries.base import (
     Parameters,
     SplittedParameters,
     StrainEnergy,
-    StrainEnergyDerivatives,
     StrainEnergyDerivative,
+    StrainEnergyDerivatives,
+    Stretch,
+    Stretches,
 )
 from bayesianmdisc.types import Device, Tensor
-
 
 # class LinkaOrthotropicIncompressibleCANN:
 
