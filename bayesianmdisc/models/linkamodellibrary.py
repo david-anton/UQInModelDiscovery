@@ -5,7 +5,7 @@ from torch import vmap
 from torch.func import grad
 
 from bayesianmdisc.errors import ModelLibraryError
-from bayesianmdisc.modellibraries.base import (
+from bayesianmdisc.models.base import (
     CauchyStress,
     CauchyStresses,
     CauchyStressTensor,
