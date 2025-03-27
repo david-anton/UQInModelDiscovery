@@ -31,7 +31,9 @@ set_default_dtype(torch.float64)
 set_seed(0)
 
 
-data_reader = LinkaHeartDataReader(input_file_name, input_directory, project_directory)
+data_reader = LinkaHeartDataReader(
+    input_file_name, input_directory, project_directory, device
+)
 inputs, outputs = data_reader.read()
 num_deformation_inputs = data_reader.num_deformation_inputs
 
