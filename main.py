@@ -13,7 +13,7 @@ from bayesianmdisc.gps import (
     optimize_gp_hyperparameters,
 )
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.models import LinkaOrthotropicIncompressibleCANN
+from bayesianmdisc.models import LinkaCANN
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.types import Tensor
 
@@ -37,7 +37,7 @@ data_reader = LinkaHeartDataReader(
 inputs, outputs = data_reader.read()
 num_deformation_inputs = data_reader.num_deformation_inputs
 
-model = LinkaOrthotropicIncompressibleCANN(device)
+model = LinkaCANN(device)
 
 
 def create_gp_prior(inputs: Tensor, outputs: Tensor) -> PriorProtocol:
