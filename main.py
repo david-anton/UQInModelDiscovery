@@ -13,7 +13,7 @@ from bayesianmdisc.gps import (
     optimize_gp_hyperparameters,
 )
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.modellibraries import LinkaOrthotropicIncompressibleCANN
+from bayesianmdisc.models import LinkaOrthotropicIncompressibleCANN
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.types import Tensor
 

@@ -10,7 +10,7 @@ from bayesianmdisc.bayes.prior import (
     create_independent_multivariate_studentT_distributed_prior,
 )
 from bayesianmdisc.errors import GPPriorError
-from bayesianmdisc.modellibraries import ModelLibrary
+from bayesianmdisc.models import ModelLibrary
 from bayesianmdisc.types import Device, Parameter, Tensor
 
 NumLayersList: TypeAlias = list[int]

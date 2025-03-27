@@ -8,7 +8,7 @@ from bayesianmdisc.gps import GaussianProcess
 from bayesianmdisc.gps.base import GPMultivariateNormal
 from bayesianmdisc.gps.multioutputgp import flatten_outputs
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.modellibraries import ModelLibrary
+from bayesianmdisc.models import ModelLibrary
 from bayesianmdisc.networks import FFNN
 from bayesianmdisc.postprocessing.plot import (
     HistoryPlotterConfig,
