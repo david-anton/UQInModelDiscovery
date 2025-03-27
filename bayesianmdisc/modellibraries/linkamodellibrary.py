@@ -333,11 +333,28 @@ class LinkaOrthotropicIncompressibleCANN:
     ) -> DeformationGradient:
         stretch_fiber, stretch_normal = self._split_stretches(stretches)
         stretch_sheet = self._calculat_stretch_sheet(stretches)
-        deformation_gradient = torch.zeros((3, 3), device=self._device)
-        deformation_gradient[0, 0] = stretch_fiber
-        deformation_gradient[1, 1] = stretch_sheet
-        deformation_gradient[2, 2] = stretch_normal
-        return deformation_gradient
+        row_1 = torch.concat(
+            (
+                torch.unsqueeze(stretch_fiber, dim=0),
+                torch.tensor([0.0]),
+                torch.tensor([0.0]),
+            )
+        )
+        row_2 = torch.concat(
+            (
+                torch.tensor([0.0]),
+                torch.unsqueeze(stretch_sheet, dim=0),
+                torch.tensor([0.0]),
+            )
+        )
+        row_3 = torch.concat(
+            (
+                torch.tensor([0.0]),
+                torch.tensor([0.0]),
+                torch.unsqueeze(stretch_normal, dim=0),
+            )
+        )
+        return torch.stack((row_1, row_2, row_3)).to(self._device)
 
     def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
         return torch.chunk(parameters, self._num_invariants)
