@@ -7,38 +7,17 @@ from torch.func import grad
 from bayesianmdisc.types import Device
 from bayesianmdisc.errors import ModelLibraryError
 from bayesianmdisc.modellibraries.base import (
+    Inputs,
+    Outputs,
     DeformationGradient,
-    DeformationGradients,
     HydrostaticPressure,
-    HydrostaticPressures,
     Invariant,
     Invariants,
     CauchyStressTensor,
-    CauchyStressTensors,
     StrainEnergy,
     Parameters,
     SplittedParameters,
 )
-
-
-class ModelLibraryProtocol(Protocol):
-    num_parameters: int
-
-    def __call__(
-        self,
-        deformation_gradients: DeformationGradients,
-        hydrostatic_pressures: HydrostaticPressures,
-        parameters: Parameters,
-    ) -> CauchyStressTensors:
-        pass
-
-    def forward(
-        self,
-        deformation_gradients: DeformationGradients,
-        hydrostatic_pressures: HydrostaticPressures,
-        parameters: Parameters,
-    ) -> CauchyStressTensors:
-        pass
 
 
 class LinkaOrthotropicIncompressibleCANN:
@@ -46,27 +25,20 @@ class LinkaOrthotropicIncompressibleCANN:
     def __init__(self, device: Device):
         self.output_dim = 9
         self.num_parameters = 48
+        self._num_deformation_inputs = 9
         self._device = device
         self._num_invariants = 8
         self._fiber_direction_ref = torch.tensor([1.0, 0.0, 0.0], device=device)
         self._sheet_direction_ref = torch.tensor([0.0, 1.0, 0.0], device=device)
         self._normal_direction_ref = torch.tensor([1.0, 0.0, 0.0], device=device)
 
-    def __call__(
-        self,
-        deformation_gradients: DeformationGradients,
-        hydrostatic_pressures: HydrostaticPressures,
-        parameters: Parameters,
-    ) -> CauchyStressTensors:
-        return self.forward(deformation_gradients, hydrostatic_pressures, parameters)
+    def __call__(self, inputs: Inputs, parameters: Parameters) -> Outputs:
+        return self.forward(inputs, parameters)
 
-    def forward(
-        self,
-        deformation_gradients: DeformationGradients,
-        hydrostatic_pressures: HydrostaticPressures,
-        parameters: Parameters,
-    ) -> CauchyStressTensors:
+    def forward(self, inputs: Inputs, parameters: Parameters) -> Outputs:
         self._validate_parameters(parameters)
+        deformation_gradients = inputs[:, : self._num_deformation_inputs]
+        hydrostatic_pressures = inputs[:, -1].reshape((-1, 1))
 
         def vmap_func(
             deformation_gradient: DeformationGradient,

@@ -3,10 +3,10 @@ from typing import TypeAlias, Protocol
 from bayesianmdisc.types import Tensor
 
 
+Inputs: TypeAlias = Tensor
+Outputs: TypeAlias = Tensor
 DeformationGradient: TypeAlias = Tensor
-DeformationGradients: TypeAlias = Tensor
 HydrostaticPressure: TypeAlias = Tensor
-HydrostaticPressures: TypeAlias = Tensor
 Invariant: TypeAlias = Tensor
 Invariants: TypeAlias = tuple[Invariant, ...]
 CauchyStressTensor: TypeAlias = Tensor
@@ -20,18 +20,8 @@ class ModelLibrary(Protocol):
     output_dim: int
     num_parameters: int
 
-    def __call__(
-        self,
-        deformation_gradients: DeformationGradients,
-        hydrostatic_pressures: HydrostaticPressures,
-        parameters: Parameters,
-    ) -> CauchyStressTensors:
+    def __call__(self, inputs: Inputs, parameters: Parameters) -> CauchyStressTensors:
         pass
 
-    def forward(
-        self,
-        deformation_gradients: DeformationGradients,
-        hydrostatic_pressures: HydrostaticPressures,
-        parameters: Parameters,
-    ) -> CauchyStressTensors:
+    def forward(self, inputs: Inputs, parameters: Parameters) -> CauchyStressTensors:
         pass
