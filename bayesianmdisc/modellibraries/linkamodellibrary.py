@@ -1,23 +1,23 @@
-from typing import TypeAlias, Protocol
+from typing import Protocol, TypeAlias
 
 import torch
 from torch import vmap
 from torch.func import grad
 
-from bayesianmdisc.types import Device
 from bayesianmdisc.errors import ModelLibraryError
 from bayesianmdisc.modellibraries.base import (
-    Inputs,
-    Outputs,
+    CauchyStressTensor,
     DeformationGradient,
     HydrostaticPressure,
+    Inputs,
     Invariant,
     Invariants,
-    CauchyStressTensor,
-    StrainEnergy,
+    Outputs,
     Parameters,
     SplittedParameters,
+    StrainEnergy,
 )
+from bayesianmdisc.types import Device
 
 
 class LinkaOrthotropicIncompressibleCANN:

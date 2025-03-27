@@ -3,18 +3,18 @@ import torch.nn as nn
 from torch.func import grad, vmap
 
 from bayesianmdisc.bayes.prior import PriorProtocol
+from bayesianmdisc.gppriors.priors import create_parameter_prior
 from bayesianmdisc.gps import GaussianProcess
 from bayesianmdisc.gps.base import GPMultivariateNormal
 from bayesianmdisc.gps.multioutputgp import flatten_outputs
 from bayesianmdisc.io import ProjectDirectory
+from bayesianmdisc.modellibraries import ModelLibrary
+from bayesianmdisc.networks import FFNN
 from bayesianmdisc.postprocessing.plot import (
     HistoryPlotterConfig,
     plot_statistical_loss_history,
 )
-from bayesianmdisc.networks import FFNN
-from bayesianmdisc.gppriors.priors import create_parameter_prior
 from bayesianmdisc.types import Device, Tensor, TorchLRScheduler, TorchOptimizer
-from bayesianmdisc.modellibraries import ModelLibrary
 
 print_interval = 10
 

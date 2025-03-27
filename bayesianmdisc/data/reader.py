@@ -3,12 +3,12 @@ from pathlib import Path
 from typing import TypeAlias
 
 import numpy as np
-import torch
 import pandas as pd
+import torch
 from torch import vmap
 
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.types import NPArray, Tensor, PDDataFrame
+from bayesianmdisc.types import NPArray, PDDataFrame, Tensor
 
 UrreatoData: TypeAlias = tuple[Tensor, Tensor, Tensor]
 

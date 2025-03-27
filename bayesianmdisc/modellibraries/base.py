@@ -1,7 +1,6 @@
-from typing import TypeAlias, Protocol
+from typing import Protocol, TypeAlias
 
 from bayesianmdisc.types import Tensor
-
 
 Inputs: TypeAlias = Tensor
 Outputs: TypeAlias = Tensor
