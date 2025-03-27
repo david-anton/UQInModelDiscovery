@@ -102,18 +102,17 @@ UrreatoData: TypeAlias = tuple[Tensor, Tensor, Tensor]
 #             raise RuntimeError("No valid data loaded!")
 
 
-DeformationGradients: TypeAlias = Tensor
-StressTensors: TypeAlias = Tensor
-HydrostaticPressure: TypeAlias = Tensor
-LinkaHeartData: TypeAlias = tuple[
-    DeformationGradients, StressTensors, HydrostaticPressure
-]
+NPArrayList = list[NPArray]
+Inputs: TypeAlias = Tensor
+Outputs: TypeAlias = Tensor
+LinkaHeartData: TypeAlias = tuple[Inputs, Outputs]
 
 
 class LinkaHeartDataReader:
     def __init__(
         self, file_name: str, input_directory: str, project_directory: ProjectDirectory
     ):
+        self.num_deformation_inputs = 9
         self._file_name = file_name
         self._input_directory = input_directory
         self._project_directory = project_directory
@@ -126,26 +125,17 @@ class LinkaHeartDataReader:
 
     def read(self) -> LinkaHeartData:
         (
-            deformation_gradients_shear,
-            cauchy_stress_tensors_shear,
-            hydrostatic_pressures_shear,
+            inputs_shear,
+            outputs_shear,
         ) = self.read_shear_data()
         (
-            deformation_gradients_biaxial,
-            cauchy_stress_tensors_biaxial,
-            hydrostatic_pressures_biaxial,
+            inputs_biaxial,
+            outputs_biaxial,
         ) = self.read_biaxial_data()
 
-        deformation_gradients = torch.concat(
-            (deformation_gradients_shear, deformation_gradients_biaxial), dim=0
-        )
-        cauchy_stress_tensors = torch.concat(
-            (cauchy_stress_tensors_shear, cauchy_stress_tensors_biaxial), dim=0
-        )
-        hydrostatic_pressures = torch.concat(
-            (hydrostatic_pressures_shear, hydrostatic_pressures_biaxial), dim=0
-        )
-        return deformation_gradients, cauchy_stress_tensors, hydrostatic_pressures
+        inputs = torch.concat((inputs_shear, inputs_biaxial), dim=0)
+        outputs = torch.concat((outputs_shear, outputs_biaxial), dim=0)
+        return inputs, outputs
 
     def read_shear_data(self) -> LinkaHeartData:
         all_deformation_gradients = []
@@ -153,9 +143,9 @@ class LinkaHeartDataReader:
 
         def read_data(
             start_column: int, tensor_row: int, tensor_column: int
-        ) -> tuple[list[NPArray], list[NPArray]]:
-            deformation_gradients: list[NPArray] = []
-            cauchy_stress_tensors: list[NPArray] = []
+        ) -> tuple[NPArrayList, NPArrayList]:
+            deformation_gradients: NPArrayList = []
+            cauchy_stress_tensors: NPArrayList = []
             gammas = self._read_column(start_column)
             sigmas = self._read_column(start_column + 1)
 
@@ -170,74 +160,58 @@ class LinkaHeartDataReader:
             return deformation_gradients, cauchy_stress_tensors
 
         column = self._start_column_shear
-        deformation_gradients, cauchy_stress_tensors = read_data(
+        deformation_gradients_column, cauchy_stress_tensors_column = read_data(
             column, tensor_row=0, tensor_column=1
         )
-        all_deformation_gradients += deformation_gradients
-        all_cauchy_stress_tensors += cauchy_stress_tensors
+        all_deformation_gradients += deformation_gradients_column
+        all_cauchy_stress_tensors += cauchy_stress_tensors_column
 
         column = column + 2
-        deformation_gradients, cauchy_stress_tensors = read_data(
+        deformation_gradients_column, cauchy_stress_tensors_column = read_data(
             column, tensor_row=0, tensor_column=2
         )
-        all_deformation_gradients += deformation_gradients
-        all_cauchy_stress_tensors += cauchy_stress_tensors
+        all_deformation_gradients += deformation_gradients_column
+        all_cauchy_stress_tensors += cauchy_stress_tensors_column
 
         column = column + 3
-        deformation_gradients, cauchy_stress_tensors = read_data(
+        deformation_gradients_column, cauchy_stress_tensors_column = read_data(
             column, tensor_row=1, tensor_column=0
         )
-        all_deformation_gradients += deformation_gradients
-        all_cauchy_stress_tensors += cauchy_stress_tensors
+        all_deformation_gradients += deformation_gradients_column
+        all_cauchy_stress_tensors += cauchy_stress_tensors_column
 
         column = column + 2
-        deformation_gradients, cauchy_stress_tensors = read_data(
+        deformation_gradients_column, cauchy_stress_tensors_column = read_data(
             column, tensor_row=1, tensor_column=2
         )
-        all_deformation_gradients += deformation_gradients
-        all_cauchy_stress_tensors += cauchy_stress_tensors
+        all_deformation_gradients += deformation_gradients_column
+        all_cauchy_stress_tensors += cauchy_stress_tensors_column
 
         column = column + 3
-        deformation_gradients, cauchy_stress_tensors = read_data(
+        deformation_gradients_column, cauchy_stress_tensors_column = read_data(
             column, tensor_row=2, tensor_column=0
         )
-        all_deformation_gradients += deformation_gradients
-        all_cauchy_stress_tensors += cauchy_stress_tensors
+        all_deformation_gradients += deformation_gradients_column
+        all_cauchy_stress_tensors += cauchy_stress_tensors_column
 
         column = column + 2
-        deformation_gradients, cauchy_stress_tensors = read_data(
+        deformation_gradients_column, cauchy_stress_tensors_column = read_data(
             column, tensor_row=2, tensor_column=1
         )
-        all_deformation_gradients += deformation_gradients
-        all_cauchy_stress_tensors += cauchy_stress_tensors
+        all_deformation_gradients += deformation_gradients_column
+        all_cauchy_stress_tensors += cauchy_stress_tensors_column
 
-        all_hydrostatic_pressures = self._calculate_hydrostatic_pressure(
-            all_cauchy_stress_tensors
-        )
+        deformation_gradients = flatten_and_stack_arrays(all_deformation_gradients)
+        cauchy_stress_tensors = flatten_and_stack_arrays(all_cauchy_stress_tensors)
+        hydrostatic_pressures = self._calculate_pressures(all_cauchy_stress_tensors)
 
-        deformation_gradients_torch = torch.stack(
-            [
-                self._convert_to_torch_tensor(flatten_array(array))
-                for array in all_deformation_gradients
-            ],
-            dim=0,
-        )
-        cauchy_stress_tensors_torch = torch.stack(
-            [
-                self._convert_to_torch_tensor(flatten_array(array))
-                for array in all_cauchy_stress_tensors
-            ],
-            dim=0,
-        )
-        hydrostatic_pressures_torch = self._convert_to_torch_tensor(
-            all_hydrostatic_pressures
-        )
+        inputs = self._concatenate_inputs(deformation_gradients, hydrostatic_pressures)
+        outputs = cauchy_stress_tensors
 
-        return (
-            deformation_gradients_torch,
-            cauchy_stress_tensors_torch,
-            hydrostatic_pressures_torch,
-        )
+        inputs_torch = self._convert_to_torch(inputs)
+        outputs_torch = self._convert_to_torch(outputs)
+
+        return inputs_torch, outputs_torch
 
     def read_biaxial_data(self) -> LinkaHeartData:
         all_deformation_gradients = []
@@ -245,9 +219,9 @@ class LinkaHeartDataReader:
 
         def add_data(
             start_column: int, ratio_fiber: float, ratio_normal: float
-        ) -> tuple[list[NPArray], list[NPArray]]:
-            deformation_gradients: list[NPArray] = []
-            cauchy_stress_tensors: list[NPArray] = []
+        ) -> tuple[NPArrayList, NPArrayList]:
+            deformation_gradients: NPArrayList = []
+            cauchy_stress_tensors: NPArrayList = []
             stretches = self._read_column(start_column)
             sigmas_fiber = self._read_column(start_column + 1)
             sigmas_normal = self._read_column(start_column + 3)
@@ -271,67 +245,51 @@ class LinkaHeartDataReader:
             return deformation_gradients, cauchy_stress_tensors
 
         column = self._start_column_biaxial
-        deformation_gradients, cauchy_stress_tensors = add_data(
+        deformation_gradients_column, cauchy_stress_tensors_column = add_data(
             column, ratio_fiber=1.0, ratio_normal=1.0
         )
-        all_deformation_gradients += deformation_gradients
-        all_cauchy_stress_tensors += cauchy_stress_tensors
+        all_deformation_gradients += deformation_gradients_column
+        all_cauchy_stress_tensors += cauchy_stress_tensors_column
 
         column = column + 5
-        deformation_gradients, cauchy_stress_tensors = add_data(
+        deformation_gradients_column, cauchy_stress_tensors_column = add_data(
             column, ratio_fiber=1.0, ratio_normal=0.75
         )
-        all_deformation_gradients += deformation_gradients
-        all_cauchy_stress_tensors += cauchy_stress_tensors
+        all_deformation_gradients += deformation_gradients_column
+        all_cauchy_stress_tensors += cauchy_stress_tensors_column
 
         column = column + 5
-        deformation_gradients, cauchy_stress_tensors = add_data(
+        deformation_gradients_column, cauchy_stress_tensors_column = add_data(
             column, ratio_fiber=0.75, ratio_normal=1.0
         )
-        all_deformation_gradients += deformation_gradients
-        all_cauchy_stress_tensors += cauchy_stress_tensors
+        all_deformation_gradients += deformation_gradients_column
+        all_cauchy_stress_tensors += cauchy_stress_tensors_column
 
         column = column + 5
-        deformation_gradients, cauchy_stress_tensors = add_data(
+        deformation_gradients_column, cauchy_stress_tensors_column = add_data(
             column, ratio_fiber=1.0, ratio_normal=0.5
         )
-        all_deformation_gradients += deformation_gradients
-        all_cauchy_stress_tensors += cauchy_stress_tensors
+        all_deformation_gradients += deformation_gradients_column
+        all_cauchy_stress_tensors += cauchy_stress_tensors_column
 
         column = column + 5
-        deformation_gradients, cauchy_stress_tensors = add_data(
+        deformation_gradients_column, cauchy_stress_tensors_column = add_data(
             column, ratio_fiber=0.5, ratio_normal=1.0
         )
-        all_deformation_gradients += deformation_gradients
-        all_cauchy_stress_tensors += cauchy_stress_tensors
+        all_deformation_gradients += deformation_gradients_column
+        all_cauchy_stress_tensors += cauchy_stress_tensors_column
 
-        all_hydrostatic_pressures = self._calculate_hydrostatic_pressure(
-            all_cauchy_stress_tensors
-        )
+        deformation_gradients = flatten_and_stack_arrays(all_deformation_gradients)
+        cauchy_stress_tensors = flatten_and_stack_arrays(all_cauchy_stress_tensors)
+        hydrostatic_pressures = self._calculate_pressures(all_cauchy_stress_tensors)
 
-        deformation_gradients_torch = torch.stack(
-            [
-                self._convert_to_torch_tensor(flatten_array(array))
-                for array in all_deformation_gradients
-            ],
-            dim=0,
-        )
-        cauchy_stress_tensors_torch = torch.stack(
-            [
-                self._convert_to_torch_tensor(flatten_array(array))
-                for array in all_cauchy_stress_tensors
-            ],
-            dim=0,
-        )
-        hydrostatic_pressures_torch = self._convert_to_torch_tensor(
-            all_hydrostatic_pressures
-        )
+        inputs = self._concatenate_inputs(deformation_gradients, hydrostatic_pressures)
+        outputs = cauchy_stress_tensors
 
-        return (
-            deformation_gradients_torch,
-            cauchy_stress_tensors_torch,
-            hydrostatic_pressures_torch,
-        )
+        inputs_torch = self._convert_to_torch(inputs)
+        outputs_torch = self._convert_to_torch(outputs)
+
+        return inputs_torch, outputs_torch
 
     def _init_data_frame(self) -> PDDataFrame:
         input_path = self._join_input_path()
@@ -342,7 +300,7 @@ class LinkaHeartDataReader:
             file_name=self._file_name, subdir_name=self._input_directory
         )
 
-    def _read_column(self, column: int) -> Tensor:
+    def _read_column(self, column: int) -> NPArray:
         return (
             self._data_frame.iloc[self._row_offset :, column]
             .dropna()
@@ -350,16 +308,27 @@ class LinkaHeartDataReader:
             .values
         )
 
-    def _calculate_hydrostatic_pressure(
-        self, cauchy_stress_tensors: list[NPArray]
-    ) -> NPArray:
+    def _calculate_pressures(self, cauchy_stress_tensors: NPArrayList) -> NPArray:
         return np.array(
             [-1 / 3 * np.trace(array) for array in cauchy_stress_tensors],
             dtype=self._np_data_type,
         )
 
-    def _convert_to_torch_tensor(self, array: NPArray) -> Tensor:
+    def _concatenate_inputs(
+        self,
+        deformation_gradients: NPArray,
+        hydrostatic_pressures: NPArray,
+    ) -> NPArray:
+        return np.hstack(
+            (deformation_gradients, hydrostatic_pressures.reshape((-1, 1)))
+        )
+
+    def _convert_to_torch(self, array: NPArray) -> Tensor:
         return torch.from_numpy(array).type(torch.get_default_dtype())
+
+
+def flatten_and_stack_arrays(arrays: list[NPArray]) -> NPArray:
+    return np.vstack([flatten_array(array) for array in arrays])
 
 
 def flatten_array(array: NPArray) -> NPArray:
