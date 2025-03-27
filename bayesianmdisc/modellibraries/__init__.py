@@ -1,4 +1,4 @@
 from .linkamodellibrary import LinkaOrthotropicIncompressibleCANN
-from .base import ModelLibraryProtocol
+from .base import ModelLibrary
 
-__all__ = ["ModelLibraryProtocol", "LinkaOrthotropicIncompressibleCANN"]
+__all__ = ["ModelLibrary", "LinkaOrthotropicIncompressibleCANN"]

@@ -11,7 +11,7 @@ from bayesianmdisc.bayes.prior import (
 )
 from bayesianmdisc.errors import GPPriorError
 from bayesianmdisc.types import Device, Parameter, Tensor
-from bayesianmdisc.modellibraries import ModelLibraryProtocol
+from bayesianmdisc.modellibraries import ModelLibrary
 
 NumLayersList: TypeAlias = list[int]
 
@@ -36,7 +36,7 @@ class ParameterPrior(Protocol):
 def create_parameter_prior(
     prior_type: str,
     is_mean_trainable: bool,
-    model_library: ModelLibraryProtocol,
+    model_library: ModelLibrary,
     device: Device,
 ) -> ParameterPrior:
     if prior_type == "Gaussian":
@@ -60,7 +60,7 @@ def create_parameter_prior(
 class GaussianMean(nn.Module):
     def __init__(
         self,
-        model_library: ModelLibraryProtocol,
+        model_library: ModelLibrary,
         is_trainable: bool,
         device: Device,
     ) -> None:
@@ -90,7 +90,7 @@ class GaussianMean(nn.Module):
 class GaussianParameterPrior(nn.Module):
     def __init__(
         self,
-        model_library: ModelLibraryProtocol,
+        model_library: ModelLibrary,
         is_mean_trainable: bool,
         device: Device,
     ):
@@ -145,7 +145,7 @@ class GaussianParameterPrior(nn.Module):
 class HierarchicalGaussianParameterPrior(nn.Module):
     def __init__(
         self,
-        model_library: ModelLibraryProtocol,
+        model_library: ModelLibrary,
         is_mean_trainable: bool,
         device: Device,
     ):

@@ -16,7 +16,7 @@ Parameters: TypeAlias = Tensor
 SplittedParameters: TypeAlias = tuple[Parameters, ...]
 
 
-class ModelLibraryProtocol(Protocol):
+class ModelLibrary(Protocol):
     output_dim: int
     num_parameters: int
 
