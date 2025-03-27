@@ -1,0 +1,20 @@
+name: venv-bayesianmdisc
+channels:
+  - defaults
+  - conda-forge
+  - nvidia
+dependencies:
+  - python=3.13.2
+  - pytorch::pytorch=2.6.0
+  - pytorch::pytorch-cuda=12.4
+  - gpytorch=1.14
+  - numpy=2.2.4
+  - pandas=2.2.3
+  - matplotlib=3.10.1
+  - scipy=1.15.2
+  - openpyxl=3.1.5
+  - pytest=8.3.3
+  - pip
+  - pip:
+    - normflows==1.7.3
+    - torchdiffeq==0.2.5
