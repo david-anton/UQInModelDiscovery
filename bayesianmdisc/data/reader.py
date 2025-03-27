@@ -8,7 +8,7 @@ import torch
 from torch import vmap
 
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.types import NPArray, PDDataFrame, Tensor
+from bayesianmdisc.types import Device, NPArray, PDDataFrame, Tensor
 
 UrreatoData: TypeAlias = tuple[Tensor, Tensor, Tensor]
 
@@ -337,12 +337,17 @@ LinkaHeartData: TypeAlias = tuple[Inputs, Outputs]
 
 class LinkaHeartDataReader:
     def __init__(
-        self, file_name: str, input_directory: str, project_directory: ProjectDirectory
+        self,
+        file_name: str,
+        input_directory: str,
+        project_directory: ProjectDirectory,
+        device: Device,
     ):
         self.num_deformation_inputs = 2
         self._file_name = file_name
         self._input_directory = input_directory
         self._project_directory = project_directory
+        self._device = device
         self._excel_sheet_name = "Sheet1"
         self._row_offset = 3
         self._start_column_shear = 0
@@ -420,7 +425,7 @@ class LinkaHeartDataReader:
         inputs = convert_to_torch(stretches)
         outputs = convert_to_torch(cauchy_stresses)
 
-        return inputs, outputs
+        return inputs.to(self._device), outputs.to(self._device)
 
     def _init_data_frame(self) -> PDDataFrame:
         input_path = self._join_input_path()
