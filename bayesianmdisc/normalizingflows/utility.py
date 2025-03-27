@@ -1,0 +1,7 @@
+from bayesianmdisc.types import Module
+
+
+def freeze_model(model: Module) -> None:
+    model.train(False)
+    for parameters in model.parameters():
+        parameters.requires_grad = False
