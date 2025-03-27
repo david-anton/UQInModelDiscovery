@@ -171,22 +171,22 @@ def infer_gp_induced_prior(
     for iter_wasserstein in range(1, num_iters_wasserstein + 1):
         for _ in range(num_iters_lipschitz):
             gp_func_values = draw_gp_func_values()
-            bnn_func_values = draw_model_func_values()
+            model_func_values = draw_model_func_values()
 
             optimizer_lipschitz.zero_grad(set_to_none=True)
             loss_lipschitz = lipschitz_func_loss(
                 gp_func_values=gp_func_values,
-                model_func_values=bnn_func_values,
+                model_func_values=model_func_values,
                 penalty_coefficient=lipschitz_penalty_coefficient,
             )
             loss_lipschitz.backward(retain_graph=True)
             optimizer_lipschitz.step()
 
         gp_func_values = draw_gp_func_values()
-        bnn_func_values = draw_model_func_values()
+        model_func_values = draw_model_func_values()
         optimizer_prior.zero_grad(set_to_none=True)
         loss_wasserstein = wasserstein_loss(
-            gp_func_values=gp_func_values, model_func_values=bnn_func_values
+            gp_func_values=gp_func_values, model_func_values=model_func_values
         )
         loss_wasserstein.backward(retain_graph=True)
         optimizer_prior.step()
