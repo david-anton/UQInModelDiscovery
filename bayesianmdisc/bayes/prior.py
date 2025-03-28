@@ -3,6 +3,7 @@ from typing import Protocol, TypeAlias, Union
 import torch
 
 from bayesianmdisc.statistics.distributions import (
+    IndependentMultivariateGammaDistribution,
     IndependentMultivariateNormalDistribution,
     IndependentMultivariateStudentTDistribution,
     MultivariateNormalDistribution,
@@ -12,6 +13,7 @@ from bayesianmdisc.statistics.distributions import (
     UnivariateInverseGammaDistribution,
     UnivariateNormalDistribution,
     UnivariateUniformDistribution,
+    create_independent_multivariate_gamma_distribution,
     create_independent_multivariate_normal_distribution,
     create_independent_multivariate_studentT_distribution,
     create_multivariate_normal_distribution,
@@ -31,6 +33,7 @@ PriorDistribution: TypeAlias = Union[
     MultivariateNormalDistribution,
     MultivariateUniformDistribution,
     IndependentMultivariateNormalDistribution,
+    IndependentMultivariateGammaDistribution,
     UnivariateGammaDistribution,
     UnivariateInverseGammaDistribution,
     IndependentMultivariateStudentTDistribution,
@@ -177,6 +180,15 @@ def create_univariate_gamma_distributed_prior(
     concentration: float, rate: float, device: Device
 ) -> Prior:
     distribution = create_univariate_gamma_distribution(concentration, rate, device)
+    return Prior(distribution)
+
+
+def create_independent_multivariate_gamma_distributed_prior(
+    concentrations: Tensor, rates: Tensor, device: Device
+) -> Prior:
+    distribution = create_independent_multivariate_gamma_distribution(
+        concentrations, rates, device
+    )
     return Prior(distribution)
 
 

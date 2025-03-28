@@ -2,6 +2,7 @@ import pytest
 import torch
 
 from bayesianmdisc.bayes.prior import (
+    create_independent_multivariate_gamma_distributed_prior,
     create_independent_multivariate_normal_distributed_prior,
     create_independent_multivariate_studentT_distributed_prior,
     create_multivariate_normal_distributed_prior,
@@ -196,6 +197,45 @@ def _expected_univariate_gamma_distributed_prior() -> list[tuple[Tensor, Tensor]
                     concentration=concentration, rate=rate
                 ).log_prob(torch.tensor([2.0]))
             )[0],
+        ),
+    ]
+
+
+def _expected_independent_multivariate_gamma_distributed_prior() -> (
+    list[tuple[Tensor, Tensor]]
+):
+    concentrations = torch.tensor([0.5, 1.0, 2.0])
+    rates = torch.tensor([1.0, 1.0, 1.0])
+    return [
+        (
+            torch.tensor([0.1, 0.1, 0.1]),
+            torch.exp(
+                torch.sum(
+                    torch.distributions.Gamma(
+                        concentration=concentrations, rate=rates
+                    ).log_prob(torch.tensor([0.1, 0.1, 0.1]))
+                )
+            ),
+        ),
+        (
+            torch.tensor([1.0, 1.0, 1.0]),
+            torch.exp(
+                torch.sum(
+                    torch.distributions.Gamma(
+                        concentration=concentrations, rate=rates
+                    ).log_prob(torch.tensor([1.0, 1.0, 1.0]))
+                )
+            ),
+        ),
+        (
+            torch.tensor([2.0, 2.0, 2.0]),
+            torch.exp(
+                torch.sum(
+                    torch.distributions.Gamma(
+                        concentration=concentrations, rate=rates
+                    ).log_prob(torch.tensor([2.0, 2.0, 2.0]))
+                )
+            ),
         ),
     ]
 
@@ -444,6 +484,37 @@ def test_univariate_gamma_distributed_prior(
     )
 
     actual = sut.prob(parameter)
+
+    torch.testing.assert_close(actual, expected)
+
+
+@pytest.mark.parametrize(
+    ("parameter", "expected"),
+    _expected_independent_multivariate_gamma_distributed_prior(),
+)
+def test_independent_multivariate_gamma_distributed_prior(
+    parameter: Tensor, expected: Tensor
+) -> None:
+    concentrations = torch.tensor([0.5, 1.0, 2.0])
+    rates = torch.tensor([1.0, 1.0, 1.0])
+    sut = create_independent_multivariate_gamma_distributed_prior(
+        concentrations=concentrations, rates=rates, device=device
+    )
+
+    actual = sut.prob(parameter)
+
+    torch.testing.assert_close(actual, expected)
+
+
+def test_independent_multivariate_gamma_distributed_prior_dimension() -> None:
+    concentrations = torch.tensor([0.5, 1.0, 2.0])
+    rates = torch.tensor([1.0, 1.0, 1.0])
+    sut = create_independent_multivariate_gamma_distributed_prior(
+        concentrations=concentrations, rates=rates, device=device
+    )
+
+    actual = sut.dim
+    expected = 3
 
     torch.testing.assert_close(actual, expected)
 
