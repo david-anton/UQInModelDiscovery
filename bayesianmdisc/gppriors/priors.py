@@ -1,9 +1,9 @@
 import math
 from typing import Iterator, Protocol, TypeAlias, cast
 
+import normflows as nf
 import torch
 import torch.nn as nn
-import normflows as nf
 
 from bayesianmdisc.bayes.prior import (
     PriorProtocol,
@@ -11,6 +11,9 @@ from bayesianmdisc.bayes.prior import (
     create_independent_multivariate_normal_distributed_prior,
     create_independent_multivariate_studentT_distributed_prior,
 )
+from bayesianmdisc.errors import GPPriorError
+from bayesianmdisc.models import Model
+from bayesianmdisc.normalizingflows.base import BaseDistributionProtocol
 from bayesianmdisc.normalizingflows.flows import (
     NormalizingFlow,
     create_exponential_constrained_flow,
@@ -18,10 +21,7 @@ from bayesianmdisc.normalizingflows.flows import (
 )
 from bayesianmdisc.normalizingflows.prior import NormalizingFlowPrior
 from bayesianmdisc.normalizingflows.utility import freeze_model
-from bayesianmdisc.errors import GPPriorError
-from bayesianmdisc.models import Model
-from bayesianmdisc.normalizingflows.base import BaseDistributionProtocol
-from bayesianmdisc.types import Device, Parameter, Tensor, Module, NFFlow
+from bayesianmdisc.types import Device, Module, NFFlow, Parameter, Tensor
 
 NumLayersList: TypeAlias = list[int]
 

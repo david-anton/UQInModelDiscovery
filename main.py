@@ -3,6 +3,7 @@ from datetime import date
 
 import torch
 
+from bayesianmdisc.bayes.likelihood import Likelihood
 from bayesianmdisc.bayes.prior import (
     PriorProtocol,
     create_independent_multivariate_gamma_distributed_prior,
@@ -17,11 +18,10 @@ from bayesianmdisc.gps import (
 )
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import LinkaCANN
-from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
-from bayesianmdisc.types import Tensor
-from bayesianmdisc.bayes.likelihood import Likelihood
 from bayesianmdisc.normalizingflows import NormalizingFlowConfig, fit_normalizing_flow
 from bayesianmdisc.postprocessing.plot import plot_posterior_histograms
+from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
+from bayesianmdisc.types import Tensor
 
 # Input/output
 input_directory = "heart_data_linka"

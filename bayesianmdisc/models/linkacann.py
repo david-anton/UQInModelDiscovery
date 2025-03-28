@@ -9,6 +9,7 @@ from bayesianmdisc.models.base import (
     Inputs,
     Invariant,
     Invariants,
+    ParameterNames,
     Parameters,
     SplittedParameters,
     StrainEnergy,
@@ -16,7 +17,6 @@ from bayesianmdisc.models.base import (
     StrainEnergyDerivatives,
     Stretch,
     Stretches,
-    ParameterNames,
 )
 from bayesianmdisc.types import Device
 
