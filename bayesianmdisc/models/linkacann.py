@@ -307,25 +307,46 @@ class LinkaCANN:
         return dPsi_dI_1, dPsi_dI_2, dPsi_dI_4f, dPsi_dI_4n
 
     def _calculate_invariants(self, stretches: Stretches) -> Invariants:
-        # Deformation tensors
-        F = self._assemble_deformation_gradient(stretches)
-        b = torch.matmul(F, F.transpose(0, 1))  # left Cauchy-Green deformation tensor
-        # Direction tensors
-        f = torch.matmul(F, self._fiber_direction_ref)
-        n = torch.matmul(F, self._normal_direction_ref)
+        # # Deformation tensors
+        # F = self._assemble_deformation_gradient(stretches)
+        # b = torch.matmul(F, F.transpose(0, 1))  # left Cauchy-Green deformation tensor
+        # # Direction tensors
+        # f = torch.matmul(F, self._fiber_direction_ref)
+        # n = torch.matmul(F, self._normal_direction_ref)
+        # Constants
+        # one = torch.tensor(1.0, device=self._device)
+        # three = torch.tensor(3.0, device=self._device)
+
+        # # Isotropic invariants
+        # I_1 = torch.trace(b)
+        # I_2 = 1 / 2 * (I_1**2 - torch.tensordot(b, b))
+        # I_1_cor = I_1 - three
+        # I_2_cor = I_2 - three
+
+        # Stretches
+        stretch_fiber, stretch_normal = self._split_stretches(stretches)
+        stretch_sheet = self._calculat_stretch_sheet(stretches)
         # Constants
         one = torch.tensor(1.0, device=self._device)
         three = torch.tensor(3.0, device=self._device)
 
         # Isotropic invariants
-        I_1 = torch.trace(b)
-        I_2 = 1 / 2 * (I_1**2 - torch.tensordot(b, b))
+        I_1 = (
+            stretch_fiber**2
+            + stretch_normal**2
+            + (one / (stretch_fiber * stretch_normal) ** 2)
+        )
+        I_2 = (
+            (stretch_fiber**2) * (stretch_normal**2)
+            + one / stretch_fiber**2
+            + one / stretch_normal**2
+        )
         I_1_cor = I_1 - three
         I_2_cor = I_2 - three
 
         # Anisotropic invariants
-        I_4f = torch.inner(f, f)
-        I_4n = torch.inner(n, n)
+        I_4f = stretch_fiber**2
+        I_4n = stretch_normal**2
         I_4f_cor = I_4f - one
         I_4n_cor = I_4n - one
 
