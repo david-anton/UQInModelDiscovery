@@ -1,18 +1,14 @@
 import torch
 from torch import vmap
-from torch.func import grad
 
-from bayesianmdisc.errors import ModelLibraryError
+from bayesianmdisc.errors import ModelError
 from bayesianmdisc.models.base import (
     CauchyStress,
     CauchyStresses,
-    CauchyStressTensor,
     DeformationGradient,
-    HydrostaticPressure,
     Inputs,
     Invariant,
     Invariants,
-    Outputs,
     Parameters,
     SplittedParameters,
     StrainEnergy,
@@ -20,8 +16,9 @@ from bayesianmdisc.models.base import (
     StrainEnergyDerivatives,
     Stretch,
     Stretches,
+    ParameterNames,
 )
-from bayesianmdisc.types import Device, Tensor
+from bayesianmdisc.types import Device
 
 # class LinkaOrthotropicIncompressibleCANN:
 
@@ -188,16 +185,24 @@ class LinkaCANN:
         self._validate_parameters(parameters)
         stretches = inputs
 
-        def vmap_func(_stretches: Stretches) -> CauchyStresses:
-            return self._calculate_stresses(_stretches, parameters)
+        def vmap_func(stretches_: Stretches) -> CauchyStresses:
+            return self._calculate_stresses(stretches_, parameters)
 
         return vmap(vmap_func)(stretches)
 
+    def get_parameter_names(self) -> ParameterNames:
+        first_layer_indizes = [2 * (i + 1) for i in range(8)]
+        first_layer_names = [f"W_1_{i}" for i in first_layer_indizes]
+        second_layer_indizes = [i + 1 for i in range(16)]
+        second_layer_names = [f"W_2_{i}" for i in second_layer_indizes]
+        parameter_names = tuple(first_layer_names + second_layer_names)
+        return parameter_names
+
     def _validate_parameters(self, parameters: Parameters) -> None:
-        parameter_size = parameters.size
+        parameter_size = parameters.size()
         expected_size = torch.Size([self.num_parameters])
-        if not parameter_size() == expected_size:
-            raise ModelLibraryError(
+        if not parameter_size == expected_size:
+            raise ModelError(
                 f"""Size of parameters is expected to be {expected_size}, 
                 but is {parameter_size}"""
             )
@@ -267,6 +272,7 @@ class LinkaCANN:
         def calculate_strain_energy_derivative(
             corrected_invariant: Invariant, parameters: Parameters
         ) -> StrainEnergyDerivative:
+            two = torch.tensor(2.0, device=self._device)
             param_1 = parameters[0]
             param_2 = parameters[1]
             param_3 = parameters[2]
@@ -277,7 +283,7 @@ class LinkaCANN:
             sub_term_1 = param_3
             sub_term_2 = param_1 * param_4 * torch.exp(param_1 * corrected_invariant)
             sub_term_3 = (
-                torch.tensor(2.0, device=self._device)
+                two
                 * corrected_invariant
                 * (
                     param_5

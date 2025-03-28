@@ -1,4 +1,4 @@
 from .base import Model
-from .linkamodellibrary import LinkaCANN
+from .linkacann import LinkaCANN
 
 __all__ = ["Model", "LinkaCANN"]

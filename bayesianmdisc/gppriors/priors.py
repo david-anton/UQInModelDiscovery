@@ -1,8 +1,9 @@
 import math
-from typing import Iterator, Protocol, TypeAlias
+from typing import Iterator, Protocol, TypeAlias, cast
 
 import torch
 import torch.nn as nn
+import normflows as nf
 
 from bayesianmdisc.bayes.prior import (
     PriorProtocol,
@@ -10,9 +11,17 @@ from bayesianmdisc.bayes.prior import (
     create_independent_multivariate_normal_distributed_prior,
     create_independent_multivariate_studentT_distributed_prior,
 )
+from bayesianmdisc.normalizingflows.flows import (
+    NormalizingFlow,
+    create_exponential_constrained_flow,
+    create_real_nvp_flow,
+)
+from bayesianmdisc.normalizingflows.prior import NormalizingFlowPrior
+from bayesianmdisc.normalizingflows.utility import freeze_model
 from bayesianmdisc.errors import GPPriorError
 from bayesianmdisc.models import Model
-from bayesianmdisc.types import Device, Parameter, Tensor
+from bayesianmdisc.normalizingflows.base import BaseDistributionProtocol
+from bayesianmdisc.types import Device, Parameter, Tensor, Module, NFFlow
 
 NumLayersList: TypeAlias = list[int]
 
@@ -44,6 +53,13 @@ def create_parameter_prior(
         if not is_mean_trainable:
             GPPriorError("Gamma prior has always a trainable mean.")
         return GammaParameterPrior(
+            model=model_library,
+            device=device,
+        )
+    elif prior_type == "normalizing flow":
+        if not is_mean_trainable:
+            GPPriorError("Gamma prior has always a trainable mean.")
+        return NormalizingFlowParameterPrior(
             model=model_library,
             device=device,
         )
@@ -289,3 +305,57 @@ class HierarchicalGaussianParameterPrior(nn.Module):
         shapes = shapes_and_rates_func(rhos_shapes)
         rates = shapes_and_rates_func(rhos_rates)
         return shapes, rates
+
+
+class NormalizingFlowParameterPrior(nn.Module):
+    def __init__(self, model: Model, device: Device) -> None:
+        super().__init__()
+        self._dim = model.num_parameters
+        self._device = device
+        self._is_base_trainable = False
+        self._num_layers = 16
+        self._relative_width_layers = 2.0
+        self._normalizing_flow = self._init_normalizing_flow()
+
+    def forward(self, num_samples: int) -> Tensor:
+        samples, _ = self._normalizing_flow.sample(num_samples)
+        return samples
+
+    def get_prior_distribution(self) -> PriorProtocol:
+        freeze_model(cast(Module, self._normalizing_flow))
+        return NormalizingFlowPrior(
+            normalizing_flow=self._normalizing_flow,
+            dim=self._dim,
+            device=self._device,
+        )
+
+    def print_hyperparameters(self) -> None:
+        self._normalizing_flow.print_summary()
+
+    def _init_normalizing_flow(self) -> NormalizingFlow:
+        base_distribution = self._init_base_distribution()
+        flows = self._init_normalizing_flows()
+        return NormalizingFlow(flows, base_distribution, self._device).to(self._device)
+
+    def _init_base_distribution(self) -> BaseDistributionProtocol:
+        return nf.distributions.base.DiagGaussian(
+            self._dim, trainable=self._is_base_trainable
+        ).to(self._device)
+
+    def _init_normalizing_flows(self) -> list[NFFlow]:
+        width_layers = int(self._relative_width_layers * self._dim)
+        indices_constrained_outputs = [_ for _ in range(self._dim)]
+        flows: list[NFFlow] = [
+            create_real_nvp_flow(
+                number_inputs=self._dim,
+                width_hidden_layer=width_layers,
+            )
+            for _ in range(self._num_layers)
+        ]
+        flows += [
+            create_exponential_constrained_flow(
+                total_num_outputs=self._dim,
+                indices_constrained_outputs=indices_constrained_outputs,
+            )
+        ]
+        return flows

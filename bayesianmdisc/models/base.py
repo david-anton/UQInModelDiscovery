@@ -19,6 +19,8 @@ StrainEnergyDerivative: TypeAlias = Tensor
 StrainEnergyDerivatives: TypeAlias = tuple[StrainEnergyDerivative, ...]
 Parameters: TypeAlias = Tensor
 SplittedParameters: TypeAlias = tuple[Parameters, ...]
+ParameterNames: TypeAlias = tuple[str, ...]
+TrueParameters: TypeAlias = tuple[float, ...]
 
 
 class Model(Protocol):
