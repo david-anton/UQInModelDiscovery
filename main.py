@@ -21,6 +21,7 @@ from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_
 from bayesianmdisc.types import Tensor
 from bayesianmdisc.bayes.likelihood import Likelihood
 from bayesianmdisc.normalizingflows import NormalizingFlowConfig, fit_normalizing_flow
+from bayesianmdisc.postprocessing.plot import plot_posterior_histograms
 
 # Input/output
 input_directory = "heart_data_linka"
@@ -154,16 +155,27 @@ likelihood = Likelihood(
 normalizing_flow_config = NormalizingFlowConfig(
     likelihood=likelihood,
     prior=prior,
-    num_flows=16,
+    num_flows=32,
     relative_width_flow_layers=4,
     num_samples=128,
-    learning_rate=2e-4,
+    learning_rate=5e-4,
     learning_rate_decay_rate=1.0,
     num_iterations=10_000,
     output_subdirectory=output_directory,
     project_directory=project_directory,
 )
 
-moments, samples = fit_normalizing_flow(normalizing_flow_config, device)
+posterior_moments, posterior_samples = fit_normalizing_flow(
+    normalizing_flow_config, device
+)
 
-print(moments.mean)
+output_subdirectory_posterior = os.path.join(output_directory, "posterior")
+plot_posterior_histograms(
+    parameter_names=tuple(f"parameter_{i}" for i in range(num_parameters)),
+    true_parameters=tuple(None for _ in range(num_parameters)),
+    moments=posterior_moments,
+    samples=posterior_samples,
+    algorithm_name="normalizing_flow",
+    output_subdirectory=output_subdirectory_posterior,
+    project_directory=project_directory,
+)

@@ -4,15 +4,14 @@ from typing import Protocol, TypeAlias
 import torch
 from torch import vmap
 
-from bayesianmdisc.types import Tensor, Device
+from bayesianmdisc.bayes.utility import flatten_tensor, repeat_tensor
 from bayesianmdisc.errors import LikelihoodError
+from bayesianmdisc.models import Model
 from bayesianmdisc.statistics.distributions import (
     IndependentMultivariateNormalDistribution,
     create_independent_multivariate_normal_distribution,
 )
-from bayesianmdisc.models import Model
-from bayesianmdisc.bayes.utility import flatten_tensor, repeat_tensor
-
+from bayesianmdisc.types import Device, Tensor
 
 Prob: TypeAlias = Tensor
 LogProb: TypeAlias = Tensor
