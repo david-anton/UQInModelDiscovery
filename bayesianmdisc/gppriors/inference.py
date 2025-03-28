@@ -40,7 +40,7 @@ def infer_gp_induced_prior(
     gp_inputs = inputs[:, :num_deformation_inputs]
 
     lipschitz_penalty_coefficient = torch.tensor(10.0, device=device)
-    initial_learning_rate = 2e-4
+    initial_learning_rate = 1e-4
     learning_rate_decay_rate = 1.0
     # final_learning_rate = 1e-4
     # learning_rate_decay_rate = (final_learning_rate / initial_learning_rate) ** (
@@ -60,7 +60,7 @@ def infer_gp_induced_prior(
             hiden_layer_size_lipschitz_nn,
             1,
         ],
-        activation=nn.SiLU(),
+        activation=nn.Softplus(),
         init_weights=nn.init.xavier_uniform_,
         init_bias=nn.init.zeros_,
     ).to(device)

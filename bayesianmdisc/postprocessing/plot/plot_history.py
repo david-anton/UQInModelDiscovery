@@ -63,7 +63,7 @@ def plot_statistical_loss_history(
     output_subdir: str,
     project_directory: ProjectDirectory,
     config: HistoryPlotterConfig,
-    max_limit: float = 1e12,
+    max_limit: float = 1e64,
 ) -> None:
     def find_y_limits() -> tuple[float, float]:
         min_value = min(loss_hist)
