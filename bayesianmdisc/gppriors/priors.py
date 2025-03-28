@@ -11,7 +11,7 @@ from bayesianmdisc.bayes.prior import (
     create_independent_multivariate_studentT_distributed_prior,
 )
 from bayesianmdisc.errors import GPPriorError
-from bayesianmdisc.models import ModelLibrary
+from bayesianmdisc.models import Model
 from bayesianmdisc.types import Device, Parameter, Tensor
 
 NumLayersList: TypeAlias = list[int]
@@ -37,7 +37,7 @@ class ParameterPrior(Protocol):
 def create_parameter_prior(
     prior_type: str,
     is_mean_trainable: bool,
-    model_library: ModelLibrary,
+    model_library: Model,
     device: Device,
 ) -> ParameterPrior:
     if prior_type == "Gamma":
@@ -68,7 +68,7 @@ def create_parameter_prior(
 class GammaParameterPrior(nn.Module):
     def __init__(
         self,
-        model: ModelLibrary,
+        model: Model,
         device: Device,
     ):
         super().__init__()
@@ -123,7 +123,7 @@ class GammaParameterPrior(nn.Module):
 class GaussianMean(nn.Module):
     def __init__(
         self,
-        model: ModelLibrary,
+        model: Model,
         is_trainable: bool,
         device: Device,
     ) -> None:
@@ -153,7 +153,7 @@ class GaussianMean(nn.Module):
 class GaussianParameterPrior(nn.Module):
     def __init__(
         self,
-        model: ModelLibrary,
+        model: Model,
         is_mean_trainable: bool,
         device: Device,
     ):
@@ -208,7 +208,7 @@ class GaussianParameterPrior(nn.Module):
 class HierarchicalGaussianParameterPrior(nn.Module):
     def __init__(
         self,
-        model: ModelLibrary,
+        model: Model,
         is_mean_trainable: bool,
         device: Device,
     ):

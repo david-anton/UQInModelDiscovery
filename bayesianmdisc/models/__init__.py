@@ -1,4 +1,4 @@
-from .base import ModelLibrary
+from .base import Model
 from .linkamodellibrary import LinkaCANN
 
-__all__ = ["ModelLibrary", "LinkaCANN"]
+__all__ = ["Model", "LinkaCANN"]

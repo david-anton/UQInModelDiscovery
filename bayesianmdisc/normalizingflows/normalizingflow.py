@@ -5,8 +5,8 @@ from typing import Iterator, TypeAlias
 import normflows as nf
 import torch
 
-from bayesianmdisc.bayes.likelihood import Likelihood
-from bayesianmdisc.bayes.prior import Prior
+from bayesianmdisc.bayes.likelihood import LikelihoodProtocol
+from bayesianmdisc.bayes.prior import PriorProtocol
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.normalizingflows.flows import (
     NormalizingFlow,
@@ -43,8 +43,8 @@ num_samples_output = int(1e4)
 
 @dataclass
 class NormalizingFlowConfig:
-    likelihood: Likelihood
-    prior: Prior
+    likelihood: LikelihoodProtocol
+    prior: PriorProtocol
     num_flows: int
     relative_width_flow_layers: int
     num_samples: int
@@ -56,8 +56,8 @@ class NormalizingFlowConfig:
 
 
 def _fit_normalizing_flow(
-    likelihood: Likelihood,
-    prior: Prior,
+    likelihood: LikelihoodProtocol,
+    prior: PriorProtocol,
     num_flows: int,
     relative_width_flow_layers: int,
     num_samples: int,

@@ -1,12 +1,14 @@
 from torch.func import vmap
 
-from bayesianmdisc.bayes.likelihood import Likelihood
-from bayesianmdisc.bayes.prior import Prior
+from bayesianmdisc.bayes.likelihood import LikelihoodProtocol
+from bayesianmdisc.bayes.prior import PriorProtocol
 from bayesianmdisc.types import Device, Tensor
 
 
 class TargetDistributionWrapper:
-    def __init__(self, likelihood: Likelihood, prior: Prior, device: Device) -> None:
+    def __init__(
+        self, likelihood: LikelihoodProtocol, prior: PriorProtocol, device: Device
+    ) -> None:
         self.device = device
         self._likelihood = likelihood
         self._prior = prior

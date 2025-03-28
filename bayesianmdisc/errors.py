@@ -40,3 +40,8 @@ class GPPriorError(Error):
 class ModelLibraryError(Error):
     def __init__(self, message: str) -> None:
         super().__init__(message)
+
+
+class LikelihoodError(Error):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
