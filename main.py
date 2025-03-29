@@ -13,9 +13,9 @@ from bayesianmdisc.errors import DataError
 from bayesianmdisc.gppriors import infer_gp_induced_prior
 from bayesianmdisc.gps import (
     IndependentMultiOutputGP,
+    condition_gp,
     create_scaled_rbf_gaussian_process,
     optimize_gp_hyperparameters,
-    condition_gp,
 )
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import LinkaCANN
@@ -23,6 +23,8 @@ from bayesianmdisc.normalizingflows import NormalizingFlowConfig, fit_normalizin
 from bayesianmdisc.postprocessing.plot import plot_posterior_histograms
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.types import Tensor
+
+from bayesianmdisc.postprocessing.plot import plot_stresses_linka_cann
 
 # Input/output
 input_directory = "heart_data_linka"
@@ -140,10 +142,11 @@ def determine_prior_and_noise(
         concentrations=torch.tensor(
             [1.0 for _ in range(num_parameters)], device=device
         ),
-        rates=torch.tensor([1.0 for _ in range(num_parameters)], device=device),
+        rates=torch.tensor([5.0 for _ in range(num_parameters)], device=device),
         device=device,
     )
-    noise_stddevs = torch.tensor([0.02, 0.02])
+
+    noise_stddevs = torch.tensor([0.025, 0.025])
 
     return prior, noise_stddevs
 
@@ -165,9 +168,9 @@ normalizing_flow_config = NormalizingFlowConfig(
     num_flows=32,
     relative_width_flow_layers=4,
     num_samples=64,
-    learning_rate=2e-4,
+    learning_rate=5e-4,
     learning_rate_decay_rate=1.0,
-    num_iterations=10_000,
+    num_iterations=1,  # 10_000,
     output_subdirectory=output_directory,
     project_directory=project_directory,
 )
@@ -191,4 +194,13 @@ plot_posterior_histograms(
     algorithm_name="normalizing_flow",
     output_subdirectory=output_subdirectory_posterior,
     project_directory=project_directory,
+)
+plot_stresses_linka_cann(
+    model=model,
+    parameter_samples=posterior_samples,
+    inputs=inputs.numpy(),
+    outputs=outputs.numpy(),
+    output_subdirectory=output_directory,
+    project_directory=project_directory,
+    device=device,
 )
