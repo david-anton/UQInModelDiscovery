@@ -12,18 +12,18 @@ from bayesianmdisc.types import Device, NPArray, Tensor
 class StressPlotterConfigLinkaCANN:
     def __init__(self) -> None:
         # label size
-        self.label_size = 14
+        self.label_size = 10
         # font size in legend
-        self.font_size = 14
+        self.font_size = 12
         self.font: Dict[str, Any] = {"size": self.font_size}
 
         # major ticks
-        self.major_tick_label_size = 20
+        self.major_tick_label_size = 12
         self.major_ticks_size = self.font_size
         self.major_ticks_width = 2
 
         # minor ticks
-        self.minor_tick_label_size = 14
+        self.minor_tick_label_size = 12
         self.minor_ticks_size = 12
         self.minor_ticks_width = 1
 
@@ -33,18 +33,19 @@ class StressPlotterConfigLinkaCANN:
         self.data_label_normal_2 = "data normal"
         self.data_marker_normal_1 = "1"
         self.data_marker_normal_2 = "2"
-        self.data_color_normal_1 = "black"
-        self.data_color_normal_2 = "black"
+        self.data_color_normal_1 = "tab:gray"
+        self.data_color_normal_2 = "tab:gray"
+        self.data_marker_size = 10
         # model
         self.model_label_normal_1 = "model fiber"
         self.model_label_normal_2 = "model normal"
         # mean
         self.model_color_mean_normal_1 = "tab:blue"
-        self.model_color_mean_normal_2 = "tab:orange"
+        self.model_color_mean_normal_2 = "tab:green"
         # standard deviation
         self.model_stddev_alpha = 0.2
         self.model_color_stddev_normal_1 = "tab:blue"
-        self.model_color_stddev_normal_2 = "tab:orange"
+        self.model_color_stddev_normal_2 = "tab:green"
 
         # scientific notation
         self.scientific_notation_size = self.font_size
@@ -67,8 +68,10 @@ def plot_stresses_linka_cann(
     num_points_per_data_set = 11
     min_stretch = 1.0
     max_stretch = 1.1
-    stretches = np.linspace(min_stretch, max_stretch, num_points_per_data_set)
+    data_stretches = np.linspace(min_stretch, max_stretch, num_points_per_data_set)
     stretch_ratios = [(1.0, 1.0), (1.0, 0.75), (0.75, 1.0), (1.0, 0.5), (0.5, 1.0)]
+    index_fiber = 0
+    index_normal = 1
     num_model_inputs = 512
 
     def split_inputs_and_outputs(
@@ -103,45 +106,44 @@ def plot_stresses_linka_cann(
     def plot_one_input_output_set(
         inputs: NPArray, outputs: NPArray, stretch_ratio: tuple[float, float]
     ) -> None:
-        index_fiber = 0
-        index_normal = 1
         ratio_fiber = stretch_ratio[index_fiber]
         ratio_normal = stretch_ratio[index_normal]
-        stresses_fiber = outputs[:, index_fiber]
-        stresses_normal = outputs[:, index_normal]
         file_name = (
             f"stresses_stretch_ratio_fiber_normal_{ratio_fiber}_{ratio_normal}.png"
-        )
-
-        min_model_stretches = np.min(inputs, axis=0)
-        max_model_stretches = np.max(inputs, axis=0)
-        model_inputs = np.linspace(
-            min_model_stretches, max_model_stretches, num_model_inputs
         )
 
         figure, axes = plt.subplots()
 
         # data points
+        data_stresses_fiber = outputs[:, index_fiber]
+        data_stresses_normal = outputs[:, index_normal]
         axes.plot(
-            stretches,
-            stresses_fiber,
+            data_stretches,
+            data_stresses_fiber,
             marker=config.data_marker_normal_1,
             color=config.data_color_normal_1,
+            markersize=config.data_marker_size,
             linestyle="None",
             label=config.data_label_normal_1,
         )
         axes.plot(
-            stretches,
-            stresses_normal,
+            data_stretches,
+            data_stresses_normal,
             marker=config.data_marker_normal_2,
             color=config.data_color_normal_2,
+            markersize=config.data_marker_size,
             linestyle="None",
             label=config.data_label_normal_2,
         )
 
         # model
-        model_stretches_fiber = model_inputs[:, index_fiber]
-        model_stretches_normal = model_inputs[:, index_normal]
+        min_model_stretches = np.min(inputs, axis=0)
+        max_model_stretches = np.max(inputs, axis=0)
+        model_inputs = np.linspace(
+            min_model_stretches, max_model_stretches, num_model_inputs
+        )
+        model_stretches = np.linspace(min_stretch, max_stretch, num_model_inputs)
+
         means, stddevs = calculate_model_mean_and_stddev(
             model, parameter_samples, model_inputs
         )
@@ -149,14 +151,15 @@ def plot_stresses_linka_cann(
         means_normal = means[:, index_normal]
         stddevs_fiber = stddevs[:, index_fiber]
         stddevs_normal = stddevs[:, index_normal]
+
         axes.plot(
-            model_stretches_fiber,
+            model_stretches,
             means_fiber,
             color=config.model_color_mean_normal_1,
             label=config.model_label_normal_1,
         )
         axes.fill_between(
-            model_stretches_fiber,
+            model_stretches,
             means_fiber - stddevs_fiber,
             means_fiber + stddevs_fiber,
             color=config.model_color_mean_normal_1,
@@ -164,19 +167,26 @@ def plot_stresses_linka_cann(
         )
 
         axes.plot(
-            model_stretches_normal,
+            model_stretches,
             means_normal,
             color=config.model_color_mean_normal_2,
             label=config.model_label_normal_2,
         )
         axes.fill_between(
-            model_stretches_normal,
+            model_stretches,
             means_normal - stddevs_normal,
             means_normal + stddevs_normal,
             color=config.model_color_mean_normal_2,
             alpha=config.model_stddev_alpha,
         )
 
+        # axis ticks
+        x_ticks = np.linspace(min_stretch, max_stretch, num=6)
+        x_tick_labels = [str(tick) for tick in x_ticks]
+        axes.set_xticks(x_ticks)
+        axes.set_xticklabels(x_tick_labels)
+
+        # axis labels
         axes.set_xlabel("stretch [-]", **config.font)
         axes.set_ylabel("stress [kPa]", **config.font)
         axes.tick_params(
@@ -185,8 +195,11 @@ def plot_stresses_linka_cann(
         axes.tick_params(
             axis="both", which="major", labelsize=config.major_tick_label_size
         )
-        axes.legend(fontsize=config.font_size, loc="best")
 
+        # legend
+        axes.legend(fontsize=config.font_size, loc="upper left")
+
+        # text box
         text = "\n".join(
             (
                 r"$\lambda_{f}=%.2f$" % (ratio_fiber,),
@@ -195,7 +208,7 @@ def plot_stresses_linka_cann(
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axes.text(
-            0.05,
+            0.45,
             0.95,
             text,
             transform=axes.transAxes,
