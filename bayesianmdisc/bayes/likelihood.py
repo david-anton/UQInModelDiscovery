@@ -93,6 +93,7 @@ class Likelihood:
         model: Model,
         noise_stddev: Tensor,
         inputs: Tensor,
+        test_cases: Tensor,
         outputs: Tensor,
         device: Device,
     ) -> None:
@@ -100,6 +101,7 @@ class Likelihood:
         self.noise_stddev = noise_stddev
         self._model = model
         self._inputs = inputs
+        self._test_cases = test_cases
         self._true_outputs = outputs
         self._num_outputs = len(outputs)
         self._flattened_true_outputs = flatten_tensor(outputs)
@@ -155,7 +157,7 @@ class Likelihood:
         return self._error_distribution.log_prob(flattened_errors)
 
     def _calculate_flattened_errors(self, parameters: Tensor) -> Tensor:
-        outputs = self._model(self._inputs, parameters)
+        outputs = self._model(self._inputs, self._test_cases, parameters)
         flattened_outputs = flatten_tensor(outputs)
         return self._error_calculator.calculate(
             flattened_outputs, self._flattened_true_outputs
@@ -164,7 +166,7 @@ class Likelihood:
     def _calculate_mse_losses(self, parameters: Tensor) -> MSE:
 
         def vmap_mse_losses(parameters_: Tensor) -> MSE:
-            outputs = self._model(self._inputs, parameters_)
+            outputs = self._model(self._inputs, self._test_cases, parameters_)
             flattened_outputs = flatten_tensor(outputs)
             return self._error_calculator.calculate_mse(
                 flattened_outputs, self._flattened_true_outputs
