@@ -359,20 +359,17 @@ class LinkaHeartDataReader:
         all_stretches = []
         all_cauchy_stresses = []
 
-        def add_data(
-            start_column: int, ratio_fiber: float, ratio_normal: float
-        ) -> tuple[NPArrayList, NPArrayList]:
+        def add_data(start_column: int) -> tuple[NPArrayList, NPArrayList]:
             all_stretches: NPArrayList = []
             all_cauchy_stresses: NPArrayList = []
-            stretch_factors = self._read_column(start_column)
+            stretches_fiber = self._read_column(start_column)
             stresses_fiber = self._read_column(start_column + 1)
+            stretches_normal = self._read_column(start_column + 2)
             stresses_normal = self._read_column(start_column + 3)
 
-            for stretch_factor, stress_fiber, stress_normal in zip(
-                stretch_factors, stresses_fiber, stresses_normal
+            for stretch_fiber, stress_fiber, stretch_normal, stress_normal in zip(
+                stretches_fiber, stresses_fiber, stretches_normal, stresses_normal
             ):
-                stretch_fiber = ratio_fiber * stretch_factor
-                stretch_normal = ratio_normal * stretch_factor
                 stretches = np.array(
                     [stretch_fiber, stretch_normal],
                     dtype=self._np_data_type,
@@ -385,37 +382,27 @@ class LinkaHeartDataReader:
             return all_stretches, all_cauchy_stresses
 
         column = self._start_column_biaxial
-        stretches_column, cauchy_stresses_column = add_data(
-            column, ratio_fiber=1.0, ratio_normal=1.0
-        )
+        stretches_column, cauchy_stresses_column = add_data(column)
         all_stretches += stretches_column
         all_cauchy_stresses += cauchy_stresses_column
 
         column = column + 5
-        stretches_column, cauchy_stresses_column = add_data(
-            column, ratio_fiber=1.0, ratio_normal=0.75
-        )
+        stretches_column, cauchy_stresses_column = add_data(column)
         all_stretches += stretches_column
         all_cauchy_stresses += cauchy_stresses_column
 
         column = column + 5
-        stretches_column, cauchy_stresses_column = add_data(
-            column, ratio_fiber=0.75, ratio_normal=1.0
-        )
+        stretches_column, cauchy_stresses_column = add_data(column)
         all_stretches += stretches_column
         all_cauchy_stresses += cauchy_stresses_column
 
         column = column + 5
-        stretches_column, cauchy_stresses_column = add_data(
-            column, ratio_fiber=1.0, ratio_normal=0.5
-        )
+        stretches_column, cauchy_stresses_column = add_data(column)
         all_stretches += stretches_column
         all_cauchy_stresses += cauchy_stresses_column
 
         column = column + 5
-        stretches_column, cauchy_stresses_column = add_data(
-            column, ratio_fiber=0.5, ratio_normal=1.0
-        )
+        stretches_column, cauchy_stresses_column = add_data(column)
         all_stretches += stretches_column
         all_cauchy_stresses += cauchy_stresses_column
 
