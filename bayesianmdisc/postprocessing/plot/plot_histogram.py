@@ -69,7 +69,7 @@ class UnivariateNormalPlotterConfig:
         self.file_format = "pdf"
 
 
-def plot_posterior_histograms(
+def plot_histograms(
     parameter_names: tuple[str, ...],
     true_parameters: TrueParametersTuple,
     moments: MomentsMultivariateNormal,

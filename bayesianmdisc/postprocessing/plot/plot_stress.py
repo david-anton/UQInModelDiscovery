@@ -6,7 +6,11 @@ import torch
 
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import LinkaCANN
-from bayesianmdisc.types import Device, NPArray, Tensor
+from bayesianmdisc.types import Device, NPArray
+from bayesianmdisc.statistics.metrics import (
+    coefficient_of_determination,
+    root_mean_squared_error,
+)
 
 
 class StressPlotterConfigLinkaCANN:
@@ -31,21 +35,21 @@ class StressPlotterConfigLinkaCANN:
         # data
         self.data_label_normal_1 = "data fiber"
         self.data_label_normal_2 = "data normal"
-        self.data_marker_normal_1 = "1"
-        self.data_marker_normal_2 = "2"
-        self.data_color_normal_1 = "tab:gray"
-        self.data_color_normal_2 = "tab:gray"
-        self.data_marker_size = 10
+        self.data_marker_normal_1 = "x"
+        self.data_marker_normal_2 = "x"
+        self.data_color_normal_1 = "tab:blue"
+        self.data_color_normal_2 = "tab:purple"
+        self.data_marker_size = 5
         # model
         self.model_label_normal_1 = "model fiber"
         self.model_label_normal_2 = "model normal"
         # mean
         self.model_color_mean_normal_1 = "tab:blue"
-        self.model_color_mean_normal_2 = "tab:green"
+        self.model_color_mean_normal_2 = "tab:purple"
         # standard deviation
         self.model_stddev_alpha = 0.2
         self.model_color_stddev_normal_1 = "tab:blue"
-        self.model_color_stddev_normal_2 = "tab:green"
+        self.model_color_stddev_normal_2 = "tab:purple"
 
         # scientific notation
         self.scientific_notation_size = self.font_size
@@ -102,6 +106,22 @@ def plot_stresses_linka_cann(
         means = np.mean(predictions, axis=2)
         standard_deviations = np.std(predictions, axis=2)
         return means, standard_deviations
+
+    def calculate_coefficient_of_determinant(
+        model: LinkaCANN, parameter_samples: NPArray, inputs: NPArray, outputs: NPArray
+    ) -> float:
+        mean_model_outputs, _ = calculate_model_mean_and_stddev(
+            model, parameter_samples, inputs
+        )
+        return coefficient_of_determination(mean_model_outputs, outputs)
+
+    def calculate_root_mean_squared_error(
+        model: LinkaCANN, parameter_samples: NPArray, inputs: NPArray, outputs: NPArray
+    ) -> float:
+        mean_model_outputs, _ = calculate_model_mean_and_stddev(
+            model, parameter_samples, inputs
+        )
+        return root_mean_squared_error(mean_model_outputs, outputs)
 
     def plot_one_input_output_set(
         inputs: NPArray, outputs: NPArray, stretch_ratio: tuple[float, float]
@@ -199,7 +219,7 @@ def plot_stresses_linka_cann(
         # legend
         axes.legend(fontsize=config.font_size, loc="upper left")
 
-        # text box
+        # text box ratios
         text = "\n".join(
             (
                 r"$\lambda_{f}=%.2f$" % (ratio_fiber,),
@@ -210,6 +230,30 @@ def plot_stresses_linka_cann(
         axes.text(
             0.45,
             0.95,
+            text,
+            transform=axes.transAxes,
+            fontsize=config.font_size,
+            verticalalignment="top",
+            bbox=text_properties,
+        )
+
+        # text box metrics
+        r_squared = calculate_coefficient_of_determinant(
+            model, parameter_samples, inputs, outputs
+        )
+        rmse = calculate_root_mean_squared_error(
+            model, parameter_samples, inputs, outputs
+        )
+        text = "\n".join(
+            (
+                r"$R^{2}=%.2f$" % (r_squared,),
+                r"$RMSE=%.2f$" % (rmse,),
+            )
+        )
+        text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+        axes.text(
+            0.05,
+            0.65,
             text,
             transform=axes.transAxes,
             fontsize=config.font_size,
