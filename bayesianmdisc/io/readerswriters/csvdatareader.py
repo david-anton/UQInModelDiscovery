@@ -21,6 +21,7 @@ class CSVDataReader:
         file_name: str,
         subdir_name: Optional[str] = None,
         header: Any = 0,
+        seperator=",",
         read_from_output_dir: bool = False,
     ) -> NPArray:
         file_name = ensure_correct_file_ending(
@@ -32,4 +33,6 @@ class CSVDataReader:
             project_directory=self._project_directory,
             read_from_output_dir=read_from_output_dir,
         )
-        return pd.read_csv(input_file_path, header=header).to_numpy(dtype=np.float64)
+        return pd.read_csv(input_file_path, header=header, sep=seperator).to_numpy(
+            dtype=np.float64
+        )
