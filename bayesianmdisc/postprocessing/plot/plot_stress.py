@@ -4,13 +4,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+from bayesianmdisc.data.testcases import test_case_identifier_biaxial_tension
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import LinkaCANN
-from bayesianmdisc.types import Device, NPArray
 from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
     root_mean_squared_error,
 )
+from bayesianmdisc.types import Device, NPArray
 
 
 class StressPlotterConfigLinkaCANN:
@@ -63,6 +64,7 @@ def plot_stresses_linka_cann(
     parameter_samples: NPArray,
     inputs: NPArray,
     outputs: NPArray,
+    test_cases: NPArray,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
     device: Device,
@@ -86,7 +88,10 @@ def plot_stresses_linka_cann(
         return input_sets, output_sets
 
     def calculate_model_mean_and_stddev(
-        model: LinkaCANN, parameter_samples: NPArray, inputs: NPArray
+        model: LinkaCANN,
+        parameter_samples: NPArray,
+        inputs: NPArray,
+        test_cases: NPArray,
     ) -> tuple[NPArray, NPArray]:
         parameter_sample_list = list(
             torch.from_numpy(parameter_samples)
@@ -96,11 +101,17 @@ def plot_stresses_linka_cann(
         inputs_torch = (
             torch.from_numpy(inputs).type(torch.get_default_dtype()).to(device)
         )
+        test_cases_torch = (
+            torch.from_numpy(test_cases).type(torch.get_default_dtype()).to(device)
+        )
 
         prediction_list = []
         for parameter_sample in parameter_sample_list:
             prediction_list += [
-                model(inputs_torch, parameter_sample).cpu().detach().numpy()
+                model(inputs_torch, test_cases_torch, parameter_sample)
+                .cpu()
+                .detach()
+                .numpy()
             ]
         predictions = np.stack(prediction_list, axis=2)
         means = np.mean(predictions, axis=2)
@@ -108,18 +119,26 @@ def plot_stresses_linka_cann(
         return means, standard_deviations
 
     def calculate_coefficient_of_determinant(
-        model: LinkaCANN, parameter_samples: NPArray, inputs: NPArray, outputs: NPArray
+        model: LinkaCANN,
+        parameter_samples: NPArray,
+        inputs: NPArray,
+        test_cases: NPArray,
+        outputs: NPArray,
     ) -> float:
         mean_model_outputs, _ = calculate_model_mean_and_stddev(
-            model, parameter_samples, inputs
+            model, parameter_samples, inputs, test_cases
         )
         return coefficient_of_determination(mean_model_outputs, outputs)
 
     def calculate_root_mean_squared_error(
-        model: LinkaCANN, parameter_samples: NPArray, inputs: NPArray, outputs: NPArray
+        model: LinkaCANN,
+        parameter_samples: NPArray,
+        inputs: NPArray,
+        test_cases: NPArray,
+        outputs: NPArray,
     ) -> float:
         mean_model_outputs, _ = calculate_model_mean_and_stddev(
-            model, parameter_samples, inputs
+            model, parameter_samples, inputs, test_cases
         )
         return root_mean_squared_error(mean_model_outputs, outputs)
 
@@ -162,10 +181,13 @@ def plot_stresses_linka_cann(
         model_inputs = np.linspace(
             min_model_stretches, max_model_stretches, num_model_inputs
         )
+        model_test_cases = np.full(
+            (num_model_inputs,), test_case_identifier_biaxial_tension
+        )
         model_stretches = np.linspace(min_stretch, max_stretch, num_model_inputs)
 
         means, stddevs = calculate_model_mean_and_stddev(
-            model, parameter_samples, model_inputs
+            model, parameter_samples, model_inputs, model_test_cases
         )
         means_fiber = means[:, index_fiber]
         means_normal = means[:, index_normal]
@@ -239,15 +261,15 @@ def plot_stresses_linka_cann(
 
         # text box metrics
         r_squared = calculate_coefficient_of_determinant(
-            model, parameter_samples, inputs, outputs
+            model, parameter_samples, inputs, test_cases, outputs
         )
         rmse = calculate_root_mean_squared_error(
-            model, parameter_samples, inputs, outputs
+            model, parameter_samples, inputs, test_cases, outputs
         )
         text = "\n".join(
             (
-                r"$R^{2}=%.2f$" % (r_squared,),
-                r"$RMSE=%.2f$" % (rmse,),
+                r"$R^{2}=%.4f$" % (r_squared,),
+                r"$RMSE=%.4f$" % (rmse,),
             )
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)

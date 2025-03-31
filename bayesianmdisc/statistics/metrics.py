@@ -1,11 +1,11 @@
 from typing import TypeAlias
 
-from bayesianmdisc.types import Tensor, NPArray
-
 from sklearn.metrics import (
     r2_score,
-    root_mean_squared_error as root_mean_squared_error_sklean,
 )
+from sklearn.metrics import root_mean_squared_error as root_mean_squared_error_sklean
+
+from bayesianmdisc.types import NPArray, Tensor
 
 Values: TypeAlias = Tensor | NPArray
 

@@ -8,27 +8,32 @@ from bayesianmdisc.bayes.prior import (
     PriorProtocol,
     create_independent_multivariate_gamma_distributed_prior,
 )
-from bayesianmdisc.data import LinkaHeartDataReader
+from bayesianmdisc.data import (
+    DeformationInputs,
+    LinkaHeartDataReader,
+    StressOutputs,
+    TestCases,
+)
 from bayesianmdisc.errors import DataError
 from bayesianmdisc.gppriors import infer_gp_induced_prior
 from bayesianmdisc.gps import (
     IndependentMultiOutputGP,
-    condition_gp,
     create_scaled_rbf_gaussian_process,
     optimize_gp_hyperparameters,
 )
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import LinkaCANN
 from bayesianmdisc.normalizingflows import NormalizingFlowConfig, fit_normalizing_flow
-from bayesianmdisc.postprocessing.plot import plot_posterior_histograms
+from bayesianmdisc.postprocessing.plot import plot_histograms, plot_stresses_linka_cann
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
-from bayesianmdisc.types import Tensor
-
-from bayesianmdisc.postprocessing.plot import plot_stresses_linka_cann
+from bayesianmdisc.statistics.utility import (
+    MomentsMultivariateNormal,
+    determine_moments_of_multivariate_normal_distribution,
+)
+from bayesianmdisc.types import NPArray, Tensor
 
 # Input/output
 input_directory = "heart_data_linka"
-input_file_name = "CANNsHEARTdata_shear05.xlsx"
 current_date = date.today().strftime("%Y%m%d")
 output_directory = current_date + "_" + input_directory
 
@@ -40,103 +45,119 @@ set_default_dtype(torch.float64)
 set_seed(0)
 
 
-data_reader = LinkaHeartDataReader(
-    input_file_name, input_directory, project_directory, device
-)
-inputs, outputs = data_reader.read()
-num_deformation_inputs = data_reader.num_deformation_inputs
+data_reader = LinkaHeartDataReader(input_directory, project_directory, device)
+inputs, test_cases, outputs = data_reader.read()
 
 model = LinkaCANN(device)
 num_parameters = model.num_parameters
 
 
 def determine_prior_and_noise(
-    inputs: Tensor, outputs: Tensor
+    inputs: DeformationInputs, test_cases: TestCases, outputs: StressOutputs
 ) -> tuple[PriorProtocol, Tensor]:
 
-    # def validate_number_of_samples(inputs: Tensor, outputs: Tensor) -> None:
-    #     num_inputs = len(inputs)
-    #     num_outputs = len(outputs)
+    def validate_number_of_samples(
+        inputs: DeformationInputs, test_cases: TestCases, outputs: StressOutputs
+    ) -> None:
+        num_inputs = len(inputs)
+        num_test_cases = len(test_cases)
+        num_outputs = len(outputs)
 
-    #     if num_inputs != num_outputs:
-    #         raise DataError(
-    #             f"""The number of inputs and outputs is expected to be the same,
-    #             but is {num_inputs} and {num_outputs}"""
-    #         )
-    #     else:
-    #         return num_inputs
+        if (
+            num_inputs != num_test_cases
+            or num_inputs != num_outputs
+            or num_test_cases != num_outputs
+        ):
+            raise DataError(
+                f"""The number of inputs, test cases and outputs is expected to be the same,
+                but is {num_inputs}, {num_test_cases} and {num_outputs}"""
+            )
 
-    # def create_gaussian_process() -> IndependentMultiOutputGP:
-    #     jitter = 1e-7
-    #     gaussian_processes = [
-    #         create_scaled_rbf_gaussian_process(
-    #             mean="zero",
-    #             input_dims=input_dim,
-    #             min_inputs=min_inputs,
-    #             max_inputs=max_inputs,
-    #             jitter=jitter,
-    #             device=device,
-    #         )
-    #         for _ in range(output_dim)
-    #     ]
+    def create_gaussian_process() -> IndependentMultiOutputGP:
+        jitter = 1e-7
+        gaussian_processes = [
+            create_scaled_rbf_gaussian_process(
+                mean="zero",
+                input_dims=input_dim,
+                min_inputs=min_inputs,
+                max_inputs=max_inputs,
+                jitter=jitter,
+                device=device,
+            )
+            for _ in range(output_dim)
+        ]
 
-    #     initial_parameters = torch.tensor(
-    #         [1.0] + [0.1 for _ in range(input_dim)], device=device
-    #     )
-    #     for gaussian_process in gaussian_processes:
-    #         gaussian_process.set_parameters(initial_parameters)
+        initial_parameters = torch.tensor(
+            [1.0] + [0.1 for _ in range(input_dim)], device=device
+        )
+        for gaussian_process in gaussian_processes:
+            gaussian_process.set_parameters(initial_parameters)
 
-    #     return IndependentMultiOutputGP(gps=tuple(gaussian_processes), device=device)
+        return IndependentMultiOutputGP(gps=tuple(gaussian_processes), device=device)
 
-    # validate_number_of_samples(inputs, outputs)
-    # output_subdirectory = os.path.join(output_directory, "prior")
-    # model_inputs = inputs
-    # gp_inputs = model_inputs[:, :num_deformation_inputs]
+    def determine_prior_moments(
+        samples: Tensor,
+    ) -> tuple[MomentsMultivariateNormal, NPArray]:
+        samples_np = samples.detach().cpu().numpy()
+        moments = determine_moments_of_multivariate_normal_distribution(samples_np)
+        return moments, samples_np
 
-    # min_inputs = torch.amin(gp_inputs, dim=0)
-    # max_inputs = torch.amax(gp_inputs, dim=0)
-    # input_dim = gp_inputs.size()[1]
-    # output_dim = outputs.size()[1]
-    # initial_noise_stddev = 1e-2
+    validate_number_of_samples(inputs, test_cases, outputs)
+    output_subdirectory = os.path.join(output_directory, "prior")
 
-    # gaussian_process = create_gaussian_process()
+    min_inputs = torch.amin(inputs, dim=0)
+    max_inputs = torch.amax(inputs, dim=0)
+    input_dim = inputs.size()[1]
+    output_dim = outputs.size()[1]
+    initial_noise_stddev = 1e-3
 
-    # optimize_gp_hyperparameters(
-    #     gaussian_process=gaussian_process,
-    #     inputs=gp_inputs,
-    #     outputs=outputs,
-    #     initial_noise_standard_deviations=torch.tensor(
-    #         [initial_noise_stddev for _ in range(output_dim)], device=device
-    #     ),
-    #     num_iterations=int(1e4),
-    #     learning_rate=5e-3,
-    #     output_subdirectory=output_subdirectory,
-    #     project_directory=project_directory,
-    #     device=device,
-    # )
-    # condition_gp(
-    #     gaussian_process=gaussian_process, inputs=inputs, outputs=outputs, device=device
-    # )
+    gaussian_process = create_gaussian_process()
 
-    # noise_variance = gaussian_process.get_likelihood_noise_variance()
-    # noise_stddevs = torch.sqrt(noise_variance).detach()
+    optimize_gp_hyperparameters(
+        gaussian_process=gaussian_process,
+        inputs=inputs,
+        outputs=outputs,
+        initial_noise_standard_deviations=torch.tensor(
+            [initial_noise_stddev for _ in range(output_dim)], device=device
+        ),
+        num_iterations=int(1e4),
+        learning_rate=1e-3,
+        output_subdirectory=output_subdirectory,
+        project_directory=project_directory,
+        device=device,
+    )
 
-    # prior = infer_gp_induced_prior(
-    #     gp=gaussian_process,
-    #     model=model,
-    #     prior_type="Gamma",
-    #     is_mean_trainable=True,
-    #     inputs=model_inputs,
-    #     num_deformation_inputs=num_deformation_inputs,
-    #     num_func_samples=64,
-    #     resample=True,
-    #     num_iters_wasserstein=int(1e4),
-    #     hiden_layer_size_lipschitz_nn=128,
-    #     num_iters_lipschitz=10,
-    #     output_subdirectory=output_subdirectory,
-    #     project_directory=project_directory,
-    #     device=device,
-    # )
+    noise_variance = gaussian_process.get_likelihood_noise_variance()
+    noise_stddevs = torch.sqrt(noise_variance).detach()
+
+    prior = infer_gp_induced_prior(
+        gp=gaussian_process,
+        model=model,
+        prior_type="Gamma",
+        is_mean_trainable=True,
+        inputs=inputs,
+        test_cases=test_cases,
+        num_func_samples=32,
+        resample=True,
+        num_iters_wasserstein=int(1e4),
+        hiden_layer_size_lipschitz_nn=128,
+        num_iters_lipschitz=10,
+        output_subdirectory=output_subdirectory,
+        project_directory=project_directory,
+        device=device,
+    )
+    prior_samples = prior.sample(num_samples=4096)
+    prior_moments, prior_samples_np = determine_prior_moments(prior_samples)
+
+    plot_histograms(
+        parameter_names=model.get_parameter_names(),
+        true_parameters=tuple(None for _ in range(num_parameters)),
+        moments=prior_moments,
+        samples=prior_samples_np,
+        algorithm_name="gp_prior",
+        output_subdirectory=output_subdirectory,
+        project_directory=project_directory,
+    )
 
     prior = create_independent_multivariate_gamma_distributed_prior(
         concentrations=torch.tensor(
@@ -146,12 +167,10 @@ def determine_prior_and_noise(
         device=device,
     )
 
-    noise_stddevs = torch.tensor([0.025, 0.025])
-
     return prior, noise_stddevs
 
 
-prior, noise_stddevs = determine_prior_and_noise(inputs, outputs)
+prior, noise_stddevs = determine_prior_and_noise(inputs, test_cases, outputs)
 
 
 likelihood = Likelihood(
@@ -168,9 +187,9 @@ normalizing_flow_config = NormalizingFlowConfig(
     num_flows=32,
     relative_width_flow_layers=4,
     num_samples=64,
-    learning_rate=5e-4,
+    learning_rate=1e-4,
     learning_rate_decay_rate=1.0,
-    num_iterations=1,  # 10_000,
+    num_iterations=10_000,
     output_subdirectory=output_directory,
     project_directory=project_directory,
 )
@@ -186,7 +205,7 @@ print(f"Mean mse: {mse_statistics.mean}")
 print(f"Stddev mse: {mse_statistics.stddev}")
 
 output_subdirectory_posterior = os.path.join(output_directory, "posterior")
-plot_posterior_histograms(
+plot_histograms(
     parameter_names=model.get_parameter_names(),
     true_parameters=tuple(None for _ in range(num_parameters)),
     moments=posterior_moments,
@@ -200,6 +219,7 @@ plot_stresses_linka_cann(
     parameter_samples=posterior_samples,
     inputs=inputs.numpy(),
     outputs=outputs.numpy(),
+    test_cases=test_cases.numpy(),
     output_subdirectory=output_directory,
     project_directory=project_directory,
     device=device,

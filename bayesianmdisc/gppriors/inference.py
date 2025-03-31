@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.func import grad, vmap
 
 from bayesianmdisc.bayes.prior import PriorProtocol
+from bayesianmdisc.data import DeformationInputs, TestCases
 from bayesianmdisc.gppriors.priors import create_parameter_prior
 from bayesianmdisc.gps import GaussianProcess
 from bayesianmdisc.gps.base import GPMultivariateNormal
@@ -24,8 +25,8 @@ def infer_gp_induced_prior(
     model: Model,
     prior_type: str,
     is_mean_trainable: bool,
-    inputs: Tensor,
-    num_deformation_inputs: int,
+    inputs: DeformationInputs,
+    test_cases: TestCases,
     num_func_samples: int,
     resample: bool,
     num_iters_wasserstein: int,
@@ -37,7 +38,6 @@ def infer_gp_induced_prior(
 ) -> PriorProtocol:
     output_dim = model.output_dim
     num_flattened_outputs = len(inputs) * output_dim
-    gp_inputs = inputs[:, :num_deformation_inputs]
 
     lipschitz_penalty_coefficient = torch.tensor(10.0, device=device)
     initial_learning_rate = 1e-4
@@ -64,7 +64,7 @@ def infer_gp_induced_prior(
         init_weights=nn.init.xavier_uniform_,
         init_bias=nn.init.zeros_,
     ).to(device)
-    gp_distribution: GPMultivariateNormal = gp(gp_inputs)
+    gp_distribution: GPMultivariateNormal = gp(inputs)
 
     if not resample:
         fixed_gp_func_values = gp_distribution.rsample(
@@ -108,7 +108,7 @@ def infer_gp_induced_prior(
     def draw_model_func_values() -> Tensor:
         model_parameters = prior(num_func_samples)
         vmap_model_func = lambda _model_parameters: flatten_outputs(
-            model(inputs, _model_parameters)
+            model(inputs, test_cases, _model_parameters)
         )
         return vmap(vmap_model_func)(model_parameters)
 

@@ -7,6 +7,8 @@ import pandas as pd
 import torch
 from torch import vmap
 
+from bayesianmdisc.data.base import DeformationInputs, NPArrayList, StressOutputs
+from bayesianmdisc.data.testcases import TestCases, test_case_identifier_biaxial_tension
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.types import Device, NPArray, PDDataFrame, Tensor
 
@@ -100,12 +102,6 @@ UrreatoData: TypeAlias = tuple[Tensor, Tensor, Tensor]
 #         print(f"Found {num_samples} samples in {self._input_directory}")
 #         if num_samples == 0:
 #             raise RuntimeError("No valid data loaded!")
-
-
-NPArrayList = list[NPArray]
-Inputs: TypeAlias = Tensor
-Outputs: TypeAlias = Tensor
-LinkaHeartData: TypeAlias = tuple[Inputs, Outputs]
 
 
 # class LinkaHeartDataReader:
@@ -335,24 +331,27 @@ LinkaHeartData: TypeAlias = tuple[Inputs, Outputs]
 #     return array.reshape(-1)
 
 
+LinkaHeartData: TypeAlias = tuple[DeformationInputs, TestCases, StressOutputs]
+
+
 class LinkaHeartDataReader:
     def __init__(
         self,
-        file_name: str,
         input_directory: str,
         project_directory: ProjectDirectory,
         device: Device,
     ):
         self.num_deformation_inputs = 2
-        self._file_name = file_name
         self._input_directory = input_directory
         self._project_directory = project_directory
         self._device = device
+        self._file_name = "CANNsHEARTdata_shear05.xlsx"
         self._excel_sheet_name = "Sheet1"
         self._row_offset = 3
         self._start_column_shear = 0
         self._start_column_biaxial = 15
         self._np_data_type = np.float64
+        self._test_case_identifier_bt = test_case_identifier_biaxial_tension
         self._data_frame = self._init_data_frame()
 
     def read(self) -> LinkaHeartData:
@@ -409,10 +408,11 @@ class LinkaHeartDataReader:
         stretches = stack_arrays(all_stretches)
         cauchy_stresses = stack_arrays(all_cauchy_stresses)
 
-        inputs = convert_to_torch(stretches)
-        outputs = convert_to_torch(cauchy_stresses)
+        deformation_inputs = convert_to_torch(stretches, self._device)
+        test_cases = self._assemble_test_cases(deformation_inputs)
+        stress_outputs = convert_to_torch(cauchy_stresses, self._device)
 
-        return inputs.to(self._device), outputs.to(self._device)
+        return deformation_inputs, test_cases, stress_outputs
 
     def _init_data_frame(self) -> PDDataFrame:
         input_path = self._join_input_path()
@@ -431,9 +431,16 @@ class LinkaHeartDataReader:
             .values
         )
 
+    def _assemble_test_cases(self, deformation_inputs: Tensor) -> TestCases:
+        return torch.tensor(
+            [self._test_case_identifier_bt for _ in deformation_inputs],
+            dtype=torch.int32,
+            device=self._device,
+        )
 
-def convert_to_torch(array: NPArray) -> Tensor:
-    return torch.from_numpy(array).type(torch.get_default_dtype())
+
+def convert_to_torch(array: NPArray, device: Device) -> Tensor:
+    return torch.from_numpy(array).type(torch.get_default_dtype()).to(device)
 
 
 def flatten_and_stack_arrays(arrays: list[NPArray]) -> NPArray:

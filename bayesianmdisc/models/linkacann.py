@@ -1,12 +1,12 @@
 import torch
 from torch import vmap
 
-from bayesianmdisc.errors import ModelError
+from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
+from bayesianmdisc.data.testcases import TestCase, test_case_identifier_biaxial_tension
 from bayesianmdisc.models.base import (
     CauchyStress,
     CauchyStresses,
     DeformationGradient,
-    Inputs,
     Invariant,
     Invariants,
     ParameterNames,
@@ -17,6 +17,9 @@ from bayesianmdisc.models.base import (
     StrainEnergyDerivatives,
     Stretch,
     Stretches,
+    validate_input_and_test_case_numbers,
+    validate_parameters,
+    validate_test_cases,
 )
 from bayesianmdisc.types import Device
 
@@ -172,23 +175,36 @@ class LinkaCANN:
     def __init__(self, device: Device):
         self.output_dim = 2
         self.num_parameters = 24
-        self._num_deformation_inputs = 2
         self._device = device
         self._num_invariants = 4
-        self._fiber_direction_ref = torch.tensor([1.0, 0.0, 0.0], device=device)
-        self._normal_direction_ref = torch.tensor([0.0, 0.0, 1.0], device=device)
+        self._test_case_identifier_bt = test_case_identifier_biaxial_tension
+        self._allowed_test_cases = torch.tensor(
+            [self._test_case_identifier_bt], device=self._device
+        )
 
-    def __call__(self, inputs: Inputs, parameters: Parameters) -> CauchyStresses:
-        return self.forward(inputs, parameters)
+    def __call__(
+        self,
+        inputs: DeformationInputs,
+        test_cases: TestCases,
+        parameters: Parameters,
+        validate_args=True,
+    ) -> StressOutputs:
+        return self.forward(inputs, test_cases, parameters, validate_args)
 
-    def forward(self, inputs: Inputs, parameters: Parameters) -> CauchyStresses:
-        self._validate_parameters(parameters)
-        stretches = inputs
+    def forward(
+        self,
+        inputs: DeformationInputs,
+        test_cases: TestCases,
+        parameters: Parameters,
+        validate_args=True,
+    ) -> StressOutputs:
+        if validate_args:
+            self._validate_inputs(inputs, test_cases, parameters)
 
-        def vmap_func(stretches_: Stretches) -> CauchyStresses:
-            return self._calculate_stresses(stretches_, parameters)
+        def vmap_func(inputs_: Stretches, test_case_: TestCase) -> CauchyStresses:
+            return self._calculate_stresses(inputs_, test_case_, parameters)
 
-        return vmap(vmap_func)(stretches)
+        return vmap(vmap_func)(inputs, test_cases)
 
     def get_parameter_names(self) -> ParameterNames:
         first_layer_indizes = [2 * (i + 1) for i in range(8)]
@@ -198,17 +214,15 @@ class LinkaCANN:
         parameter_names = tuple(first_layer_names + second_layer_names)
         return parameter_names
 
-    def _validate_parameters(self, parameters: Parameters) -> None:
-        parameter_size = parameters.size()
-        expected_size = torch.Size([self.num_parameters])
-        if not parameter_size == expected_size:
-            raise ModelError(
-                f"""Size of parameters is expected to be {expected_size}, 
-                but is {parameter_size}"""
-            )
+    def _validate_inputs(
+        self, inputs: DeformationInputs, test_cases: TestCases, parameters: Parameters
+    ) -> None:
+        validate_input_and_test_case_numbers(inputs, test_cases)
+        validate_test_cases(test_cases, self._allowed_test_cases)
+        validate_parameters(parameters, self.num_parameters)
 
     def _calculate_stresses(
-        self, stretches: Stretches, parameters: Parameters
+        self, stretches: Stretches, test_case: TestCase, parameters: Parameters
     ) -> StrainEnergy:
 
         def calculate_fiber_stress(
@@ -252,6 +266,9 @@ class LinkaCANN:
                 * squared_stretch_fiber
                 + two * dPsi_dI_4n * squared_stretch_normal
             )
+
+        # It has already been validated that all test cases are biaxial tension tests.
+        # It is therefore no longer necessary to differentiate between the inputs.
 
         dPsi_dI_1, dPsi_dI_2, dPsi_dI_4f, dPsi_dI_4n = (
             self._calculate_strain_energy_derivatives(stretches, parameters)
@@ -307,25 +324,8 @@ class LinkaCANN:
         return dPsi_dI_1, dPsi_dI_2, dPsi_dI_4f, dPsi_dI_4n
 
     def _calculate_invariants(self, stretches: Stretches) -> Invariants:
-        # # Deformation tensors
-        # F = self._assemble_deformation_gradient(stretches)
-        # b = torch.matmul(F, F.transpose(0, 1))  # left Cauchy-Green deformation tensor
-        # # Direction tensors
-        # f = torch.matmul(F, self._fiber_direction_ref)
-        # n = torch.matmul(F, self._normal_direction_ref)
-        # Constants
-        # one = torch.tensor(1.0, device=self._device)
-        # three = torch.tensor(3.0, device=self._device)
-
-        # # Isotropic invariants
-        # I_1 = torch.trace(b)
-        # I_2 = 1 / 2 * (I_1**2 - torch.tensordot(b, b))
-        # I_1_cor = I_1 - three
-        # I_2_cor = I_2 - three
-
         # Stretches
         stretch_fiber, stretch_normal = self._split_stretches(stretches)
-        stretch_sheet = self._calculat_stretch_sheet(stretches)
         # Constants
         one = torch.tensor(1.0, device=self._device)
         three = torch.tensor(3.0, device=self._device)
@@ -351,34 +351,6 @@ class LinkaCANN:
         I_4n_cor = I_4n - one
 
         return I_1_cor, I_2_cor, I_4f_cor, I_4n_cor
-
-    def _assemble_deformation_gradient(
-        self, stretches: Stretches
-    ) -> DeformationGradient:
-        stretch_fiber, stretch_normal = self._split_stretches(stretches)
-        stretch_sheet = self._calculat_stretch_sheet(stretches)
-        row_1 = torch.concat(
-            (
-                torch.unsqueeze(stretch_fiber, dim=0),
-                torch.tensor([0.0], device=self._device),
-                torch.tensor([0.0], device=self._device),
-            )
-        )
-        row_2 = torch.concat(
-            (
-                torch.tensor([0.0], device=self._device),
-                torch.unsqueeze(stretch_sheet, dim=0),
-                torch.tensor([0.0], device=self._device),
-            )
-        )
-        row_3 = torch.concat(
-            (
-                torch.tensor([0.0], device=self._device),
-                torch.tensor([0.0], device=self._device),
-                torch.unsqueeze(stretch_normal, dim=0),
-            )
-        )
-        return torch.stack((row_1, row_2, row_3))
 
     def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
         return torch.chunk(parameters, self._num_invariants)
