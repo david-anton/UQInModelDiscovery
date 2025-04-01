@@ -7,9 +7,9 @@ from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
 from bayesianmdisc.data.testcases import AllowedTestCases
 from bayesianmdisc.errors import ModelError
 
-DeformationGradient: TypeAlias = Tensor
 Stretch: TypeAlias = Tensor
 Stretches: TypeAlias = Tensor
+DeformationGradient: TypeAlias = Tensor
 Invariant: TypeAlias = Tensor
 Invariants: TypeAlias = tuple[Invariant, ...]
 CauchyStress: TypeAlias = Tensor

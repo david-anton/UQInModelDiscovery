@@ -5,6 +5,7 @@ from bayesianmdisc.customtypes import Device
 from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
 from bayesianmdisc.data.testcases import TestCase, test_case_identifier_biaxial_tension
 from bayesianmdisc.models.base import (
+    AllowedTestCases,
     CauchyStress,
     CauchyStresses,
     Invariant,
@@ -172,15 +173,15 @@ from bayesianmdisc.models.base import (
 class LinkaCANN:
 
     def __init__(self, device: Device):
-        self.output_dim = 2
-        self.num_parameters = 24
         self._device = device
         self._num_invariants = 4
+        self._num_invariant_power_terms = 2
+        self._num_activation_functions = 2
         self._test_case_identifier_bt = test_case_identifier_biaxial_tension
-        self._allowed_test_cases = torch.tensor(
-            [self._test_case_identifier_bt], device=self._device
-        )
+        self._allowed_test_cases = self._determine_allowed_test_cases()
         self._allowed_input_dimensions = [1, 3]
+        self.output_dim = 2
+        self.num_parameters = self._determine_number_of_parameters()
 
     def __call__(
         self,
@@ -207,12 +208,36 @@ class LinkaCANN:
         return vmap(vmap_func)(inputs, test_cases)
 
     def get_parameter_names(self) -> ParameterNames:
-        first_layer_indizes = [2 * (i + 1) for i in range(8)]
-        first_layer_names = [f"W_1_{i}" for i in first_layer_indizes]
-        second_layer_indizes = [i + 1 for i in range(16)]
-        second_layer_names = [f"W_2_{i}" for i in second_layer_indizes]
-        parameter_names = tuple(first_layer_names + second_layer_names)
-        return parameter_names
+        parameter_names = []
+
+        # first layer
+        num_neurons_first_layer = self._num_invariants * self._num_invariant_power_terms
+        first_layer_indizes = []
+        first_layer_indizes += [2 * (i + 1) for i in range(num_neurons_first_layer)]
+        parameter_names += [f"W_1_{i}" for i in first_layer_indizes]
+
+        # second layer
+        num_neurons_second_layer = (
+            num_neurons_first_layer * self._num_activation_functions
+        )
+        second_layer_indizes = [i + 1 for i in range(num_neurons_second_layer)]
+        parameter_names += [f"W_2_{i}" for i in second_layer_indizes]
+        return tuple(parameter_names)
+
+    def _determine_number_of_parameters(self) -> int:
+        num_invariants = self._num_invariants
+        num_power_terms = self._num_invariant_power_terms
+        num_activation_functions = self._num_activation_functions
+        num_parameters_first_layer = (
+            num_invariants * num_power_terms * (num_activation_functions - 1)
+        )
+        num_parameters_second_layer = (
+            num_invariants * num_power_terms * num_activation_functions
+        )
+        return num_parameters_first_layer * num_parameters_second_layer
+
+    def _determine_allowed_test_cases(self) -> AllowedTestCases:
+        return torch.tensor([self._test_case_identifier_bt], device=self._device)
 
     def _validate_inputs(
         self, inputs: DeformationInputs, test_cases: TestCases, parameters: Parameters

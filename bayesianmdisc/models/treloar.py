@@ -29,7 +29,6 @@ from bayesianmdisc.models.base import (
     SplittedParameters,
     StrainEnergy,
     StrainEnergyGradient,
-    StrainEnergyGradients,
     Stretch,
     Stretches,
     validate_deformation_input_dimension,
@@ -48,6 +47,7 @@ class TreloarCANN:
         self._device = device
         self._num_cann_invariants = 2
         self._num_cann_invariant_power_terms = 2
+        self._num_cann_activation_functions = 3
         self._num_cann_parameters_per_invariant_power_term = 5
         self._num_ogden_terms = 20
         self._min_ogden_exponent = torch.tensor(-5.0, device=self._device)
@@ -95,13 +95,56 @@ class TreloarCANN:
 
         return vmap(vmap_func)(inputs, test_cases)
 
+    def get_parameter_names(self) -> ParameterNames:
+
+        def compose_cann_parameter_names() -> ParameterNames:
+            parameter_names = []
+
+            # first layer
+            num_neurons_first_layer = (
+                self._num_cann_invariants * self._num_cann_invariant_power_terms
+            )
+            first_layer_indizes = []
+            for i in range(num_neurons_first_layer):
+                first_layer_indizes += [i + 2, i + 3]
+
+            parameter_names += [f"W_1_{i}" for i in first_layer_indizes]
+
+            # second layer
+            num_neurons_second_layer = (
+                num_neurons_first_layer * self._num_cann_activation_functions
+            )
+            second_layer_indizes = [i + 1 for i in range(num_neurons_second_layer)]
+
+            parameter_names += [f"W_2_{i}" for i in second_layer_indizes]
+            return tuple(parameter_names)
+
+        def compose_ogden_parameter_names() -> ParameterNames:
+            indices = [i for i in range(self._num_ogden_parameters)]
+            return tuple(f"O_{i}" for i in indices)
+
+        cann_parameter_names = compose_cann_parameter_names()
+        ogden_parameter_names = compose_ogden_parameter_names()
+        return cann_parameter_names + ogden_parameter_names
+
     def _determine_number_of_parameters(self) -> tuple[int, int]:
-        num_cann_parameters = (
-            self._num_cann_invariants
-            * self._num_cann_invariant_power_terms
-            * self._num_cann_parameters_per_invariant_power_term
-        )
-        num_ogden_parameters = self._num_ogden_terms
+        def determine_number_of_cann_parameters() -> int:
+            num_invariants = self._num_cann_invariants
+            num_power_terms = self._num_cann_invariant_power_terms
+            num_activation_functions = self._num_cann_activation_functions
+            num_parameters_first_layer = (
+                num_invariants * num_power_terms * (num_activation_functions - 1)
+            )
+            num_parameters_second_layer = (
+                num_invariants * num_power_terms * num_activation_functions
+            )
+            return num_parameters_first_layer + num_parameters_second_layer
+
+        def determine_number_of_ogden_parameters() -> int:
+            return self._num_ogden_terms
+
+        num_cann_parameters = determine_number_of_cann_parameters()
+        num_ogden_parameters = determine_number_of_ogden_parameters()
         return num_cann_parameters, num_ogden_parameters
 
     def _determine_ogden_exponents(self) -> Tensor:
