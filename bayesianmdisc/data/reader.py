@@ -129,7 +129,7 @@ class LinkaHeartDataReader:
     def _assemble_test_cases(self, deformation_inputs: Tensor) -> TestCases:
         return torch.tensor(
             [self._test_case_identifier_bt for _ in deformation_inputs],
-            dtype=torch.int32,
+            dtype=torch.int64,
             device=self._device,
         )
 

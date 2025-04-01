@@ -86,7 +86,7 @@ def _fit_normalizing_flow(
                 num_parameters, constrained_output_indices
             )
         ]
-        return NormalizingFlow(flows, base_distribution, device)
+        return NormalizingFlow(flows, base_distribution, device).to(device)
 
     def init_constrained_output_range() -> ConstrainedOutputIndices:
         return [_ for _ in range(num_parameters)]
