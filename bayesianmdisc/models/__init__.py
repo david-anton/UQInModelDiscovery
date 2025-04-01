@@ -1,5 +1,5 @@
 from .base import ModelProtocol
 from .linkacann import LinkaCANN
-from .treloar import TreloarCANN
+from .treloarcann import TreloarCANN
 
 __all__ = ["ModelProtocol", "LinkaCANN", "TreloarCANN"]

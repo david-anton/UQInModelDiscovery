@@ -299,7 +299,7 @@ class TreloarCANN:
     def _assemble_deformation_gradient(
         self, stretches: StretchInput, test_case: TestCase
     ) -> DeformationGradient:
-        zero = torch.tensor(0.0, device=self._device)
+        zero = torch.tensor([0.0], device=self._device)
 
         F_11, F_22, F_33 = self._determine_stretches(stretches, test_case)
         row_1 = torch.concat((self._unsqueeze_zero_dimension(F_11), zero, zero))
