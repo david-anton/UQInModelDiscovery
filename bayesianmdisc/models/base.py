@@ -26,7 +26,7 @@ ParameterNames: TypeAlias = tuple[str, ...]
 TrueParameters: TypeAlias = tuple[float, ...]
 
 
-class Model(Protocol):
+class ModelProtocol(Protocol):
     output_dim: int
     num_parameters: int
 

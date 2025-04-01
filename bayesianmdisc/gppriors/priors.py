@@ -13,7 +13,7 @@ from bayesianmdisc.bayes.prior import (
 )
 from bayesianmdisc.customtypes import Device, Module, NFFlow, Parameter, Tensor
 from bayesianmdisc.errors import GPPriorError
-from bayesianmdisc.models import Model
+from bayesianmdisc.models import ModelProtocol
 from bayesianmdisc.normalizingflows.base import BaseDistributionProtocol
 from bayesianmdisc.normalizingflows.flows import (
     NormalizingFlow,
@@ -46,7 +46,7 @@ class ParameterPrior(Protocol):
 def create_parameter_prior(
     prior_type: str,
     is_mean_trainable: bool,
-    model_library: Model,
+    model_library: ModelProtocol,
     device: Device,
 ) -> ParameterPrior:
     if prior_type == "Gamma":
@@ -84,7 +84,7 @@ def create_parameter_prior(
 class GammaParameterPrior(nn.Module):
     def __init__(
         self,
-        model: Model,
+        model: ModelProtocol,
         device: Device,
     ):
         super().__init__()
@@ -139,7 +139,7 @@ class GammaParameterPrior(nn.Module):
 class GaussianMean(nn.Module):
     def __init__(
         self,
-        model: Model,
+        model: ModelProtocol,
         is_trainable: bool,
         device: Device,
     ) -> None:
@@ -169,7 +169,7 @@ class GaussianMean(nn.Module):
 class GaussianParameterPrior(nn.Module):
     def __init__(
         self,
-        model: Model,
+        model: ModelProtocol,
         is_mean_trainable: bool,
         device: Device,
     ):
@@ -224,7 +224,7 @@ class GaussianParameterPrior(nn.Module):
 class HierarchicalGaussianParameterPrior(nn.Module):
     def __init__(
         self,
-        model: Model,
+        model: ModelProtocol,
         is_mean_trainable: bool,
         device: Device,
     ):
@@ -308,7 +308,7 @@ class HierarchicalGaussianParameterPrior(nn.Module):
 
 
 class NormalizingFlowParameterPrior(nn.Module):
-    def __init__(self, model: Model, device: Device) -> None:
+    def __init__(self, model: ModelProtocol, device: Device) -> None:
         super().__init__()
         self._dim = model.num_parameters
         self._device = device

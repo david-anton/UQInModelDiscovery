@@ -25,7 +25,7 @@ from bayesianmdisc.gps import (
     optimize_gp_hyperparameters,
 )
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.models import LinkaCANN
+from bayesianmdisc.models import LinkaCANN, TreloarCANN, ModelProtocol
 from bayesianmdisc.normalizingflows import NormalizingFlowConfig, fit_normalizing_flow
 from bayesianmdisc.postprocessing.plot import plot_histograms, plot_stresses_linka_cann
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
@@ -34,7 +34,7 @@ from bayesianmdisc.statistics.utility import (
     determine_moments_of_multivariate_normal_distribution,
 )
 
-data_set = "linka"
+data_set = "treloar"
 
 # Settings
 settings = Settings()
@@ -51,7 +51,7 @@ if data_set == "linka":
         input_directory, project_directory, device
     )
 elif data_set == "treloar":
-    input_directory = "Treloar"
+    input_directory = "treloar"
     data_reader = TreloarDataReader(input_directory, project_directory, device)
 output_directory = current_date + "_" + input_directory
 
@@ -59,7 +59,10 @@ output_directory = current_date + "_" + input_directory
 inputs, test_cases, outputs = data_reader.read()
 
 
-model = LinkaCANN(device)
+if data_set == "linka":
+    model: ModelProtocol = LinkaCANN(device)
+elif data_set == "treloar":
+    model = TreloarCANN(device)
 num_parameters = model.num_parameters
 
 

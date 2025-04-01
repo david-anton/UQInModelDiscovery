@@ -7,7 +7,7 @@ from torch import vmap
 from bayesianmdisc.bayes.utility import flatten_tensor, repeat_tensor
 from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.errors import LikelihoodError
-from bayesianmdisc.models import Model
+from bayesianmdisc.models import ModelProtocol
 from bayesianmdisc.statistics.distributions import (
     IndependentMultivariateNormalDistribution,
     create_independent_multivariate_normal_distribution,
@@ -90,7 +90,7 @@ class MSELossStatistics:
 class Likelihood:
     def __init__(
         self,
-        model: Model,
+        model: ModelProtocol,
         noise_stddev: Tensor,
         inputs: Tensor,
         test_cases: Tensor,
