@@ -3,8 +3,8 @@ from typing import TypeAlias
 import gpytorch
 import torch
 
-from bayesianmdisc.errors import GPError
 from bayesianmdisc.customtypes import Tensor, TensorSize
+from bayesianmdisc.errors import GPError
 
 GPMultivariateNormal: TypeAlias = gpytorch.distributions.MultivariateNormal
 NamedParameters: TypeAlias = dict[str, Tensor]

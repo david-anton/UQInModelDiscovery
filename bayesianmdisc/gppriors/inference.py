@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.func import grad, vmap
 
 from bayesianmdisc.bayes.prior import PriorProtocol
+from bayesianmdisc.customtypes import Device, Tensor, TorchLRScheduler, TorchOptimizer
 from bayesianmdisc.data import DeformationInputs, TestCases
 from bayesianmdisc.gppriors.priors import create_parameter_prior
 from bayesianmdisc.gps import GaussianProcess
@@ -15,7 +16,6 @@ from bayesianmdisc.postprocessing.plot import (
     HistoryPlotterConfig,
     plot_statistical_loss_history,
 )
-from bayesianmdisc.customtypes import Device, Tensor, TorchLRScheduler, TorchOptimizer
 
 print_interval = 10
 

@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+from bayesianmdisc.customtypes import Device, NPArray
 from bayesianmdisc.data.testcases import test_case_identifier_biaxial_tension
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import LinkaCANN
@@ -11,7 +12,6 @@ from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
     root_mean_squared_error,
 )
-from bayesianmdisc.customtypes import Device, NPArray
 
 
 class StressPlotterConfigLinkaCANN:

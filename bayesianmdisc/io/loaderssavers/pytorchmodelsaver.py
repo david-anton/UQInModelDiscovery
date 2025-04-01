@@ -2,8 +2,8 @@ from pathlib import Path
 
 import torch
 
-from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.customtypes import Device, Module
+from bayesianmdisc.io import ProjectDirectory
 
 
 class PytorchModelSaver:

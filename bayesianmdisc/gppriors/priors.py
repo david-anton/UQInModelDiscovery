@@ -11,6 +11,7 @@ from bayesianmdisc.bayes.prior import (
     create_independent_multivariate_normal_distributed_prior,
     create_independent_multivariate_studentT_distributed_prior,
 )
+from bayesianmdisc.customtypes import Device, Module, NFFlow, Parameter, Tensor
 from bayesianmdisc.errors import GPPriorError
 from bayesianmdisc.models import Model
 from bayesianmdisc.normalizingflows.base import BaseDistributionProtocol
@@ -21,7 +22,6 @@ from bayesianmdisc.normalizingflows.flows import (
 )
 from bayesianmdisc.normalizingflows.prior import NormalizingFlowPrior
 from bayesianmdisc.normalizingflows.utility import freeze_model
-from bayesianmdisc.customtypes import Device, Module, NFFlow, Parameter, Tensor
 
 NumLayersList: TypeAlias = list[int]
 

@@ -1,10 +1,11 @@
 from pathlib import Path
-from typing import TypeAlias, Protocol
+from typing import Protocol, TypeAlias
 
 import numpy as np
 import pandas as pd
 import torch
 
+from bayesianmdisc.customtypes import Device, NPArray, PDDataFrame, Tensor
 from bayesianmdisc.data.base import (
     DeformationInputs,
     NPArrayList,
@@ -19,9 +20,7 @@ from bayesianmdisc.data.testcases import (
     test_case_identifier_uniaxial_tension,
 )
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.customtypes import Device, NPArray, PDDataFrame, Tensor
 from bayesianmdisc.io.readerswriters import CSVDataReader
-
 
 Data: TypeAlias = tuple[DeformationInputs, TestCases, StressOutputs]
 
@@ -178,10 +177,11 @@ class TreloarDataReader:
         return stretches_torch, test_cases_torch, stresses_torch
 
     def _read_data(
-        self, file_name, test_case_identifier: int
+        self, file_name: str, test_case_identifier: int
     ) -> tuple[NPArray, NPArray, NPArray]:
         data = self._read_csv_file(file_name)
-        stretches = data[:, self._index_stretch].reshape((-1, 1))
+        stretch_factors = data[:, self._index_stretch].reshape((-1, 1))
+        stretches = self._calculate_stretches(stretch_factors, test_case_identifier)
         stresses = data[:, self._index_stresses].reshape((-1, 1))
         test_cases = self._assemble_test_case_identifiers(
             test_case_identifier, stretches
@@ -192,6 +192,23 @@ class TreloarDataReader:
         return self._csv_reader.read(
             file_name, subdir_name=self._input_directory, seperator=";"
         )
+
+    def _calculate_stretches(
+        self, stretch_factors: NPArray, test_case_identifier: int
+    ) -> NPArray:
+        one = np.array(1.0)
+        if test_case_identifier == self._test_case_identifier_ut:
+            stretches_1 = stretch_factors
+            stretches_2 = stretches_3 = one / np.sqrt(stretch_factors)
+        elif test_case_identifier == self._test_case_identifier_ebt:
+            stretches_1 = stretches_2 = stretch_factors
+            stretches_3 = one / stretch_factors**2
+        else:
+            stretches_1 = stretch_factors
+            stretches_2 = one
+            stretches_3 = one / stretch_factors
+
+        return np.hstack((stretches_1, stretches_2, stretches_3))
 
     def _assemble_test_case_identifiers(
         self, test_case_identifier: int, stretches: NPArray

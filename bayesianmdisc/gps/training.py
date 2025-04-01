@@ -3,6 +3,7 @@ from typing import TypeAlias, cast
 import gpytorch
 import torch
 
+from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.errors import GPError
 from bayesianmdisc.gps.base import MarginalLogLikelihood
 from bayesianmdisc.gps.gp import GP
@@ -12,7 +13,6 @@ from bayesianmdisc.postprocessing.plot import (
     HistoryPlotterConfig,
     plot_statistical_loss_history,
 )
-from bayesianmdisc.customtypes import Device, Tensor
 
 GaussianProcess: TypeAlias = GP | IndependentMultiOutputGP
 

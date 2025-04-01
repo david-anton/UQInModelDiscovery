@@ -3,12 +3,12 @@ from typing import Any, Optional
 import numpy as np
 import pandas as pd
 
+from bayesianmdisc.customtypes import NPArray
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.readerswriters.utility import (
     ensure_correct_file_ending,
     join_input_file_path,
 )
-from bayesianmdisc.customtypes import NPArray
 
 
 class CSVDataReader:

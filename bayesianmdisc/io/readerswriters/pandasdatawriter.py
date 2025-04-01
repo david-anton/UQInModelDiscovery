@@ -1,11 +1,11 @@
 from typing import Union
 
+from bayesianmdisc.customtypes import PDDataFrame
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.readerswriters.utility import (
     ensure_correct_file_ending,
     join_output_file_path,
 )
-from bayesianmdisc.customtypes import PDDataFrame
 
 
 class PandasDataWriter:

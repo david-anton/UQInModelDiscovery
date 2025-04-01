@@ -1,8 +1,8 @@
 import pytest
 import torch
 
-from bayesianmdisc.gps.means import ZeroMean
 from bayesianmdisc.customtypes import Tensor
+from bayesianmdisc.gps.means import ZeroMean
 
 device = torch.device("cpu")
 constant_mean = 2.0

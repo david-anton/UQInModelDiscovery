@@ -1,11 +1,11 @@
 from dataclasses import asdict
 
+from bayesianmdisc.customtypes import DataClass
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.readerswriters.utility import (
     ensure_correct_file_ending,
     join_output_file_path,
 )
-from bayesianmdisc.customtypes import DataClass
 
 
 class DataclassWriter:

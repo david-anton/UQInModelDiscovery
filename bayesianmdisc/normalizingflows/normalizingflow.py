@@ -7,6 +7,14 @@ import torch
 
 from bayesianmdisc.bayes.likelihood import LikelihoodProtocol
 from bayesianmdisc.bayes.prior import PriorProtocol
+from bayesianmdisc.customtypes import (
+    Device,
+    NFNormalizingFlow,
+    NPArray,
+    Tensor,
+    TorchLRScheduler,
+    TorchOptimizer,
+)
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.normalizingflows.flows import (
     NormalizingFlow,
@@ -23,14 +31,6 @@ from bayesianmdisc.postprocessing.plot import (
     plot_statistical_loss_history,
 )
 from bayesianmdisc.statistics.utility import MomentsMultivariateNormal
-from bayesianmdisc.customtypes import (
-    Device,
-    NFNormalizingFlow,
-    NPArray,
-    Tensor,
-    TorchLRScheduler,
-    TorchOptimizer,
-)
 
 NFNormalizingFlows: TypeAlias = list[NFNormalizingFlow]
 ConstrainedOutputIndices: TypeAlias = list[int]

@@ -3,8 +3,8 @@ from typing import TypeAlias
 
 import normflows as nf
 
-from bayesianmdisc.normalizingflows.flows import CompositeFlow
 from bayesianmdisc.customtypes import Tensor
+from bayesianmdisc.normalizingflows.flows import CompositeFlow
 
 NFMLP: TypeAlias = nf.nets.MLP
 

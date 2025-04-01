@@ -2,6 +2,7 @@ from typing import Protocol, TypeAlias, Union
 
 import torch
 
+from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.statistics.distributions import (
     IndependentMultivariateGammaDistribution,
     IndependentMultivariateNormalDistribution,
@@ -24,7 +25,6 @@ from bayesianmdisc.statistics.distributions import (
     create_univariate_normal_distribution,
     create_univariate_uniform_distribution,
 )
-from bayesianmdisc.customtypes import Device, Tensor
 
 PriorDistribution: TypeAlias = Union[
     UnivariateUniformDistribution,

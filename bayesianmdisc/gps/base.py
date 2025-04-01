@@ -3,8 +3,8 @@ from typing import Optional, TypeAlias
 import gpytorch
 import torch
 
-from bayesianmdisc.errors import GPError
 from bayesianmdisc.customtypes import Tensor
+from bayesianmdisc.errors import GPError
 
 GPMultivariateNormal: TypeAlias = gpytorch.distributions.MultivariateNormal
 GPMultivariateNormalList: TypeAlias = list[GPMultivariateNormal]

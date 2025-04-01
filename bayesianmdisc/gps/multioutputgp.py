@@ -4,6 +4,7 @@ from typing import TypeAlias
 import gpytorch
 import torch
 
+from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.errors import GPError
 from bayesianmdisc.gps.base import (
     GaussianLikelihoodList,
@@ -16,7 +17,6 @@ from bayesianmdisc.gps.base import (
 )
 from bayesianmdisc.gps.gp import GP
 from bayesianmdisc.gps.utility import validate_parameters_size
-from bayesianmdisc.customtypes import Device, Tensor
 
 GPTuple: TypeAlias = tuple[GP, ...]
 GPList: TypeAlias = list[GP]

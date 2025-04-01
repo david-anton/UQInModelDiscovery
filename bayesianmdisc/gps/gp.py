@@ -3,6 +3,7 @@ from typing import Optional
 import gpytorch
 import torch
 
+from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.errors import GPError
 from bayesianmdisc.gps.base import (
     GPMultivariateNormal,
@@ -15,7 +16,6 @@ from bayesianmdisc.gps.kernels import Kernel, ScaledMaternKernel, ScaledRBFKerne
 from bayesianmdisc.gps.means import ZeroMean
 from bayesianmdisc.gps.normalizers import InputNormalizer
 from bayesianmdisc.gps.utility import validate_parameters_size
-from bayesianmdisc.customtypes import Device, Tensor
 
 
 class GP(gpytorch.models.ExactGP):

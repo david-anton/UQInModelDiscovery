@@ -3,8 +3,8 @@ from typing import Optional, TypeVar
 
 import torch
 
-from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.customtypes import Module
+from bayesianmdisc.io import ProjectDirectory
 
 ModuleType = TypeVar("ModuleType", bound=Module)
 

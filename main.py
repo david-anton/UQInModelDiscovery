@@ -8,13 +8,14 @@ from bayesianmdisc.bayes.prior import (
     PriorProtocol,
     create_independent_multivariate_gamma_distributed_prior,
 )
+from bayesianmdisc.customtypes import NPArray, Tensor
 from bayesianmdisc.data import (
+    DataReaderProtocol,
     DeformationInputs,
     LinkaHeartDataReader,
-    TreloarDataReader,
-    DataReaderProtocol,
     StressOutputs,
     TestCases,
+    TreloarDataReader,
 )
 from bayesianmdisc.errors import DataError
 from bayesianmdisc.gppriors import infer_gp_induced_prior
@@ -32,7 +33,6 @@ from bayesianmdisc.statistics.utility import (
     MomentsMultivariateNormal,
     determine_moments_of_multivariate_normal_distribution,
 )
-from bayesianmdisc.customtypes import NPArray, Tensor
 
 data_set = "linka"
 

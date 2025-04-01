@@ -1,9 +1,9 @@
 import pytest
 import torch
 
+from bayesianmdisc.customtypes import Tensor, TensorSize
 from bayesianmdisc.errors import GPError
 from bayesianmdisc.gps.utility import validate_parameters_size
-from bayesianmdisc.customtypes import Tensor, TensorSize
 
 
 @pytest.mark.parametrize(

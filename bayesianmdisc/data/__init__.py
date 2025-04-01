@@ -1,11 +1,11 @@
 from .reader import (
+    DataReaderProtocol,
     DeformationInputs,
     LinkaHeartDataReader,
-    TreloarDataReader,
     StressOutputs,
-    DataReaderProtocol,
+    TreloarDataReader,
 )
-from .testcases import TestCase, TestCases, AllowedTestCases
+from .testcases import AllowedTestCases, TestCase, TestCases
 
 __all__ = [
     "DeformationInputs",

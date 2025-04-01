@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats
 
+from bayesianmdisc.customtypes import NPArray
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.statistics.utility import (
     MomentsMultivariateNormal,
     MomentsUnivariateNormal,
 )
-from bayesianmdisc.customtypes import NPArray
 
 TrueParameter: TypeAlias = Union[float, None]
 TrueParametersTuple: TypeAlias = tuple[TrueParameter, ...]

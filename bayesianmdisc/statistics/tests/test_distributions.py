@@ -1,6 +1,7 @@
 import pytest
 import torch
 
+from bayesianmdisc.customtypes import Tensor
 from bayesianmdisc.statistics.distributions import (
     create_independent_multivariate_gamma_distribution,
     create_independent_multivariate_half_normal_distribution,
@@ -14,7 +15,6 @@ from bayesianmdisc.statistics.distributions import (
     create_univariate_normal_distribution,
     create_univariate_uniform_distribution,
 )
-from bayesianmdisc.customtypes import Tensor
 
 device = torch.device("cpu")
 

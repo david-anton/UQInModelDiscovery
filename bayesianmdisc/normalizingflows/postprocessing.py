@@ -2,11 +2,11 @@ from typing import TypeAlias
 
 import torch
 
+from bayesianmdisc.customtypes import NPArray, Tensor
 from bayesianmdisc.statistics.utility import (
     MomentsMultivariateNormal,
     determine_moments_of_multivariate_normal_distribution,
 )
-from bayesianmdisc.customtypes import NPArray, Tensor
 
 Samples: TypeAlias = list[Tensor]
 

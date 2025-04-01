@@ -5,13 +5,13 @@ import torch
 from torch import vmap
 
 from bayesianmdisc.bayes.utility import flatten_tensor, repeat_tensor
+from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.errors import LikelihoodError
 from bayesianmdisc.models import Model
 from bayesianmdisc.statistics.distributions import (
     IndependentMultivariateNormalDistribution,
     create_independent_multivariate_normal_distribution,
 )
-from bayesianmdisc.customtypes import Device, Tensor
 
 Prob: TypeAlias = Tensor
 LogProb: TypeAlias = Tensor
