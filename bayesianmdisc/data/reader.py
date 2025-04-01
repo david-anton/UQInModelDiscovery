@@ -205,7 +205,7 @@ class TreloarDataReader:
             stretches_3 = one / stretch_factors**2
         else:
             stretches_1 = stretch_factors
-            stretches_2 = one
+            stretches_2 = np.ones_like(stretch_factors)
             stretches_3 = one / stretch_factors
 
         return np.hstack((stretches_1, stretches_2, stretches_3))
@@ -213,7 +213,8 @@ class TreloarDataReader:
     def _assemble_test_case_identifiers(
         self, test_case_identifier: int, stretches: NPArray
     ) -> NPArray:
-        return np.full_like(stretches, test_case_identifier, dtype=np.int64)
+        num_stretches = len(stretches)
+        return np.full((num_stretches, 1), test_case_identifier, dtype=np.int64)
 
 
 def convert_to_torch(array: NPArray, device: Device) -> Tensor:

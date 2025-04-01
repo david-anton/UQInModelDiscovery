@@ -334,7 +334,7 @@ class TreloarCANN:
             F_33 = one / stretch_factor**2
         else:
             F_11 = stretch_factor
-            F_22 = one
+            F_22 = torch.ones_like(stretch_factor, device=self._device)
             F_33 = one / stretch_factor
         return F_11, F_22, F_33
 
