@@ -2,7 +2,7 @@ from collections import namedtuple
 
 import numpy as np
 
-from bayesianmdisc.types import NPArray
+from bayesianmdisc.customtypes import NPArray
 
 MomentsUnivariateNormal = namedtuple(
     "MomentsUnivariateNormal", ["mean", "standard_deviation"]

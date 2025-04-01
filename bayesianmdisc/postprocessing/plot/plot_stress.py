@@ -11,7 +11,7 @@ from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
     root_mean_squared_error,
 )
-from bayesianmdisc.types import Device, NPArray
+from bayesianmdisc.customtypes import Device, NPArray
 
 
 class StressPlotterConfigLinkaCANN:

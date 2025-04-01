@@ -5,7 +5,7 @@ from bayesianmdisc.io.readerswriters.utility import (
     ensure_correct_file_ending,
     join_output_file_path,
 )
-from bayesianmdisc.types import DataClass
+from bayesianmdisc.customtypes import DataClass
 
 
 class DataclassWriter:

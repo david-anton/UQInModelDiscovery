@@ -15,7 +15,7 @@ from bayesianmdisc.gps.kernels import Kernel, ScaledMaternKernel, ScaledRBFKerne
 from bayesianmdisc.gps.means import ZeroMean
 from bayesianmdisc.gps.normalizers import InputNormalizer
 from bayesianmdisc.gps.utility import validate_parameters_size
-from bayesianmdisc.types import Device, Tensor
+from bayesianmdisc.customtypes import Device, Tensor
 
 
 class GP(gpytorch.models.ExactGP):

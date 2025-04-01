@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from bayesianmdisc.gps.normalizers import InputNormalizer
-from bayesianmdisc.types import Tensor
+from bayesianmdisc.customtypes import Tensor
 
 device = torch.device("cpu")
 absolute_tolerance = torch.tensor([1e-7])

@@ -23,7 +23,7 @@ from bayesianmdisc.postprocessing.plot import (
     plot_statistical_loss_history,
 )
 from bayesianmdisc.statistics.utility import MomentsMultivariateNormal
-from bayesianmdisc.types import (
+from bayesianmdisc.customtypes import (
     Device,
     NFNormalizingFlow,
     NPArray,

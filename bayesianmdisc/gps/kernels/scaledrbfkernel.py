@@ -4,7 +4,7 @@ import torch
 from bayesianmdisc.gps.base import NamedParameters
 from bayesianmdisc.gps.kernels.base import Kernel, KernelOutput
 from bayesianmdisc.gps.utility import validate_parameters_size
-from bayesianmdisc.types import Device, Tensor
+from bayesianmdisc.customtypes import Device, Tensor
 
 
 class ScaledRBFKernel(Kernel):

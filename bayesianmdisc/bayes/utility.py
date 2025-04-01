@@ -1,6 +1,6 @@
 import torch
 
-from bayesianmdisc.types import Tensor, TensorSize
+from bayesianmdisc.customtypes import Tensor, TensorSize
 
 
 def logarithmic_sum_of_exponentials(log_probs: Tensor) -> Tensor:

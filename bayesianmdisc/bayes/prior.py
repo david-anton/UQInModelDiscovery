@@ -24,7 +24,7 @@ from bayesianmdisc.statistics.distributions import (
     create_univariate_normal_distribution,
     create_univariate_uniform_distribution,
 )
-from bayesianmdisc.types import Device, Tensor
+from bayesianmdisc.customtypes import Device, Tensor
 
 PriorDistribution: TypeAlias = Union[
     UnivariateUniformDistribution,

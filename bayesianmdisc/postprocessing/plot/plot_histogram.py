@@ -10,7 +10,7 @@ from bayesianmdisc.statistics.utility import (
     MomentsMultivariateNormal,
     MomentsUnivariateNormal,
 )
-from bayesianmdisc.types import NPArray
+from bayesianmdisc.customtypes import NPArray
 
 TrueParameter: TypeAlias = Union[float, None]
 TrueParametersTuple: TypeAlias = tuple[TrueParameter, ...]

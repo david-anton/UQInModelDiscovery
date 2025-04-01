@@ -3,7 +3,7 @@ from typing import Protocol
 import torch
 
 from bayesianmdisc.errors import ProbabilityDistributionError
-from bayesianmdisc.types import Device, Tensor, TensorSize
+from bayesianmdisc.customtypes import Device, Tensor, TensorSize
 
 
 def squeeze_if_necessary(log_prob: Tensor) -> Tensor:

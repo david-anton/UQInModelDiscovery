@@ -11,7 +11,7 @@ from bayesianmdisc.statistics.distributions import (
     IndependentMultivariateNormalDistribution,
     create_independent_multivariate_normal_distribution,
 )
-from bayesianmdisc.types import Device, Tensor
+from bayesianmdisc.customtypes import Device, Tensor
 
 Prob: TypeAlias = Tensor
 LogProb: TypeAlias = Tensor

@@ -1,7 +1,7 @@
 import torch
 
 from bayesianmdisc.normalizingflows.flows import NormalizingFlowProtocol
-from bayesianmdisc.types import Device, Tensor
+from bayesianmdisc.customtypes import Device, Tensor
 
 
 class NormalizingFlowPrior:

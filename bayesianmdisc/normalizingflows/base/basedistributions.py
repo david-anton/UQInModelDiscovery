@@ -1,6 +1,6 @@
 from typing import Iterator, Protocol
 
-from bayesianmdisc.types import Parameter, Tensor
+from bayesianmdisc.customtypes import Parameter, Tensor
 
 
 class BaseDistributionProtocol(Protocol):

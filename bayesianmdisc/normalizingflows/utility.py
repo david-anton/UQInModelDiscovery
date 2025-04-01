@@ -1,4 +1,4 @@
-from bayesianmdisc.types import Module
+from bayesianmdisc.customtypes import Module
 
 
 def freeze_model(model: Module) -> None:

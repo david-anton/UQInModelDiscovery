@@ -4,7 +4,7 @@ import gpytorch
 import torch
 
 from bayesianmdisc.errors import GPError
-from bayesianmdisc.types import Tensor, TensorSize
+from bayesianmdisc.customtypes import Tensor, TensorSize
 
 GPMultivariateNormal: TypeAlias = gpytorch.distributions.MultivariateNormal
 NamedParameters: TypeAlias = dict[str, Tensor]

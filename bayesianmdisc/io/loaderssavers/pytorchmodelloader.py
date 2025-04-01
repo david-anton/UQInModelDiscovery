@@ -4,7 +4,7 @@ from typing import Optional, TypeVar
 import torch
 
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.types import Module
+from bayesianmdisc.customtypes import Module
 
 ModuleType = TypeVar("ModuleType", bound=Module)
 

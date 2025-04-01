@@ -5,7 +5,7 @@ from sklearn.metrics import (
 )
 from sklearn.metrics import root_mean_squared_error as root_mean_squared_error_sklean
 
-from bayesianmdisc.types import NPArray, Tensor
+from bayesianmdisc.customtypes import NPArray, Tensor
 
 Values: TypeAlias = Tensor | NPArray
 

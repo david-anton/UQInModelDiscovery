@@ -21,7 +21,7 @@ from bayesianmdisc.normalizingflows.flows import (
 )
 from bayesianmdisc.normalizingflows.prior import NormalizingFlowPrior
 from bayesianmdisc.normalizingflows.utility import freeze_model
-from bayesianmdisc.types import Device, Module, NFFlow, Parameter, Tensor
+from bayesianmdisc.customtypes import Device, Module, NFFlow, Parameter, Tensor
 
 NumLayersList: TypeAlias = list[int]
 

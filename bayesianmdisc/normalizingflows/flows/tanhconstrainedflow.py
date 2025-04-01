@@ -1,6 +1,6 @@
 import torch
 
-from bayesianmdisc.types import Tensor
+from bayesianmdisc.customtypes import Tensor
 
 
 class TanhConstrainedFlow(torch.nn.Module):

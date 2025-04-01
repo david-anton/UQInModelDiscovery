@@ -4,7 +4,7 @@ from typing import TypeAlias
 import normflows as nf
 
 from bayesianmdisc.normalizingflows.flows import CompositeFlow
-from bayesianmdisc.types import Tensor
+from bayesianmdisc.customtypes import Tensor
 
 NFMLP: TypeAlias = nf.nets.MLP
 

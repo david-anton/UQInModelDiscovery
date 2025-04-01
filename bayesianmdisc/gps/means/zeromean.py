@@ -3,7 +3,7 @@ from typing import TypeAlias
 import gpytorch
 import torch
 
-from bayesianmdisc.types import Device, Tensor
+from bayesianmdisc.customtypes import Device, Tensor
 
 MeanOutput: TypeAlias = Tensor
 

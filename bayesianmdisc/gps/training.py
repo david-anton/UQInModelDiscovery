@@ -12,7 +12,7 @@ from bayesianmdisc.postprocessing.plot import (
     HistoryPlotterConfig,
     plot_statistical_loss_history,
 )
-from bayesianmdisc.types import Device, Tensor
+from bayesianmdisc.customtypes import Device, Tensor
 
 GaussianProcess: TypeAlias = GP | IndependentMultiOutputGP
 

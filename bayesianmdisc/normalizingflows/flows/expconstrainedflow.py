@@ -1,6 +1,6 @@
 import torch
 
-from bayesianmdisc.types import Tensor
+from bayesianmdisc.customtypes import Tensor
 
 
 class ExpConstrainedFlow(torch.nn.Module):

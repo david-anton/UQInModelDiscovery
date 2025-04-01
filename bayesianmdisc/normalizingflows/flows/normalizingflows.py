@@ -2,7 +2,7 @@ from typing import Any, Dict, Iterator, Mapping, Protocol, TypeVar
 
 import torch
 
-from bayesianmdisc.types import (
+from bayesianmdisc.customtypes import (
     Device,
     NFBaseDistribution,
     NFNormalizingFlow,

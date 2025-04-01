@@ -15,7 +15,7 @@ from bayesianmdisc.postprocessing.plot import (
     HistoryPlotterConfig,
     plot_statistical_loss_history,
 )
-from bayesianmdisc.types import Device, Tensor, TorchLRScheduler, TorchOptimizer
+from bayesianmdisc.customtypes import Device, Tensor, TorchLRScheduler, TorchOptimizer
 
 print_interval = 10
 

@@ -3,7 +3,7 @@ from typing import Callable, TypeAlias
 import normflows as nf
 import torch
 
-from bayesianmdisc.types import NFFlow, Tensor
+from bayesianmdisc.customtypes import NFFlow, Tensor
 
 NFFlows: TypeAlias = list[NFFlow]
 NFFlowFuncs: TypeAlias = (

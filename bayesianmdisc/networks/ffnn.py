@@ -3,7 +3,7 @@ from typing import Callable, TypeAlias
 import torch
 import torch.nn as nn
 
-from bayesianmdisc.types import Module, Tensor
+from bayesianmdisc.customtypes import Module, Tensor
 
 InitializationFunc: TypeAlias = Callable[[Tensor], Tensor]
 Layers: TypeAlias = list[Module]

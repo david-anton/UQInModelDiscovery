@@ -6,7 +6,7 @@ from gpytorch.lazy import LazyEvaluatedKernelTensor
 from linear_operator.operators import LinearOperator
 
 from bayesianmdisc.gps.base import NamedParameters
-from bayesianmdisc.types import Device, Tensor
+from bayesianmdisc.customtypes import Device, Tensor
 
 KernelOutput: TypeAlias = LazyEvaluatedKernelTensor | LinearOperator | Tensor
 

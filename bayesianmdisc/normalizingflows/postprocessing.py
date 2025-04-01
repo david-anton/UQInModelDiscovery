@@ -6,7 +6,7 @@ from bayesianmdisc.statistics.utility import (
     MomentsMultivariateNormal,
     determine_moments_of_multivariate_normal_distribution,
 )
-from bayesianmdisc.types import NPArray, Tensor
+from bayesianmdisc.customtypes import NPArray, Tensor
 
 Samples: TypeAlias = list[Tensor]
 

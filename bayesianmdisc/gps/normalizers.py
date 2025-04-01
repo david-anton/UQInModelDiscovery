@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from bayesianmdisc.types import Device, Tensor
+from bayesianmdisc.customtypes import Device, Tensor
 
 
 class InputNormalizer(nn.Module):

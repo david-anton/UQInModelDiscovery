@@ -2,7 +2,7 @@ from torch.func import vmap
 
 from bayesianmdisc.bayes.likelihood import LikelihoodProtocol
 from bayesianmdisc.bayes.prior import PriorProtocol
-from bayesianmdisc.types import Device, Tensor
+from bayesianmdisc.customtypes import Device, Tensor
 
 
 class TargetDistributionWrapper:

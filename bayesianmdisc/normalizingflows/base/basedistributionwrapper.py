@@ -2,7 +2,7 @@ import torch
 from torch.func import vmap
 
 from bayesianmdisc.bayes.prior import Prior
-from bayesianmdisc.types import Device, Tensor
+from bayesianmdisc.customtypes import Device, Tensor
 
 
 class BaseDistributionWrapper(torch.nn.Module):

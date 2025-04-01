@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from bayesianmdisc.types import Device
+from bayesianmdisc.customtypes import Device
 
 
 def set_default_dtype(dtype: torch.dtype) -> None:

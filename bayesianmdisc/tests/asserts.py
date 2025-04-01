@@ -1,6 +1,6 @@
 import numpy as np
 
-from bayesianmdisc.types import NPArray
+from bayesianmdisc.customtypes import NPArray
 
 
 def assert_numpy_arrays_equal(actual: NPArray, expected: NPArray) -> None:

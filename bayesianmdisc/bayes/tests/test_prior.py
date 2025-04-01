@@ -14,7 +14,7 @@ from bayesianmdisc.bayes.prior import (
     create_univariate_uniform_distributed_prior,
     multiply_priors,
 )
-from bayesianmdisc.types import Tensor
+from bayesianmdisc.customtypes import Tensor
 
 device = torch.device("cpu")
 
