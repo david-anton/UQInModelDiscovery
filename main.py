@@ -141,42 +141,42 @@ def determine_prior_and_noise(
     noise_variance = gaussian_process.get_likelihood_noise_variance()
     noise_stddevs = torch.sqrt(noise_variance).detach()
 
-    # prior = infer_gp_induced_prior(
-    #     gp=gaussian_process,
-    #     model=model,
-    #     prior_type="Gamma",
-    #     is_mean_trainable=True,
-    #     inputs=inputs,
-    #     test_cases=test_cases,
-    #     num_func_samples=64,
-    #     resample=True,
-    #     num_iters_wasserstein=int(5e4),
-    #     hiden_layer_size_lipschitz_nn=256,
-    #     num_iters_lipschitz=10,
-    #     output_subdirectory=output_subdirectory,
-    #     project_directory=project_directory,
-    #     device=device,
-    # )
-    # prior_samples = prior.sample(num_samples=4096)
-    # prior_moments, prior_samples_np = determine_prior_moments(prior_samples)
-
-    # plot_histograms(
-    #     parameter_names=model.get_parameter_names(),
-    #     true_parameters=tuple(None for _ in range(num_parameters)),
-    #     moments=prior_moments,
-    #     samples=prior_samples_np,
-    #     algorithm_name="gp_prior",
-    #     output_subdirectory=output_subdirectory,
-    #     project_directory=project_directory,
-    # )
-
-    prior = create_independent_multivariate_gamma_distributed_prior(
-        concentrations=torch.tensor(
-            [0.1 for _ in range(num_parameters)], device=device
-        ),
-        rates=torch.tensor([2.0 for _ in range(num_parameters)], device=device),
+    prior = infer_gp_induced_prior(
+        gp=gaussian_process,
+        model=model,
+        prior_type="Gamma",
+        is_mean_trainable=True,
+        inputs=inputs,
+        test_cases=test_cases,
+        num_func_samples=32,
+        resample=True,
+        num_iters_wasserstein=int(5e4),
+        hiden_layer_size_lipschitz_nn=128,
+        num_iters_lipschitz=5,
+        output_subdirectory=output_subdirectory,
+        project_directory=project_directory,
         device=device,
     )
+    prior_samples = prior.sample(num_samples=4096)
+    prior_moments, prior_samples_np = determine_prior_moments(prior_samples)
+
+    plot_histograms(
+        parameter_names=model.get_parameter_names(),
+        true_parameters=tuple(None for _ in range(num_parameters)),
+        moments=prior_moments,
+        samples=prior_samples_np,
+        algorithm_name="gp_prior",
+        output_subdirectory=output_subdirectory,
+        project_directory=project_directory,
+    )
+
+    # prior = create_independent_multivariate_gamma_distributed_prior(
+    #     concentrations=torch.tensor(
+    #         [0.1 for _ in range(num_parameters)], device=device
+    #     ),
+    #     rates=torch.tensor([2.0 for _ in range(num_parameters)], device=device),
+    #     device=device,
+    # )
 
     return prior, noise_stddevs
 
