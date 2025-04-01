@@ -150,7 +150,7 @@ def determine_prior_and_noise(
         test_cases=test_cases,
         num_func_samples=32,
         resample=True,
-        num_iters_wasserstein=int(5e4),
+        num_iters_wasserstein=int(2e4),
         hiden_layer_size_lipschitz_nn=128,
         num_iters_lipschitz=5,
         output_subdirectory=output_subdirectory,
