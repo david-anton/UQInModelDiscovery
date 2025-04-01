@@ -179,7 +179,7 @@ class LinkaCANN:
         self._num_activation_functions = 2
         self._test_case_identifier_bt = test_case_identifier_biaxial_tension
         self._allowed_test_cases = self._determine_allowed_test_cases()
-        self._allowed_input_dimensions = [1, 3]
+        self._allowed_input_dimensions = [2]
         self.output_dim = 2
         self.num_parameters = self._determine_number_of_parameters()
 
