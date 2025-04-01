@@ -59,180 +59,180 @@ output_directory = current_date + "_" + input_directory
 inputs, test_cases, outputs = data_reader.read()
 
 
-# model = LinkaCANN(device)
-# num_parameters = model.num_parameters
+model = LinkaCANN(device)
+num_parameters = model.num_parameters
 
 
-# def determine_prior_and_noise(
-#     inputs: DeformationInputs, test_cases: TestCases, outputs: StressOutputs
-# ) -> tuple[PriorProtocol, Tensor]:
+def determine_prior_and_noise(
+    inputs: DeformationInputs, test_cases: TestCases, outputs: StressOutputs
+) -> tuple[PriorProtocol, Tensor]:
 
-#     def validate_number_of_samples(
-#         inputs: DeformationInputs, test_cases: TestCases, outputs: StressOutputs
-#     ) -> None:
-#         num_inputs = len(inputs)
-#         num_test_cases = len(test_cases)
-#         num_outputs = len(outputs)
+    def validate_number_of_samples(
+        inputs: DeformationInputs, test_cases: TestCases, outputs: StressOutputs
+    ) -> None:
+        num_inputs = len(inputs)
+        num_test_cases = len(test_cases)
+        num_outputs = len(outputs)
 
-#         if (
-#             num_inputs != num_test_cases
-#             or num_inputs != num_outputs
-#             or num_test_cases != num_outputs
-#         ):
-#             raise DataError(
-#                 f"""The number of inputs, test cases and outputs is expected to be the same,
-#                 but is {num_inputs}, {num_test_cases} and {num_outputs}"""
-#             )
+        if (
+            num_inputs != num_test_cases
+            or num_inputs != num_outputs
+            or num_test_cases != num_outputs
+        ):
+            raise DataError(
+                f"""The number of inputs, test cases and outputs is expected to be the same,
+                but is {num_inputs}, {num_test_cases} and {num_outputs}"""
+            )
 
-#     def create_gaussian_process() -> IndependentMultiOutputGP:
-#         jitter = 1e-7
-#         gaussian_processes = [
-#             create_scaled_rbf_gaussian_process(
-#                 mean="zero",
-#                 input_dims=input_dim,
-#                 min_inputs=min_inputs,
-#                 max_inputs=max_inputs,
-#                 jitter=jitter,
-#                 device=device,
-#             )
-#             for _ in range(output_dim)
-#         ]
+    def create_gaussian_process() -> IndependentMultiOutputGP:
+        jitter = 1e-7
+        gaussian_processes = [
+            create_scaled_rbf_gaussian_process(
+                mean="zero",
+                input_dims=input_dim,
+                min_inputs=min_inputs,
+                max_inputs=max_inputs,
+                jitter=jitter,
+                device=device,
+            )
+            for _ in range(output_dim)
+        ]
 
-#         initial_parameters = torch.tensor(
-#             [1.0] + [0.1 for _ in range(input_dim)], device=device
-#         )
-#         for gaussian_process in gaussian_processes:
-#             gaussian_process.set_parameters(initial_parameters)
+        initial_parameters = torch.tensor(
+            [1.0] + [0.1 for _ in range(input_dim)], device=device
+        )
+        for gaussian_process in gaussian_processes:
+            gaussian_process.set_parameters(initial_parameters)
 
-#         return IndependentMultiOutputGP(gps=tuple(gaussian_processes), device=device)
+        return IndependentMultiOutputGP(gps=tuple(gaussian_processes), device=device)
 
-#     def determine_prior_moments(
-#         samples: Tensor,
-#     ) -> tuple[MomentsMultivariateNormal, NPArray]:
-#         samples_np = samples.detach().cpu().numpy()
-#         moments = determine_moments_of_multivariate_normal_distribution(samples_np)
-#         return moments, samples_np
+    def determine_prior_moments(
+        samples: Tensor,
+    ) -> tuple[MomentsMultivariateNormal, NPArray]:
+        samples_np = samples.detach().cpu().numpy()
+        moments = determine_moments_of_multivariate_normal_distribution(samples_np)
+        return moments, samples_np
 
-#     validate_number_of_samples(inputs, test_cases, outputs)
-#     output_subdirectory = os.path.join(output_directory, "prior")
+    validate_number_of_samples(inputs, test_cases, outputs)
+    output_subdirectory = os.path.join(output_directory, "prior")
 
-#     min_inputs = torch.amin(inputs, dim=0)
-#     max_inputs = torch.amax(inputs, dim=0)
-#     input_dim = inputs.size()[1]
-#     output_dim = outputs.size()[1]
-#     initial_noise_stddev = 1e-3
+    min_inputs = torch.amin(inputs, dim=0)
+    max_inputs = torch.amax(inputs, dim=0)
+    input_dim = inputs.size()[1]
+    output_dim = outputs.size()[1]
+    initial_noise_stddev = 1e-3
 
-#     gaussian_process = create_gaussian_process()
+    gaussian_process = create_gaussian_process()
 
-#     optimize_gp_hyperparameters(
-#         gaussian_process=gaussian_process,
-#         inputs=inputs,
-#         outputs=outputs,
-#         initial_noise_standard_deviations=torch.tensor(
-#             [initial_noise_stddev for _ in range(output_dim)], device=device
-#         ),
-#         num_iterations=int(1e4),
-#         learning_rate=1e-3,
-#         output_subdirectory=output_subdirectory,
-#         project_directory=project_directory,
-#         device=device,
-#     )
+    optimize_gp_hyperparameters(
+        gaussian_process=gaussian_process,
+        inputs=inputs,
+        outputs=outputs,
+        initial_noise_standard_deviations=torch.tensor(
+            [initial_noise_stddev for _ in range(output_dim)], device=device
+        ),
+        num_iterations=int(1e4),
+        learning_rate=1e-3,
+        output_subdirectory=output_subdirectory,
+        project_directory=project_directory,
+        device=device,
+    )
 
-#     noise_variance = gaussian_process.get_likelihood_noise_variance()
-#     noise_stddevs = torch.sqrt(noise_variance).detach()
+    noise_variance = gaussian_process.get_likelihood_noise_variance()
+    noise_stddevs = torch.sqrt(noise_variance).detach()
 
-#     prior = infer_gp_induced_prior(
-#         gp=gaussian_process,
-#         model=model,
-#         prior_type="Gamma",
-#         is_mean_trainable=True,
-#         inputs=inputs,
-#         test_cases=test_cases,
-#         num_func_samples=32,
-#         resample=True,
-#         num_iters_wasserstein=int(5e4),
-#         hiden_layer_size_lipschitz_nn=128,
-#         num_iters_lipschitz=5,
-#         output_subdirectory=output_subdirectory,
-#         project_directory=project_directory,
-#         device=device,
-#     )
-#     prior_samples = prior.sample(num_samples=4096)
-#     prior_moments, prior_samples_np = determine_prior_moments(prior_samples)
+    prior = infer_gp_induced_prior(
+        gp=gaussian_process,
+        model=model,
+        prior_type="Gamma",
+        is_mean_trainable=True,
+        inputs=inputs,
+        test_cases=test_cases,
+        num_func_samples=32,
+        resample=True,
+        num_iters_wasserstein=int(5e4),
+        hiden_layer_size_lipschitz_nn=128,
+        num_iters_lipschitz=5,
+        output_subdirectory=output_subdirectory,
+        project_directory=project_directory,
+        device=device,
+    )
+    prior_samples = prior.sample(num_samples=4096)
+    prior_moments, prior_samples_np = determine_prior_moments(prior_samples)
 
-#     plot_histograms(
-#         parameter_names=model.get_parameter_names(),
-#         true_parameters=tuple(None for _ in range(num_parameters)),
-#         moments=prior_moments,
-#         samples=prior_samples_np,
-#         algorithm_name="gp_prior",
-#         output_subdirectory=output_subdirectory,
-#         project_directory=project_directory,
-#     )
+    plot_histograms(
+        parameter_names=model.get_parameter_names(),
+        true_parameters=tuple(None for _ in range(num_parameters)),
+        moments=prior_moments,
+        samples=prior_samples_np,
+        algorithm_name="gp_prior",
+        output_subdirectory=output_subdirectory,
+        project_directory=project_directory,
+    )
 
-#     # prior = create_independent_multivariate_gamma_distributed_prior(
-#     #     concentrations=torch.tensor(
-#     #         [0.1 for _ in range(num_parameters)], device=device
-#     #     ),
-#     #     rates=torch.tensor([2.0 for _ in range(num_parameters)], device=device),
-#     #     device=device,
-#     # )
+    # prior = create_independent_multivariate_gamma_distributed_prior(
+    #     concentrations=torch.tensor(
+    #         [0.1 for _ in range(num_parameters)], device=device
+    #     ),
+    #     rates=torch.tensor([2.0 for _ in range(num_parameters)], device=device),
+    #     device=device,
+    # )
 
-#     return prior, noise_stddevs
-
-
-# prior, noise_stddevs = determine_prior_and_noise(inputs, test_cases, outputs)
+    return prior, noise_stddevs
 
 
-# likelihood = Likelihood(
-#     model=model,
-#     noise_stddev=noise_stddevs,
-#     inputs=inputs,
-#     test_cases=test_cases,
-#     outputs=outputs,
-#     device=device,
-# )
+prior, noise_stddevs = determine_prior_and_noise(inputs, test_cases, outputs)
 
-# normalizing_flow_config = NormalizingFlowConfig(
-#     likelihood=likelihood,
-#     prior=prior,
-#     num_flows=32,
-#     relative_width_flow_layers=4,
-#     num_samples=64,
-#     learning_rate=1e-4,
-#     learning_rate_decay_rate=1.0,
-#     num_iterations=20_000,
-#     output_subdirectory=output_directory,
-#     project_directory=project_directory,
-# )
 
-# posterior_moments, posterior_samples = fit_normalizing_flow(
-#     normalizing_flow_config, device
-# )
+likelihood = Likelihood(
+    model=model,
+    noise_stddev=noise_stddevs,
+    inputs=inputs,
+    test_cases=test_cases,
+    outputs=outputs,
+    device=device,
+)
 
-# mse_statistics = likelihood.mse_loss_statistics(
-#     torch.from_numpy(posterior_samples).type(torch.get_default_dtype())
-# )
-# print(f"Mean mse: {mse_statistics.mean}")
-# print(f"Stddev mse: {mse_statistics.stddev}")
+normalizing_flow_config = NormalizingFlowConfig(
+    likelihood=likelihood,
+    prior=prior,
+    num_flows=32,
+    relative_width_flow_layers=4,
+    num_samples=64,
+    learning_rate=1e-4,
+    learning_rate_decay_rate=1.0,
+    num_iterations=20_000,
+    output_subdirectory=output_directory,
+    project_directory=project_directory,
+)
 
-# output_subdirectory_posterior = os.path.join(output_directory, "posterior")
-# plot_histograms(
-#     parameter_names=model.get_parameter_names(),
-#     true_parameters=tuple(None for _ in range(num_parameters)),
-#     moments=posterior_moments,
-#     samples=posterior_samples,
-#     algorithm_name="normalizing_flow",
-#     output_subdirectory=output_subdirectory_posterior,
-#     project_directory=project_directory,
-# )
-# plot_stresses_linka_cann(
-#     model=model,
-#     parameter_samples=posterior_samples,
-#     inputs=inputs.numpy(),
-#     outputs=outputs.numpy(),
-#     test_cases=test_cases.numpy(),
-#     output_subdirectory=output_directory,
-#     project_directory=project_directory,
-#     device=device,
-# )
+posterior_moments, posterior_samples = fit_normalizing_flow(
+    normalizing_flow_config, device
+)
+
+mse_statistics = likelihood.mse_loss_statistics(
+    torch.from_numpy(posterior_samples).type(torch.get_default_dtype()).to(device)
+)
+print(f"Mean mse: {mse_statistics.mean}")
+print(f"Stddev mse: {mse_statistics.stddev}")
+
+output_subdirectory_posterior = os.path.join(output_directory, "posterior")
+plot_histograms(
+    parameter_names=model.get_parameter_names(),
+    true_parameters=tuple(None for _ in range(num_parameters)),
+    moments=posterior_moments,
+    samples=posterior_samples,
+    algorithm_name="normalizing_flow",
+    output_subdirectory=output_subdirectory_posterior,
+    project_directory=project_directory,
+)
+plot_stresses_linka_cann(
+    model=model,
+    parameter_samples=posterior_samples,
+    inputs=inputs.numpy(),
+    outputs=outputs.numpy(),
+    test_cases=test_cases.numpy(),
+    output_subdirectory=output_directory,
+    project_directory=project_directory,
+    device=device,
+)
