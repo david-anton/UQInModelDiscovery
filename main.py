@@ -23,6 +23,8 @@ from bayesianmdisc.gps import (
     IndependentMultiOutputGP,
     create_scaled_rbf_gaussian_process,
     optimize_gp_hyperparameters,
+    GaussianProcess,
+    GP,
 )
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import LinkaCANN, TreloarCANN, ModelProtocol
@@ -87,10 +89,12 @@ def determine_prior_and_noise(
                 but is {num_inputs}, {num_test_cases} and {num_outputs}"""
             )
 
-    def create_gaussian_process() -> IndependentMultiOutputGP:
+    def create_gaussian_process() -> GaussianProcess:
+        is_single_outut_gp = output_dim == 1
         jitter = 1e-7
-        gaussian_processes = [
-            create_scaled_rbf_gaussian_process(
+
+        def create_single_output_gp() -> GP:
+            gaussian_process = create_scaled_rbf_gaussian_process(
                 mean="zero",
                 input_dims=input_dim,
                 min_inputs=min_inputs,
@@ -98,16 +102,39 @@ def determine_prior_and_noise(
                 jitter=jitter,
                 device=device,
             )
-            for _ in range(output_dim)
-        ]
-
-        initial_parameters = torch.tensor(
-            [1.0] + [0.1 for _ in range(input_dim)], device=device
-        )
-        for gaussian_process in gaussian_processes:
+            initial_parameters = torch.tensor(
+                [1.0] + [0.1 for _ in range(input_dim)], device=device
+            )
             gaussian_process.set_parameters(initial_parameters)
+            return gaussian_process
 
-        return IndependentMultiOutputGP(gps=tuple(gaussian_processes), device=device)
+        def create_multi_output_gp() -> IndependentMultiOutputGP:
+            gaussian_processes = [
+                create_scaled_rbf_gaussian_process(
+                    mean="zero",
+                    input_dims=input_dim,
+                    min_inputs=min_inputs,
+                    max_inputs=max_inputs,
+                    jitter=jitter,
+                    device=device,
+                )
+                for _ in range(output_dim)
+            ]
+            initial_parameters = torch.tensor(
+                [1.0] + [0.1 for _ in range(input_dim)], device=device
+            )
+
+            for gaussian_process in gaussian_processes:
+                gaussian_process.set_parameters(initial_parameters)
+
+            return IndependentMultiOutputGP(
+                gps=tuple(gaussian_processes), device=device
+            )
+
+        if is_single_outut_gp:
+            return create_single_output_gp()
+        else:
+            return create_multi_output_gp()
 
     def determine_prior_moments(
         samples: Tensor,
@@ -134,7 +161,7 @@ def determine_prior_and_noise(
         initial_noise_standard_deviations=torch.tensor(
             [initial_noise_stddev for _ in range(output_dim)], device=device
         ),
-        num_iterations=int(1e4),
+        num_iterations=int(1e1),
         learning_rate=1e-3,
         output_subdirectory=output_subdirectory,
         project_directory=project_directory,
