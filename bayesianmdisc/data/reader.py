@@ -14,12 +14,12 @@ from bayesianmdisc.data.base import (
 from bayesianmdisc.data.testcases import (
     TestCases,
     test_case_identifier_biaxial_tension,
-    test_case_identifier_equi_biaxial_tension,
+    test_case_identifier_equibiaxial_tension,
     test_case_identifier_pure_shear,
     test_case_identifier_uniaxial_tension,
 )
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.types import Device, NPArray, PDDataFrame, Tensor
+from bayesianmdisc.customtypes import Device, NPArray, PDDataFrame, Tensor
 from bayesianmdisc.io.readerswriters import CSVDataReader
 
 
@@ -152,7 +152,7 @@ class TreloarDataReader:
         self._index_stresses = 1
         self._np_data_type = numpy_data_type
         self._test_case_identifier_ut = test_case_identifier_uniaxial_tension
-        self._test_case_identifier_ebt = test_case_identifier_equi_biaxial_tension
+        self._test_case_identifier_ebt = test_case_identifier_equibiaxial_tension
         self._test_case_identifier_ps = test_case_identifier_pure_shear
 
     def read(self) -> Data:

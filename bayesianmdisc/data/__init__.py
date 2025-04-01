@@ -5,7 +5,7 @@ from .reader import (
     StressOutputs,
     DataReaderProtocol,
 )
-from .testcases import TestCase, TestCases
+from .testcases import TestCase, TestCases, AllowedTestCases
 
 __all__ = [
     "DeformationInputs",
@@ -15,4 +15,5 @@ __all__ = [
     "TestCases",
     "TreloarDataReader",
     "DataReaderProtocol",
+    "AllowedTestCases",
 ]

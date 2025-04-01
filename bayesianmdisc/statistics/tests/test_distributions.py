@@ -14,7 +14,7 @@ from bayesianmdisc.statistics.distributions import (
     create_univariate_normal_distribution,
     create_univariate_uniform_distribution,
 )
-from bayesianmdisc.types import Tensor
+from bayesianmdisc.customtypes import Tensor
 
 device = torch.device("cpu")
 

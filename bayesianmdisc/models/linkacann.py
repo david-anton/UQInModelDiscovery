@@ -6,22 +6,20 @@ from bayesianmdisc.data.testcases import TestCase, test_case_identifier_biaxial_
 from bayesianmdisc.models.base import (
     CauchyStress,
     CauchyStresses,
-    DeformationGradient,
     Invariant,
     Invariants,
     ParameterNames,
     Parameters,
     SplittedParameters,
-    StrainEnergy,
-    StrainEnergyDerivative,
-    StrainEnergyDerivatives,
+    StrainEnergyGradient,
+    StrainEnergyGradients,
     Stretch,
     Stretches,
     validate_input_and_test_case_numbers,
     validate_parameters,
     validate_test_cases,
 )
-from bayesianmdisc.types import Device
+from bayesianmdisc.customtypes import Device
 
 # class LinkaOrthotropicIncompressibleCANN:
 
@@ -223,12 +221,12 @@ class LinkaCANN:
 
     def _calculate_stresses(
         self, stretches: Stretches, test_case: TestCase, parameters: Parameters
-    ) -> StrainEnergy:
+    ) -> CauchyStresses:
 
         def calculate_fiber_stress(
-            dPsi_dI_1: StrainEnergyDerivative,
-            dPsi_dI_2: StrainEnergyDerivative,
-            dPsi_dI_4f: StrainEnergyDerivative,
+            dPsi_dI_1: StrainEnergyGradient,
+            dPsi_dI_2: StrainEnergyGradient,
+            dPsi_dI_4f: StrainEnergyGradient,
             stretches: Stretches,
         ) -> CauchyStress:
             stretch_fiber, stretch_normal = self._split_stretches(stretches)
@@ -247,9 +245,9 @@ class LinkaCANN:
             )
 
         def calculate_normal_stress(
-            dPsi_dI_1: StrainEnergyDerivative,
-            dPsi_dI_2: StrainEnergyDerivative,
-            dPsi_dI_4n: StrainEnergyDerivative,
+            dPsi_dI_1: StrainEnergyGradient,
+            dPsi_dI_2: StrainEnergyGradient,
+            dPsi_dI_4n: StrainEnergyGradient,
             stretches: Stretches,
         ) -> CauchyStress:
             stretch_fiber, stretch_normal = self._split_stretches(stretches)
@@ -284,11 +282,11 @@ class LinkaCANN:
 
     def _calculate_strain_energy_derivatives(
         self, stretches: Stretches, parameters: Parameters
-    ) -> StrainEnergyDerivatives:
+    ) -> StrainEnergyGradients:
 
         def calculate_strain_energy_derivative(
             corrected_invariant: Invariant, parameters: Parameters
-        ) -> StrainEnergyDerivative:
+        ) -> StrainEnergyGradient:
             two = torch.tensor(2.0, device=self._device)
             param_1 = parameters[0]
             param_2 = parameters[1]

@@ -5,7 +5,7 @@ import torch
 from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
 from bayesianmdisc.data.testcases import AllowedTestCases
 from bayesianmdisc.errors import ModelError
-from bayesianmdisc.types import Tensor
+from bayesianmdisc.customtypes import Tensor
 
 DeformationGradient: TypeAlias = Tensor
 Stretch: TypeAlias = Tensor
@@ -14,9 +14,12 @@ Invariant: TypeAlias = Tensor
 Invariants: TypeAlias = tuple[Invariant, ...]
 CauchyStress: TypeAlias = Tensor
 CauchyStresses: TypeAlias = Tensor
+PiolaStress: TypeAlias = Tensor
+PiolaStresses: TypeAlias = Tensor
 StrainEnergy: TypeAlias = Tensor
-StrainEnergyDerivative: TypeAlias = Tensor
-StrainEnergyDerivatives: TypeAlias = tuple[StrainEnergyDerivative, ...]
+StrainEnergyGradient: TypeAlias = Tensor
+StrainEnergyGradients: TypeAlias = tuple[StrainEnergyGradient, ...]
+IncompressibilityConstraint: TypeAlias = Tensor
 Parameters: TypeAlias = Tensor
 SplittedParameters: TypeAlias = tuple[Parameters, ...]
 ParameterNames: TypeAlias = tuple[str, ...]
