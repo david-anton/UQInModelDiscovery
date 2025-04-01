@@ -48,6 +48,8 @@ class ModelProtocol(Protocol):
     ) -> StressOutputs:
         pass
 
+    def get_parameter_names(self) -> ParameterNames: ...
+
 
 def validate_input_numbers(inputs: DeformationInputs, test_cases: TestCases) -> None:
     num_inputs = len(inputs)
