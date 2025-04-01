@@ -36,7 +36,7 @@ from bayesianmdisc.statistics.utility import (
     determine_moments_of_multivariate_normal_distribution,
 )
 
-data_set = "treloar"
+data_set = "linka"
 
 # Settings
 settings = Settings()
@@ -161,7 +161,7 @@ def determine_prior_and_noise(
         initial_noise_standard_deviations=torch.tensor(
             [initial_noise_stddev for _ in range(output_dim)], device=device
         ),
-        num_iterations=int(1e1),
+        num_iterations=int(1e4),
         learning_rate=1e-3,
         output_subdirectory=output_subdirectory,
         project_directory=project_directory,
