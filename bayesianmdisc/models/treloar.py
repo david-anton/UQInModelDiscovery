@@ -1,39 +1,45 @@
+from typing import TypeAlias
+
 import torch
 from torch import vmap
 from torch.func import grad
 
+from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.data import (
+    AllowedTestCases,
     DeformationInputs,
     StressOutputs,
     TestCases,
-    AllowedTestCases,
 )
 from bayesianmdisc.data.testcases import (
     TestCase,
-    test_case_identifier_uniaxial_tension,
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_pure_shear,
+    test_case_identifier_uniaxial_tension,
 )
 from bayesianmdisc.models.base import (
-    PiolaStress,
-    PiolaStresses,
     DeformationGradient,
+    IncompressibilityConstraint,
     Invariant,
     Invariants,
     ParameterNames,
     Parameters,
+    PiolaStress,
+    PiolaStresses,
     SplittedParameters,
     StrainEnergy,
     StrainEnergyGradient,
     StrainEnergyGradients,
     Stretch,
     Stretches,
-    IncompressibilityConstraint,
-    validate_input_and_test_case_numbers,
+    validate_deformation_input_dimension,
+    validate_input_numbers,
     validate_parameters,
     validate_test_cases,
 )
-from bayesianmdisc.types import Device, Tensor
+
+StretchInput: TypeAlias = Stretch | Stretches
+StretchesTuple: TypeAlias = tuple[Stretch, Stretch, Stretch]
 
 
 class TreloarCANN:
@@ -51,6 +57,7 @@ class TreloarCANN:
         self._test_case_identifier_ebt = test_case_identifier_equibiaxial_tension
         self._test_case_identifier_ps = test_case_identifier_pure_shear
         self._allowed_test_cases = self._determine_allowed_test_cases()
+        self._allowed_input_dimensions = [1, 3]
         self._num_cann_parameters, self._num_ogden_parameters = (
             self._determine_number_of_parameters()
         )
@@ -73,11 +80,18 @@ class TreloarCANN:
         parameters: Parameters,
         validate_args=True,
     ) -> StressOutputs:
+        """The deformation input is expected to be either:
+        (1) a tensor containing the stretches in all three dimensions or
+        (2) a tensor containing only the stretch in the first dimension
+            which correpsonds to the stretch factor.
+        In case (2), the stretches in the second and third dimensions are calculated
+        from the stretch factor depending on the test case."""
+
         if validate_args:
             self._validate_inputs(inputs, test_cases, parameters)
 
-        def vmap_func(input_: Stretch, test_case_: TestCase) -> PiolaStresses:
-            return self._calculate_stress(input_, test_case_, parameters)
+        def vmap_func(inputs_: StretchInput, test_case_: TestCase) -> PiolaStresses:
+            return self._calculate_stress(inputs_, test_case_, parameters)
 
         return vmap(vmap_func)(inputs, test_cases)
 
@@ -110,14 +124,15 @@ class TreloarCANN:
     def _validate_inputs(
         self, inputs: DeformationInputs, test_cases: TestCases, parameters: Parameters
     ) -> None:
-        validate_input_and_test_case_numbers(inputs, test_cases)
+        validate_input_numbers(inputs, test_cases)
+        validate_deformation_input_dimension(inputs, self._allowed_input_dimensions)
         validate_test_cases(test_cases, self._allowed_test_cases)
         validate_parameters(parameters, self.num_parameters)
 
     def _calculate_stress(
-        self, stretch: Stretch, test_case: TestCase, parameters: Parameters
+        self, stretches: StretchInput, test_case: TestCase, parameters: Parameters
     ) -> PiolaStress:
-        deformation_gradient = self._assemble_deformation_gradient(stretch, test_case)
+        deformation_gradient = self._assemble_deformation_gradient(stretches, test_case)
         strain_energy_gradient = grad(self._calculate_strain_energy, argnums=0)(
             deformation_gradient, parameters
         )
@@ -239,26 +254,46 @@ class TreloarCANN:
         return -pressure * (one / F_33)
 
     def _assemble_deformation_gradient(
-        self, stretch: Stretch, test_case: TestCase
+        self, stretches: StretchInput, test_case: TestCase
     ) -> DeformationGradient:
-        one = torch.tensor(1.0, device=self._device)
         zero = torch.tensor(0.0, device=self._device)
 
-        if test_case == self._test_case_identifier_ut:
-            F_11 = stretch
-            F_22 = F_33 = one / torch.sqrt(stretch)
-        elif test_case == self._test_case_identifier_ebt:
-            F_11 = F_22 = stretch
-            F_33 = one / stretch**2
-        else:
-            F_11 = stretch
-            F_22 = one
-            F_33 = one / stretch
-
+        F_11, F_22, F_33 = self._determine_stretches(stretches, test_case)
         row_1 = torch.concat((self._unsqueeze_zero_dimension(F_11), zero, zero))
         row_2 = torch.concat((zero, self._unsqueeze_zero_dimension(F_22), zero))
         row_3 = torch.concat((zero, zero, self._unsqueeze_zero_dimension(F_33)))
         return torch.stack((row_1, row_2, row_3))
+
+    def _determine_stretches(
+        self, stretches: StretchInput, test_case: TestCase
+    ) -> StretchesTuple:
+        num_stretches = len(stretches)
+        if num_stretches == 3:
+            F_11 = stretches[0]
+            F_22 = stretches[1]
+            F_33 = stretches[2]
+        else:
+            F_11, F_22, F_33 = self._calculate_stretches_from_factor(
+                stretches, test_case
+            )
+        return F_11, F_22, F_33
+
+    def _calculate_stretches_from_factor(
+        self, stretch: Stretch, test_case: TestCase
+    ) -> StretchesTuple:
+        one = torch.tensor(1.0, device=self._device)
+        stretch_factor = stretch
+        if test_case == self._test_case_identifier_ut:
+            F_11 = stretch_factor
+            F_22 = F_33 = one / torch.sqrt(stretch_factor)
+        elif test_case == self._test_case_identifier_ebt:
+            F_11 = F_22 = stretch_factor
+            F_33 = one / stretch_factor**2
+        else:
+            F_11 = stretch_factor
+            F_22 = one
+            F_33 = one / stretch_factor
+        return F_11, F_22, F_33
 
     def _unsqueeze_zero_dimension(self, tensor: Tensor) -> Tensor:
         return torch.unsqueeze(tensor, dim=0)

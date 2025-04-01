@@ -1,6 +1,7 @@
 import torch
 from torch import vmap
 
+from bayesianmdisc.customtypes import Device
 from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
 from bayesianmdisc.data.testcases import TestCase, test_case_identifier_biaxial_tension
 from bayesianmdisc.models.base import (
@@ -15,11 +16,11 @@ from bayesianmdisc.models.base import (
     StrainEnergyGradients,
     Stretch,
     Stretches,
-    validate_input_and_test_case_numbers,
+    validate_deformation_input_dimension,
+    validate_input_numbers,
     validate_parameters,
     validate_test_cases,
 )
-from bayesianmdisc.customtypes import Device
 
 # class LinkaOrthotropicIncompressibleCANN:
 
@@ -179,6 +180,7 @@ class LinkaCANN:
         self._allowed_test_cases = torch.tensor(
             [self._test_case_identifier_bt], device=self._device
         )
+        self._allowed_input_dimensions = [1, 3]
 
     def __call__(
         self,
@@ -215,7 +217,8 @@ class LinkaCANN:
     def _validate_inputs(
         self, inputs: DeformationInputs, test_cases: TestCases, parameters: Parameters
     ) -> None:
-        validate_input_and_test_case_numbers(inputs, test_cases)
+        validate_input_numbers(inputs, test_cases)
+        validate_deformation_input_dimension(inputs, self._allowed_input_dimensions)
         validate_test_cases(test_cases, self._allowed_test_cases)
         validate_parameters(parameters, self.num_parameters)
 

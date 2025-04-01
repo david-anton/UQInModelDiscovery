@@ -2,10 +2,10 @@ from typing import Protocol, TypeAlias
 
 import torch
 
+from bayesianmdisc.customtypes import Tensor
 from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
 from bayesianmdisc.data.testcases import AllowedTestCases
 from bayesianmdisc.errors import ModelError
-from bayesianmdisc.customtypes import Tensor
 
 DeformationGradient: TypeAlias = Tensor
 Stretch: TypeAlias = Tensor
@@ -49,15 +49,24 @@ class Model(Protocol):
         pass
 
 
-def validate_input_and_test_case_numbers(
-    inputs: DeformationInputs, test_cases: TestCases
-) -> None:
+def validate_input_numbers(inputs: DeformationInputs, test_cases: TestCases) -> None:
     num_inputs = len(inputs)
     num_test_cases = len(test_cases)
     if num_inputs != num_test_cases:
         raise ModelError(
             f"""The number of inputs and test cases is expected to be the same,
             but is {num_inputs} and {num_test_cases}."""
+        )
+
+
+def validate_deformation_input_dimension(
+    inputs: DeformationInputs, allowed_dimensions: list[int]
+) -> None:
+    input_dimension = inputs.shape[1]
+    if not input_dimension in allowed_dimensions:
+        raise ModelError(
+            f"""The dimension of deformation inputs is {input_dimension} 
+            which is not allowed."""
         )
 
 
