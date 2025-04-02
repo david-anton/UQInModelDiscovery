@@ -49,6 +49,7 @@ class TreloarCANN:
         self._num_cann_invariant_power_terms = 2
         self._num_cann_activation_functions = 3
         self._num_cann_parameters_per_invariant_power_term = 5
+        self._cann_exponential_weight_scale = torch.tensor(1e-4, device=self._device)
         self._num_ogden_terms = 20
         self._min_ogden_exponent = torch.tensor(-5.0, device=self._device)
         self._max_ogden_exponent = torch.tensor(5.0, device=self._device)
@@ -241,7 +242,10 @@ class TreloarCANN:
                 param_5 = parameters[4]
 
                 sub_term_1 = param_3 * invariant
-                sub_term_2 = param_4 * (torch.exp(param_1 * invariant) - one)
+                sub_term_2 = param_4 * (
+                    torch.exp(param_1 * self._cann_exponential_weight_scale * invariant)
+                    - one
+                )
                 sub_term_3 = param_5 * torch.log(one - param_2 * invariant)
                 return sub_term_1 + sub_term_2 - sub_term_3
 

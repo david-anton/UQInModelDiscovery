@@ -45,3 +45,8 @@ class ModelError(Error):
 class LikelihoodError(Error):
     def __init__(self, message: str) -> None:
         super().__init__(message)
+
+
+class StressPlotterError(Error):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
