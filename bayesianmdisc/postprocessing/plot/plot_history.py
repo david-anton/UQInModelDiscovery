@@ -86,6 +86,8 @@ def plot_statistical_loss_history(
     axes.plot(loss_hist)
     axes.set_ylabel(statistical_quantity, **config.font)
     y_min, y_max = find_y_limits()
+    print(f"min limit: {y_min}")
+    print(f"max limit: {y_max}")
     axes.set_yscale("symlog")
     axes.set_ylim(ymin=y_min, ymax=y_max)
     axes.set_xlabel("iteration", **config.font)
