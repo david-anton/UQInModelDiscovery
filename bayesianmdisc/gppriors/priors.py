@@ -90,8 +90,10 @@ class GammaParameterPrior(nn.Module):
         super().__init__()
         self._dim = model.num_parameters
         self._device = device
-        initial_rho_shape = math.log(math.exp(1.0) - 1.0)
-        initial_rho_rate = math.log(math.exp(1.0) - 1.0)
+        initial_shape = 0.1
+        initial_rate = 2.0
+        initial_rho_shape = math.log(math.exp(initial_shape) - 1.0)
+        initial_rho_rate = math.log(math.exp(initial_rate) - 1.0)
         self._rhos_shapes = self._init_rhos(initial_rho_shape)
         self._rhos_rates = self._init_rhos(initial_rho_rate)
 
@@ -236,8 +238,10 @@ class HierarchicalGaussianParameterPrior(nn.Module):
             is_trainable=is_mean_trainable,
             device=self._device,
         )
-        self._initial_rho_shape = math.log(math.exp(1.0) - 1.0)
-        self._initial_rho_rate = math.log(math.exp(1.0) - 1.0)
+        initial_shape = 1.0
+        initial_rate = 1.0
+        self._initial_rho_shape = math.log(math.exp(initial_shape) - 1.0)
+        self._initial_rho_rate = math.log(math.exp(initial_rate) - 1.0)
         self._rhos_shapes = self._init_rhos_shapes()
         self._rhos_rates = self._init_rhos_rates()
 
