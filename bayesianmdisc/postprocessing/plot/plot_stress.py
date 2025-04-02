@@ -88,11 +88,12 @@ def plot_stresses_linka(
     num_model_inputs = 512
 
     def split_inputs_and_outputs(
-        inputs: NPArray, outputs: NPArray
-    ) -> tuple[list[NPArray], list[NPArray]]:
+        inputs: NPArray, outputs: NPArray, test_cases: NPArray
+    ) -> tuple[list[NPArray], list[NPArray], list[NPArray]]:
         input_sets = np.split(inputs, num_data_sets, axis=0)
         output_sets = np.split(outputs, num_data_sets, axis=0)
-        return input_sets, output_sets
+        test_cases_sets = np.split(test_cases, num_data_sets, axis=0)
+        return input_sets, output_sets, test_cases_sets
 
     def calculate_coefficient_of_determinant(
         model: LinkaCANN,
@@ -119,7 +120,10 @@ def plot_stresses_linka(
         return root_mean_squared_error(mean_model_outputs, outputs)
 
     def plot_one_input_output_set(
-        inputs: NPArray, outputs: NPArray, stretch_ratio: tuple[float, float]
+        inputs: NPArray,
+        outputs: NPArray,
+        test_cases: NPArray,
+        stretch_ratio: tuple[float, float],
     ) -> None:
         ratio_fiber = stretch_ratio[index_fiber]
         ratio_normal = stretch_ratio[index_normal]
@@ -266,12 +270,14 @@ def plot_stresses_linka(
         figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
         plt.clf()
 
-    input_sets, output_sets = split_inputs_and_outputs(inputs, outputs)
+    input_sets, output_sets, test_cases_sets = split_inputs_and_outputs(
+        inputs, outputs, test_cases
+    )
 
-    for input_set, output_set, stretch_ratio in zip(
-        input_sets, output_sets, stretch_ratios
+    for input_set, output_set, test_case_set, stretch_ratio in zip(
+        input_sets, output_sets, test_cases_sets, stretch_ratios
     ):
-        plot_one_input_output_set(input_set, output_set, stretch_ratio)
+        plot_one_input_output_set(input_set, output_set, test_case_set, stretch_ratio)
 
 
 class StressPlotterConfigTreloar:
@@ -501,11 +507,25 @@ def plot_stresses_treloar(
         axes.legend(fontsize=config.font_size, loc="upper left")
 
         # text box metrics
+        num_data_inputs = len(inputs)
+        metrics_test_cases = np.full((num_data_inputs,), test_case)
         r_squared = calculate_coefficient_of_determinant(
-            model, parameter_samples, inputs, test_cases, outputs, output_dim, device
+            model,
+            parameter_samples,
+            inputs,
+            metrics_test_cases,
+            outputs,
+            output_dim,
+            device,
         )
         rmse = calculate_root_mean_squared_error(
-            model, parameter_samples, inputs, test_cases, outputs, output_dim, device
+            model,
+            parameter_samples,
+            inputs,
+            metrics_test_cases,
+            outputs,
+            output_dim,
+            device,
         )
         text = "\n".join(
             (
