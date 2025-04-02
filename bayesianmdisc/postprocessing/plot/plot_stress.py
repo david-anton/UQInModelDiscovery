@@ -611,7 +611,11 @@ def plot_stresses_linka(
 #     #     figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
 #     #     plt.clf()
 
-#     # input_sets, output_sets = split_inputs_and_outputs(inputs, outputs)
+#     input_sets, output_sets, test_case_list = split_inputs_and_outputs(
+#         inputs, outputs, test_cases
+#     )
 
-#     for input_set, output_set, test_case in zip(input_sets, output_sets, test_cases):
+#     for input_set, output_set, test_case in zip(
+#         input_sets, output_sets, test_case_list
+#     ):
 #         plot_one_input_output_set(input_set, output_set, test_case)
