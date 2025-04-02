@@ -63,7 +63,7 @@ def plot_statistical_loss_history(
     output_subdir: str,
     project_directory: ProjectDirectory,
     config: HistoryPlotterConfig,
-    max_limit: float = 1e64,
+    max_limit: float = 1e32,
 ) -> None:
     def find_y_limits() -> tuple[float, float]:
         min_value = min(loss_hist)
@@ -80,14 +80,12 @@ def plot_statistical_loss_history(
         else:
             y_max = -(10 ** (floored_order_max_value))
         y_max = min(max_limit, y_max)
-        return y_min, y_max
+        return float(y_min), float(y_max)
 
     figure, axes = plt.subplots()
     axes.plot(loss_hist)
     axes.set_ylabel(statistical_quantity, **config.font)
     y_min, y_max = find_y_limits()
-    print(f"min limit: {y_min}")
-    print(f"max limit: {y_max}")
     axes.set_yscale("symlog")
     axes.set_ylim(ymin=y_min, ymax=y_max)
     axes.set_xlabel("iteration", **config.font)

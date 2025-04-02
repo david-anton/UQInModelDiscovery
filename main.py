@@ -180,7 +180,7 @@ def determine_prior_and_noise(
         test_cases=test_cases,
         num_func_samples=32,
         resample=True,
-        num_iters_wasserstein=int(2e4),
+        num_iters_wasserstein=int(5e3),
         hiden_layer_size_lipschitz_nn=128,
         num_iters_lipschitz=5,
         output_subdirectory=output_subdirectory,
@@ -247,6 +247,7 @@ print(f"Mean mse: {mse_statistics.mean}")
 print(f"Stddev mse: {mse_statistics.stddev}")
 
 output_subdirectory_posterior = os.path.join(output_directory, "posterior")
+
 plot_histograms(
     parameter_names=model.get_parameter_names(),
     true_parameters=tuple(None for _ in range(num_parameters)),
@@ -256,13 +257,15 @@ plot_histograms(
     output_subdirectory=output_subdirectory_posterior,
     project_directory=project_directory,
 )
-plot_stresses_linka_cann(
-    model=model,
-    parameter_samples=posterior_samples,
-    inputs=inputs.numpy(),
-    outputs=outputs.numpy(),
-    test_cases=test_cases.numpy(),
-    output_subdirectory=output_directory,
-    project_directory=project_directory,
-    device=device,
-)
+
+if data_set == "linka":
+    plot_stresses_linka_cann(
+        model=model,
+        parameter_samples=posterior_samples,
+        inputs=inputs.numpy(),
+        outputs=outputs.numpy(),
+        test_cases=test_cases.numpy(),
+        output_subdirectory=output_directory,
+        project_directory=project_directory,
+        device=device,
+    )
