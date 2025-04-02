@@ -40,7 +40,7 @@ from bayesianmdisc.statistics.utility import (
     determine_moments_of_multivariate_normal_distribution,
 )
 
-data_set = "treloar"
+data_set = "linka"
 
 # Settings
 settings = Settings()
@@ -184,8 +184,8 @@ def determine_prior_and_noise(
         test_cases=test_cases,
         num_func_samples=32,
         resample=True,
-        num_iters_wasserstein=int(10e3),
-        hiden_layer_size_lipschitz_nn=256,
+        num_iters_wasserstein=int(20e3),
+        hiden_layer_size_lipschitz_nn=512,
         num_iters_lipschitz=5,
         output_subdirectory=output_subdirectory,
         project_directory=project_directory,
