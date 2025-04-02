@@ -37,7 +37,6 @@ from bayesianmdisc.models.base import (
     validate_test_cases,
 )
 
-StretchInput: TypeAlias = Stretch | Stretches
 StretchesTuple: TypeAlias = tuple[Stretch, Stretch, Stretch]
 
 
@@ -91,10 +90,12 @@ class TreloarCANN:
         if validate_args:
             self._validate_inputs(inputs, test_cases, parameters)
 
-        def vmap_func(inputs_: StretchInput, test_case_: TestCase) -> PiolaStresses:
-            return self._calculate_stress(inputs_, test_case_, parameters)
+        stretches = self._assemble_stretches_if_necessary(inputs)
 
-        return vmap(vmap_func)(inputs, test_cases)
+        def vmap_func(stretches_: Stretches) -> PiolaStresses:
+            return self._calculate_stress(stretches_, parameters)
+
+        return vmap(vmap_func)(stretches, test_cases)
 
     def get_parameter_names(self) -> ParameterNames:
 
@@ -181,10 +182,58 @@ class TreloarCANN:
         validate_test_cases(test_cases, self._allowed_test_cases)
         validate_parameters(parameters, self.num_parameters)
 
+    def _assemble_stretches_if_necessary(
+        self, stretches: Stretches, test_cases: TestCases
+    ):
+        if stretches.dim() == 1:
+            stretch_facors = stretches
+            return self._assemble_stretches_from_factors(stretch_facors, test_cases)
+        else:
+            return stretches
+
+    def _assemble_stretches_from_factors(
+        self, stretch_factors: Stretches, test_cases: TestCases
+    ):
+        indices_ut = test_cases == self._test_case_identifier_ut
+        indices_ebt = test_cases == self._test_case_identifier_ebt
+        indices_ps = test_cases == self._test_case_identifier_ps
+
+        stretch_factors_ut = stretch_factors[indices_ut]
+        stretch_factors_ebt = stretch_factors[indices_ebt]
+        stretch_factors_ps = stretch_factors[indices_ps]
+
+        one = torch.tensor(1.0, device=self._device)
+
+        def calculate_stretches_ut(stretch_factors: Stretches) -> Stretches:
+            stretch_1 = stretch_factors
+            stretch_2 = stretch_3 = one / torch.sqrt(stretch_factors)
+            return torch.concat((stretch_1, stretch_2, stretch_3), dim=1)
+
+        def calculate_stretches_ebt(stretch_factors: Stretches) -> Stretches:
+            stretch_1 = stretch_2 = stretch_factors
+            stretch_3 = one / stretch_factors**2
+            return torch.concat((stretch_1, stretch_2, stretch_3), dim=1)
+
+        def calculate_stretches_ps(stretch_factors: Stretches) -> Stretches:
+            stretch_1 = stretch_factors
+            stretch_2 = torch.ones_like(stretch_factors, device=self._device)
+            stretch_3 = one / stretch_factors
+            return torch.concat((stretch_1, stretch_2, stretch_3), dim=1)
+
+        stretches = []
+        if not torch.numel(stretch_factors_ut):
+            stretches += [calculate_stretches_ut(stretch_factors_ut)]
+        if not torch.numel(stretch_factors_ebt):
+            stretches += [calculate_stretches_ebt(stretch_factors_ebt)]
+        if not torch.numel(stretch_factors_ps):
+            stretches += [calculate_stretches_ps(stretch_factors_ps)]
+
+        return torch.vstack(stretches)
+
     def _calculate_stress(
-        self, stretches: StretchInput, test_case: TestCase, parameters: Parameters
+        self, stretches: Stretches, parameters: Parameters
     ) -> PiolaStress:
-        deformation_gradient = self._assemble_deformation_gradient(stretches, test_case)
+        deformation_gradient = self._assemble_deformation_gradient(stretches)
         strain_energy_gradient = grad(self._calculate_strain_energy, argnums=0)(
             deformation_gradient, parameters
         )
@@ -309,45 +358,19 @@ class TreloarCANN:
         return -pressure * (one / F_33)
 
     def _assemble_deformation_gradient(
-        self, stretches: StretchInput, test_case: TestCase
+        self, stretches: Stretches
     ) -> DeformationGradient:
         zero = torch.tensor([0.0], device=self._device)
-
-        F_11, F_22, F_33 = self._determine_stretches(stretches, test_case)
+        F_11, F_22, F_33 = self._extract_stretches(stretches)
         row_1 = torch.concat((self._unsqueeze_zero_dimension(F_11), zero, zero))
         row_2 = torch.concat((zero, self._unsqueeze_zero_dimension(F_22), zero))
         row_3 = torch.concat((zero, zero, self._unsqueeze_zero_dimension(F_33)))
         return torch.stack((row_1, row_2, row_3))
 
-    def _determine_stretches(
-        self, stretches: StretchInput, test_case: TestCase
-    ) -> StretchesTuple:
-        num_stretches = len(stretches)
-        if num_stretches == 3:
-            F_11 = stretches[0]
-            F_22 = stretches[1]
-            F_33 = stretches[2]
-        else:
-            F_11, F_22, F_33 = self._calculate_stretches_from_factor(
-                stretches, test_case
-            )
-        return F_11, F_22, F_33
-
-    def _calculate_stretches_from_factor(
-        self, stretch: Stretch, test_case: TestCase
-    ) -> StretchesTuple:
-        one = torch.tensor(1.0, device=self._device)
-        stretch_factor = stretch
-        if test_case == self._test_case_identifier_ut:
-            F_11 = stretch_factor
-            F_22 = F_33 = one / torch.sqrt(stretch_factor)
-        elif test_case == self._test_case_identifier_ebt:
-            F_11 = F_22 = stretch_factor
-            F_33 = one / stretch_factor**2
-        else:
-            F_11 = stretch_factor
-            F_22 = torch.ones_like(stretch_factor, device=self._device)
-            F_33 = one / stretch_factor
+    def _extract_stretches(self, stretches: Stretches) -> StretchesTuple:
+        F_11 = stretches[0]
+        F_22 = stretches[1]
+        F_33 = stretches[2]
         return F_11, F_22, F_33
 
     def _unsqueeze_zero_dimension(self, tensor: Tensor) -> Tensor:
