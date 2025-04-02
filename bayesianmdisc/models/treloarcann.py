@@ -386,9 +386,9 @@ class TreloarCANN:
         self._num_cann_invariant_power_terms = 2
         self._num_cann_activation_functions = 2
         self._num_cann_parameters_per_invariant_power_term = 3
-        self._num_ogden_terms = 20
-        self._min_ogden_exponent = torch.tensor(-5.0, device=self._device)
-        self._max_ogden_exponent = torch.tensor(5.0, device=self._device)
+        self._num_ogden_terms = 33
+        self._min_ogden_exponent = torch.tensor(-4.0, device=self._device)
+        self._max_ogden_exponent = torch.tensor(4.0, device=self._device)
         self._ogden_exponents = self._determine_ogden_exponents()
         self._test_case_identifier_ut = test_case_identifier_uniaxial_tension
         self._test_case_identifier_ebt = test_case_identifier_equibiaxial_tension
