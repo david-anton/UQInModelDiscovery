@@ -81,21 +81,21 @@ class TreloarCANN:
         validate_args=True,
     ) -> StressOutputs:
         """The deformation input is expected to be either:
-        (1) a tensor containing the stretches in all three dimensions or
+        (1) a tensor containing the stretches in all three dimensions (of shape [n, 3]) or
         (2) a tensor containing only the stretch in the first dimension
-            which correpsonds to the stretch factor.
+            which correpsonds to the stretch factor (of shape [n, 1]).
         In case (2), the stretches in the second and third dimensions are calculated
         from the stretch factor depending on the test case."""
 
         if validate_args:
             self._validate_inputs(inputs, test_cases, parameters)
 
-        stretches = self._assemble_stretches_if_necessary(inputs)
+        stretches = self._assemble_stretches_if_necessary(inputs, test_cases)
 
         def vmap_func(stretches_: Stretches) -> PiolaStresses:
             return self._calculate_stress(stretches_, parameters)
 
-        return vmap(vmap_func)(stretches, test_cases)
+        return vmap(vmap_func)(stretches)
 
     def get_parameter_names(self) -> ParameterNames:
 
@@ -185,7 +185,8 @@ class TreloarCANN:
     def _assemble_stretches_if_necessary(
         self, stretches: Stretches, test_cases: TestCases
     ):
-        if stretches.dim() == 1:
+        stretch_dim = stretches.shape[1]
+        if stretch_dim == 1:
             stretch_facors = stretches
             return self._assemble_stretches_from_factors(stretch_facors, test_cases)
         else:
@@ -221,11 +222,11 @@ class TreloarCANN:
             return torch.concat((stretch_1, stretch_2, stretch_3), dim=1)
 
         stretches = []
-        if not torch.numel(stretch_factors_ut):
+        if not torch.numel(stretch_factors_ut) == 0:
             stretches += [calculate_stretches_ut(stretch_factors_ut)]
-        if not torch.numel(stretch_factors_ebt):
+        if not torch.numel(stretch_factors_ebt) == 0:
             stretches += [calculate_stretches_ebt(stretch_factors_ebt)]
-        if not torch.numel(stretch_factors_ps):
+        if not torch.numel(stretch_factors_ps) == 0:
             stretches += [calculate_stretches_ps(stretch_factors_ps)]
 
         return torch.vstack(stretches)

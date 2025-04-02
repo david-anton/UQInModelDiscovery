@@ -352,7 +352,7 @@ def plot_stresses_treloar(
     num_data_points_ps = 14
     expected_set_sizes = [num_data_points_ut, num_data_points_ebt, num_data_points_ps]
     output_dim = 1
-    num_model_inputs = 512
+    num_model_inputs = 256
 
     figure_all, axes_all = plt.subplots()
 
@@ -445,11 +445,9 @@ def plot_stresses_treloar(
         )
 
         # model
-        min_model_stretches = np.min(data_stretches, axis=0)
-        max_model_stretches = np.max(data_stretches, axis=0)
         model_stretches = np.linspace(
-            min_model_stretches, max_model_stretches, num_model_inputs
-        )
+            min_stretch, max_stretch, num_model_inputs
+        ).reshape((-1, 1))
         model_test_cases = np.full((num_model_inputs,), test_case)
         means, stddevs = calculate_model_mean_and_stddev(
             model,
@@ -459,30 +457,33 @@ def plot_stresses_treloar(
             output_dim,
             device,
         )
+        model_stretches_plot = model_stretches.reshape((-1,))
+        means_plot = means.reshape((-1,))
+        stddevs_plot = stddevs.reshape((-1,))
 
         axes.plot(
-            model_stretches,
-            means,
+            model_stretches_plot,
+            means_plot,
             color=model_color_mean,
             label=model_label,
         )
         axes.fill_between(
-            model_stretches,
-            means - stddevs,
-            means + stddevs,
+            model_stretches_plot,
+            means_plot - stddevs_plot,
+            means_plot + stddevs_plot,
             color=model_color_stddev,
             alpha=config.model_stddev_alpha,
         )
         axes_all.plot(
-            model_stretches,
-            means,
+            model_stretches_plot,
+            means_plot,
             color=model_color_mean,
             label=model_label,
         )
         axes_all.fill_between(
-            model_stretches,
-            means - stddevs,
-            means + stddevs,
+            model_stretches_plot,
+            means_plot - stddevs_plot,
+            means_plot + stddevs_plot,
             color=model_color_stddev,
             alpha=config.model_stddev_alpha,
         )
@@ -535,8 +536,8 @@ def plot_stresses_treloar(
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axes.text(
-            0.05,
-            0.65,
+            0.03,
+            0.8,
             text,
             transform=axes.transAxes,
             fontsize=config.font_size,
@@ -597,8 +598,8 @@ def plot_stresses_treloar(
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axes_all.text(
+            0.45,
             0.05,
-            0.65,
             text,
             transform=axes_all.transAxes,
             fontsize=config.font_size,
