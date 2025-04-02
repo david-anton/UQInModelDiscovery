@@ -99,29 +99,37 @@ class TreloarCANN:
 
         def compose_cann_parameter_names() -> ParameterNames:
             parameter_names = []
+            first_layer_indices = 2
+            second_layer_indices = 1
+            invariant_names = ["I_1", "I_2"]
+            power_names = ["p1", "p2"]
+            activation_function_names = ["i", "exp", "ln"]
 
-            # first layer
-            num_neurons_first_layer = (
-                self._num_cann_invariants * self._num_cann_invariant_power_terms
-            )
-            first_layer_indizes = []
-            for i in range(num_neurons_first_layer):
-                first_layer_indizes += [i + 2, i + 3]
+            for invariant in invariant_names:
+                for power in power_names:
+                    # first layer
+                    for activation_function in activation_function_names[1:]:
+                        parameter_names += [
+                            f"W_1_{first_layer_indices} (l1, {invariant}, {power}, {activation_function})"
+                        ]
+                        first_layer_indices += 1
+                    first_layer_indices += 1
 
-            parameter_names += [f"W_1_{i}" for i in first_layer_indizes]
-
-            # second layer
-            num_neurons_second_layer = (
-                num_neurons_first_layer * self._num_cann_activation_functions
-            )
-            second_layer_indizes = [i + 1 for i in range(num_neurons_second_layer)]
-
-            parameter_names += [f"W_2_{i}" for i in second_layer_indizes]
+                    # second layer
+                    for activation_function in activation_function_names:
+                        parameter_names += [
+                            f"W_2_{second_layer_indices} (l2, {invariant}, {power}, {activation_function})"
+                        ]
+                        second_layer_indices += 1
             return tuple(parameter_names)
 
         def compose_ogden_parameter_names() -> ParameterNames:
-            indices = [i for i in range(self._num_ogden_parameters)]
-            return tuple(f"O_{i}" for i in indices)
+            parameter_names = []
+            for index, exponent in zip(
+                range(1, self._num_ogden_terms + 1), self._ogden_exponents.tolist()
+            ):
+                parameter_names += [f"O_{index} (exponent: {round(exponent,2)})"]
+            return tuple(parameter_names)
 
         cann_parameter_names = compose_cann_parameter_names()
         ogden_parameter_names = compose_ogden_parameter_names()
@@ -232,9 +240,9 @@ class TreloarCANN:
                 param_4 = parameters[3]
                 param_5 = parameters[4]
 
-                sub_term_1 = param_1 * invariant
-                sub_term_2 = param_2 * (torch.exp(param_3 * invariant) - one)
-                sub_term_3 = param_4 * torch.log(one - param_5 * invariant)
+                sub_term_1 = param_3 * invariant
+                sub_term_2 = param_4 * (torch.exp(param_1 * invariant) - one)
+                sub_term_3 = param_5 * torch.log(one - param_2 * invariant)
                 return sub_term_1 + sub_term_2 - sub_term_3
 
             invariant_identity = corrected_invariant
