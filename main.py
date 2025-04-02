@@ -29,14 +29,18 @@ from bayesianmdisc.gps import (
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import LinkaCANN, ModelProtocol, TreloarCANN
 from bayesianmdisc.normalizingflows import NormalizingFlowConfig, fit_normalizing_flow
-from bayesianmdisc.postprocessing.plot import plot_histograms, plot_stresses_linka
+from bayesianmdisc.postprocessing.plot import (
+    plot_histograms,
+    plot_stresses_linka,
+    plot_stresses_treloar,
+)
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.statistics.utility import (
     MomentsMultivariateNormal,
     determine_moments_of_multivariate_normal_distribution,
 )
 
-data_set = "linka"
+data_set = "treloar"
 
 # Settings
 settings = Settings()
@@ -171,34 +175,34 @@ def determine_prior_and_noise(
     noise_variance = gaussian_process.get_likelihood_noise_variance()
     noise_stddevs = torch.sqrt(noise_variance).detach()
 
-    prior = infer_gp_induced_prior(
-        gp=gaussian_process,
-        model=model,
-        prior_type="Gamma",
-        is_mean_trainable=True,
-        inputs=inputs,
-        test_cases=test_cases,
-        num_func_samples=32,
-        resample=True,
-        num_iters_wasserstein=int(5e3),
-        hiden_layer_size_lipschitz_nn=128,
-        num_iters_lipschitz=5,
-        output_subdirectory=output_subdirectory,
-        project_directory=project_directory,
-        device=device,
-    )
-    prior_samples = prior.sample(num_samples=4096)
-    prior_moments, prior_samples_np = determine_prior_moments(prior_samples)
+    # prior = infer_gp_induced_prior(
+    #     gp=gaussian_process,
+    #     model=model,
+    #     prior_type="Gamma",
+    #     is_mean_trainable=True,
+    #     inputs=inputs,
+    #     test_cases=test_cases,
+    #     num_func_samples=32,
+    #     resample=True,
+    #     num_iters_wasserstein=int(5e3),
+    #     hiden_layer_size_lipschitz_nn=128,
+    #     num_iters_lipschitz=5,
+    #     output_subdirectory=output_subdirectory,
+    #     project_directory=project_directory,
+    #     device=device,
+    # )
+    # prior_samples = prior.sample(num_samples=4096)
+    # prior_moments, prior_samples_np = determine_prior_moments(prior_samples)
 
-    plot_histograms(
-        parameter_names=model.get_parameter_names(),
-        true_parameters=tuple(None for _ in range(num_parameters)),
-        moments=prior_moments,
-        samples=prior_samples_np,
-        algorithm_name="gp_prior",
-        output_subdirectory=output_subdirectory,
-        project_directory=project_directory,
-    )
+    # plot_histograms(
+    #     parameter_names=model.get_parameter_names(),
+    #     true_parameters=tuple(None for _ in range(num_parameters)),
+    #     moments=prior_moments,
+    #     samples=prior_samples_np,
+    #     algorithm_name="gp_prior",
+    #     output_subdirectory=output_subdirectory,
+    #     project_directory=project_directory,
+    # )
 
     prior = create_independent_multivariate_gamma_distributed_prior(
         concentrations=torch.tensor(
@@ -231,7 +235,7 @@ normalizing_flow_config = NormalizingFlowConfig(
     num_samples=64,
     learning_rate=1e-4,
     learning_rate_decay_rate=1.0,
-    num_iterations=20_000,
+    num_iterations=100,  # 20_000,
     output_subdirectory=output_directory,
     project_directory=project_directory,
 )
@@ -260,6 +264,17 @@ plot_histograms(
 
 if data_set == "linka":
     plot_stresses_linka(
+        model=model,
+        parameter_samples=posterior_samples,
+        inputs=inputs.detach().cpu().numpy(),
+        outputs=outputs.detach().cpu().numpy(),
+        test_cases=test_cases.detach().cpu().numpy(),
+        output_subdirectory=output_directory,
+        project_directory=project_directory,
+        device=device,
+    )
+elif data_set == "treloar":
+    plot_stresses_treloar(
         model=model,
         parameter_samples=posterior_samples,
         inputs=inputs.detach().cpu().numpy(),

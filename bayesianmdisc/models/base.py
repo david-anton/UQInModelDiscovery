@@ -64,7 +64,10 @@ def validate_input_numbers(inputs: DeformationInputs, test_cases: TestCases) -> 
 def validate_deformation_input_dimension(
     inputs: DeformationInputs, allowed_dimensions: list[int]
 ) -> None:
-    input_dimension = inputs.shape[1]
+    if inputs.ndim == 1:
+        input_dimension = 1
+    else:
+        input_dimension = inputs.shape[1]
     if not input_dimension in allowed_dimensions:
         raise ModelError(
             f"""The dimension of deformation inputs is {input_dimension} 
