@@ -40,7 +40,7 @@ from bayesianmdisc.statistics.utility import (
     determine_moments_of_multivariate_normal_distribution,
 )
 
-data_set = "linka"
+data_set = "treloar"
 
 # Settings
 settings = Settings()
@@ -230,12 +230,12 @@ likelihood = Likelihood(
 normalizing_flow_config = NormalizingFlowConfig(
     likelihood=likelihood,
     prior=prior,
-    num_flows=32,
+    num_flows=64,
     relative_width_flow_layers=4,
     num_samples=64,
     learning_rate=1e-4,
     learning_rate_decay_rate=1.0,
-    num_iterations=20_000,
+    num_iterations=50_000,
     output_subdirectory=output_directory,
     project_directory=project_directory,
 )
