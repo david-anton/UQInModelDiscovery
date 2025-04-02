@@ -228,13 +228,14 @@ class LinkaCANN:
         num_invariants = self._num_invariants
         num_power_terms = self._num_invariant_power_terms
         num_activation_functions = self._num_activation_functions
+
         num_parameters_first_layer = (
             num_invariants * num_power_terms * (num_activation_functions - 1)
         )
         num_parameters_second_layer = (
             num_invariants * num_power_terms * num_activation_functions
         )
-        return num_parameters_first_layer * num_parameters_second_layer
+        return num_parameters_first_layer + num_parameters_second_layer
 
     def _determine_allowed_test_cases(self) -> AllowedTestCases:
         return torch.tensor([self._test_case_identifier_bt], device=self._device)
