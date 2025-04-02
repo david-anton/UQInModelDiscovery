@@ -29,7 +29,7 @@ from bayesianmdisc.gps import (
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import LinkaCANN, ModelProtocol, TreloarCANN
 from bayesianmdisc.normalizingflows import NormalizingFlowConfig, fit_normalizing_flow
-from bayesianmdisc.postprocessing.plot import plot_histograms, plot_stresses_linka_cann
+from bayesianmdisc.postprocessing.plot import plot_histograms, plot_stresses_linka
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.statistics.utility import (
     MomentsMultivariateNormal,
@@ -259,12 +259,12 @@ plot_histograms(
 )
 
 if data_set == "linka":
-    plot_stresses_linka_cann(
+    plot_stresses_linka(
         model=model,
         parameter_samples=posterior_samples,
-        inputs=inputs.numpy(),
-        outputs=outputs.numpy(),
-        test_cases=test_cases.numpy(),
+        inputs=inputs.detach().cpu().numpy(),
+        outputs=outputs.detach().cpu().numpy(),
+        test_cases=test_cases.detach().cpu().numpy(),
         output_subdirectory=output_directory,
         project_directory=project_directory,
         device=device,
