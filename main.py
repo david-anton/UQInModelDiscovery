@@ -27,7 +27,7 @@ from bayesianmdisc.gps import (
     optimize_gp_hyperparameters,
 )
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.models import OrthotropicCANN, ModelProtocol, IsotropicModelLibrary
+from bayesianmdisc.models import IsotropicModelLibrary, ModelProtocol, OrthotropicCANN
 from bayesianmdisc.normalizingflows import NormalizingFlowConfig, fit_normalizing_flow
 from bayesianmdisc.postprocessing.plot import (
     plot_histograms,
