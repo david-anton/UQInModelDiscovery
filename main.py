@@ -73,9 +73,9 @@ elif data_set == "treloar":
 num_parameters = model.num_parameters
 
 
-def determine_prior_and_noise(
+def determine_prior(
     inputs: DeformationInputs, test_cases: TestCases, outputs: StressOutputs
-) -> tuple[PriorProtocol, Tensor]:
+) -> PriorProtocol:
 
     def validate_number_of_samples(
         inputs: DeformationInputs, test_cases: TestCases, outputs: StressOutputs
@@ -151,32 +151,29 @@ def determine_prior_and_noise(
     validate_number_of_samples(inputs, test_cases, outputs)
     output_subdirectory = os.path.join(output_directory, "prior")
 
-    min_inputs = torch.amin(inputs, dim=0)
-    max_inputs = torch.amax(inputs, dim=0)
-    input_dim = inputs.size()[1]
-    output_dim = outputs.size()[1]
-    initial_noise_stddev = 1e-3
-
-    gaussian_process = create_gaussian_process()
-
-    optimize_gp_hyperparameters(
-        gaussian_process=gaussian_process,
-        inputs=inputs,
-        outputs=outputs,
-        initial_noise_standard_deviations=torch.tensor(
-            [initial_noise_stddev for _ in range(output_dim)], device=device
-        ),
-        num_iterations=int(2e4),
-        learning_rate=1e-3,
-        output_subdirectory=output_subdirectory,
-        project_directory=project_directory,
-        device=device,
-    )
-
-    noise_variance = gaussian_process.get_likelihood_noise_variance()
-    noise_stddevs = torch.sqrt(noise_variance).detach()
-
     if use_gp_prior:
+        min_inputs = torch.amin(inputs, dim=0)
+        max_inputs = torch.amax(inputs, dim=0)
+        input_dim = inputs.size()[1]
+        output_dim = outputs.size()[1]
+        initial_noise_stddev = 1e-3
+
+        gaussian_process = create_gaussian_process()
+
+        optimize_gp_hyperparameters(
+            gaussian_process=gaussian_process,
+            inputs=inputs,
+            outputs=outputs,
+            initial_noise_standard_deviations=torch.tensor(
+                [initial_noise_stddev for _ in range(output_dim)], device=device
+            ),
+            num_iterations=int(2e4),
+            learning_rate=1e-3,
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+            device=device,
+        )
+
         prior = infer_gp_induced_prior(
             gp=gaussian_process,
             model=model,
@@ -193,6 +190,7 @@ def determine_prior_and_noise(
             project_directory=project_directory,
             device=device,
         )
+
         prior_samples = prior.sample(num_samples=4096)
         prior_moments, prior_samples_np = determine_prior_moments(prior_samples)
 
@@ -205,8 +203,10 @@ def determine_prior_and_noise(
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
         )
+
+        return prior
     else:
-        prior = create_independent_multivariate_gamma_distributed_prior(
+        return create_independent_multivariate_gamma_distributed_prior(
             concentrations=torch.tensor(
                 [0.1 for _ in range(num_parameters)], device=device
             ),
@@ -214,15 +214,16 @@ def determine_prior_and_noise(
             device=device,
         )
 
-    return prior, noise_stddevs
 
+prior = determine_prior(inputs, test_cases, outputs)
 
-prior, noise_stddevs = determine_prior_and_noise(inputs, test_cases, outputs)
-
+relative_noise_stddevs = 1e-2
+min_noise_stddev = 1e-4
 
 likelihood = Likelihood(
     model=model,
-    noise_stddev=noise_stddevs,
+    relative_noise_stddev=relative_noise_stddevs,
+    min_noise_stddev=min_noise_stddev,
     inputs=inputs,
     test_cases=test_cases,
     outputs=outputs,
@@ -232,12 +233,12 @@ likelihood = Likelihood(
 normalizing_flow_config = NormalizingFlowConfig(
     likelihood=likelihood,
     prior=prior,
-    num_flows=64,
+    num_flows=32,
     relative_width_flow_layers=4,
     num_samples=64,
     learning_rate=1e-4,
     learning_rate_decay_rate=1.0,
-    num_iterations=50_000,
+    num_iterations=20_000,
     output_subdirectory=output_directory,
     project_directory=project_directory,
 )

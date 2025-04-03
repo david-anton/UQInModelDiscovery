@@ -54,31 +54,20 @@ class ErrorDistributionCreator:
         self._device = device
 
     def create(
-        self, noise_stddevs: Tensor, num_outputs: int
+        self, noise_stddevs: Tensor
     ) -> IndependentMultivariateNormalDistribution:
-        means = self._assemble_means(noise_stddevs, num_outputs)
-        stddevs = self._assemble_standard_deviations(noise_stddevs, num_outputs)
+        dim = self._determine_dimension(noise_stddevs)
+        means = self._assemble_means(dim)
+        stddevs = noise_stddevs.to(self._device)
         return create_independent_multivariate_normal_distribution(
             means, stddevs, self._device
         )
 
-    def _assemble_means(self, noise_stddevs: Tensor, num_outputs: int) -> Tensor:
-        dim = self._calculate_dimension(noise_stddevs, num_outputs)
+    def _assemble_means(self, dim: int) -> Tensor:
         return torch.zeros((dim,), device=self._device)
 
-    def _assemble_standard_deviations(
-        self, noise_stddevs: Tensor, num_outputs: int
-    ) -> Tensor:
-        dim = self._calculate_dimension(noise_stddevs, num_outputs)
-        repeatet_stddevs = repeat_tensor(noise_stddevs, torch.Size([num_outputs, 1]))
-        flattened_stddevs = flatten_tensor(repeatet_stddevs)
-        return flattened_stddevs * torch.ones((dim,), device=self._device)
-
-    def _calculate_dimension(
-        self, single_output_noise: Tensor, num_outputs: int
-    ) -> int:
-        output_dim = len(single_output_noise)
-        return num_outputs * output_dim
+    def _determine_dimension(self, noise_stddevs: Tensor) -> int:
+        return len(noise_stddevs)
 
 
 @dataclass
@@ -91,14 +80,16 @@ class Likelihood:
     def __init__(
         self,
         model: ModelProtocol,
-        noise_stddev: Tensor,
+        relative_noise_stddev: float,
+        min_noise_stddev: float,
         inputs: Tensor,
         test_cases: Tensor,
         outputs: Tensor,
         device: Device,
     ) -> None:
         self._validate_data(inputs, outputs)
-        self.noise_stddev = noise_stddev
+        self.relative_noise_stddev = relative_noise_stddev
+        self._min_noise_stddev = min_noise_stddev
         self._model = model
         self._inputs = inputs
         self._test_cases = test_cases
@@ -108,8 +99,9 @@ class Likelihood:
         self._device = device
         self._error_calculator = ErrorCalculator()
         self._error_distribution_creator = ErrorDistributionCreator(self._device)
+        self._noise_stddev = self._assemble_noise_standard_deviations()
         self._error_distribution = self._error_distribution_creator.create(
-            self.noise_stddev, self._num_outputs
+            self._noise_stddev
         )
 
     def prob(self, parameters: Tensor) -> Prob:
@@ -148,6 +140,13 @@ class Likelihood:
                 f"""The number of inputs and outputs is expected to be the same, 
                                   but is {num_inputs} and {num_outputs}."""
             )
+
+    def _assemble_noise_standard_deviations(self) -> Tensor:
+        min_noise_stddev = torch.tensor(self._min_noise_stddev, device=self._device)
+        noise_stddevs = self.relative_noise_stddev * self._flattened_true_outputs
+        return torch.where(
+            noise_stddevs < min_noise_stddev, min_noise_stddev, noise_stddevs
+        )
 
     def _prob(self, parameters: Tensor) -> Prob:
         return torch.exp(self._log_prob(parameters))
