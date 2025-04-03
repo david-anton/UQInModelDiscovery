@@ -28,7 +28,7 @@ from bayesianmdisc.models.base import (
     PiolaStresses,
     SplittedParameters,
     StrainEnergy,
-    StrainEnergyGradient,
+    StrainEnergyDerivatives,
     Stretch,
     Stretches,
     validate_deformation_input_dimension,
@@ -572,14 +572,17 @@ class IsotropicModelLibrary:
         self, stretches: Stretches, parameters: Parameters
     ) -> PiolaStress:
         deformation_gradient = self._assemble_deformation_gradient(stretches)
-        strain_energy_gradient = grad(self._calculate_strain_energy, argnums=0)(
+        strain_energy_derivatives = grad(self._calculate_strain_energy, argnums=0)(
             deformation_gradient, parameters
         )
-        dPsi_dF11 = strain_energy_gradient[0, 0]
+
         incompressibility_constraint = self._calculate_incompressibility_constraint(
-            deformation_gradient, strain_energy_gradient
+            deformation_gradient, strain_energy_derivatives
         )
-        return dPsi_dF11 + incompressibility_constraint
+        first_piola_stress_tensor = (
+            strain_energy_derivatives + incompressibility_constraint
+        )
+        return first_piola_stress_tensor[0, 0]
 
     def _calculate_strain_energy(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
@@ -681,13 +684,12 @@ class IsotropicModelLibrary:
     def _calculate_incompressibility_constraint(
         self,
         deformation_gradient: DeformationGradient,
-        strain_energy_gradients: StrainEnergyGradient,
+        strain_energy_derivatives: StrainEnergyDerivatives,
     ) -> IncompressibilityConstraint:
-        one = torch.tensor(1.0, device=self._device)
         F_33 = deformation_gradient[2, 2]
-        dPsi_dF33 = strain_energy_gradients[2, 2]
-        pressure = F_33 * dPsi_dF33
-        return -pressure * (one / F_33)
+        dW_dF33 = strain_energy_derivatives[2, 2]
+        pressure = dW_dF33 * F_33
+        return -pressure * deformation_gradient.inverse().transpose(0, 1)
 
     def _assemble_deformation_gradient(
         self, stretches: Stretches
