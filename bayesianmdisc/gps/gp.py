@@ -9,8 +9,10 @@ from bayesianmdisc.gps.base import (
     GPMultivariateNormal,
     NamedParameters,
     TrainingDataTuple,
+    GPLikelihoodsTuple,
     validate_likelihood_noise_variance,
     validate_training_data,
+    validate_likelihoods,
 )
 from bayesianmdisc.gps.kernels import Kernel, ScaledMaternKernel, ScaledRBFKernel
 from bayesianmdisc.gps.means import ZeroMean
@@ -96,13 +98,9 @@ class GP(gpytorch.models.ExactGP):
     def get_likelihood_noise_variance(self) -> Tensor:
         return self.likelihood.noise_covar.noise
 
-    # @override
-    def get_fantasy_model(
-        self, inputs: TrainingDataTuple, targets: TrainingDataTuple, **kwargs
-    ):
-        validate_training_data(inputs, targets, self.num_gps)
-        _inputs, _targets = self._preprocess_training_data(inputs, targets)
-        return super().get_fantasy_model(_inputs, _targets, **kwargs)
+    def set_likelihood(self, likelihood: GPLikelihoodsTuple) -> None:
+        validate_likelihoods(likelihood, self.num_gps)
+        self.likelihood = likelihood[0].to(self._device)
 
     def _preprocess_training_data(
         self, train_x: TrainingDataTuple, train_y: TrainingDataTuple

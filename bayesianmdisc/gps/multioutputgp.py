@@ -7,13 +7,14 @@ import torch
 from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.errors import GPError
 from bayesianmdisc.gps.base import (
-    GaussianLikelihoodList,
     GPMultivariateNormal,
     GPMultivariateNormalList,
+    GPLikelihoodsTuple,
     NamedParameters,
     TrainingDataTuple,
     validate_likelihood_noise_variance,
     validate_training_data,
+    validate_likelihoods,
 )
 from bayesianmdisc.gps.gp import GP
 from bayesianmdisc.gps.utility import validate_parameters_size
@@ -21,6 +22,8 @@ from bayesianmdisc.gps.utility import validate_parameters_size
 GPTuple: TypeAlias = tuple[GP, ...]
 GPList: TypeAlias = list[GP]
 GPMultivariateNormalTuple: TypeAlias = tuple[GPMultivariateNormal]
+GPIndependentGPList: TypeAlias = gpytorch.models.IndependentModelList
+GPLikelihoodList: TypeAlias = gpytorch.likelihoods.LikelihoodList
 
 
 class IndependentMultiOutputGP(gpytorch.models.GP):
@@ -31,10 +34,8 @@ class IndependentMultiOutputGP(gpytorch.models.GP):
     ) -> None:
         super().__init__()
         self._device = device
-        self.gps = gpytorch.models.IndependentModelList(*self._prepare_gp_list(gps))
-        self.likelihood = gpytorch.likelihoods.LikelihoodList(
-            *self._prepare_likelihood_list(gps)
-        )
+        self.gps = self._prepare_gp_list(gps)
+        self.likelihood = self._prepare_likelihood_list_from_gps(gps)
         self.num_gps = len(gps)
         self.num_hyperparameters = self._determine_number_of_hyperparameters(gps)
 
@@ -139,27 +140,32 @@ class IndependentMultiOutputGP(gpytorch.models.GP):
         noise_variances = [
             likelihood.noise_covar.noise for likelihood in self.likelihood.likelihoods
         ]
-        return torch.concat(noise_variances, dim=0)
+        noise_variances = [
+            noise_variance.reshape((-1, 1)) for noise_variance in noise_variances
+        ]
+        return torch.concat(noise_variances, dim=1)
 
-    # @override
-    def get_fantasy_model(
-        self, inputs: TrainingDataTuple, targets: TrainingDataTuple, **kwargs
-    ) -> gpytorch.models.GP:
-        validate_training_data(inputs, targets, self.num_gps)
-        fantasy_gps = tuple(
-            [
-                gp.get_fantasy_model((inputs[i],), (targets[i],), **kwargs)
-                for i, gp in enumerate(self.gps.models)
-            ]
+    def set_likelihood(self, likelihood: GPLikelihoodsTuple) -> None:
+        validate_likelihoods(likelihood, self.num_gps)
+        likelihood_list = self._prepare_likelihood_list(likelihood)
+        self.likelihood = likelihood_list
+
+    def _prepare_likelihood_list(
+        self, likelihoods: GPLikelihoodsTuple
+    ) -> GPLikelihoodList:
+        return gpytorch.likelihoods.LikelihoodList(
+            *[likelihood.to(self._device) for likelihood in likelihoods]
         )
 
-        return IndependentMultiOutputGP(fantasy_gps, self._device)
+    def _prepare_gp_list(self, gps: GPTuple) -> GPIndependentGPList:
+        return gpytorch.models.IndependentModelList(
+            *[gp.to(self._device) for gp in gps]
+        )
 
-    def _prepare_gp_list(self, gps: GPTuple) -> GPList:
-        return [gp.to(self._device) for gp in gps]
-
-    def _prepare_likelihood_list(self, gps: GPTuple) -> GaussianLikelihoodList:
-        return [gp.likelihood.to(self._device) for gp in gps]
+    def _prepare_likelihood_list_from_gps(self, gps: GPTuple) -> GPLikelihoodList:
+        return gpytorch.likelihoods.LikelihoodList(
+            *[gp.likelihood.to(self._device) for gp in gps]
+        )
 
     def _determine_number_of_hyperparameters(self, gps: GPTuple) -> int:
         return sum([gp.num_hyperparameters for gp in gps])

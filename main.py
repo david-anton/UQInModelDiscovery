@@ -41,7 +41,7 @@ from bayesianmdisc.statistics.utility import (
 )
 
 data_set = "linka"
-use_gp_prior = False
+use_gp_prior = True
 
 # Settings
 settings = Settings()
@@ -71,6 +71,10 @@ if data_set == "linka":
 elif data_set == "treloar":
     model = IsotropicModelLibrary(device)
 num_parameters = model.num_parameters
+
+
+relative_noise_stddevs = 1e-2
+min_noise_stddev = 1e-3
 
 
 def determine_prior(
@@ -156,17 +160,21 @@ def determine_prior(
         max_inputs = torch.amax(inputs, dim=0)
         input_dim = inputs.size()[1]
         output_dim = outputs.size()[1]
-        initial_noise_stddev = 1e-3
 
         gaussian_process = create_gaussian_process()
+
+        heteroscedastic_noise_stddevs = relative_noise_stddevs * outputs
+        heteroscedastic_noise_stddevs = torch.where(
+            heteroscedastic_noise_stddevs < min_noise_stddev,
+            min_noise_stddev,
+            heteroscedastic_noise_stddevs,
+        )
 
         optimize_gp_hyperparameters(
             gaussian_process=gaussian_process,
             inputs=inputs,
             outputs=outputs,
-            initial_noise_standard_deviations=torch.tensor(
-                [initial_noise_stddev for _ in range(output_dim)], device=device
-            ),
+            initial_noise_stddevs=heteroscedastic_noise_stddevs,
             num_iterations=int(2e4),
             learning_rate=1e-3,
             output_subdirectory=output_subdirectory,
@@ -216,9 +224,6 @@ def determine_prior(
 
 
 prior = determine_prior(inputs, test_cases, outputs)
-
-relative_noise_stddevs = 1e-2
-min_noise_stddev = 1e-4
 
 likelihood = Likelihood(
     model=model,

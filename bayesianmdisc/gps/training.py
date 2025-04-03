@@ -23,24 +23,43 @@ def optimize_gp_hyperparameters(
     gaussian_process: GaussianProcess,
     inputs: Tensor,
     outputs: Tensor,
-    initial_noise_standard_deviations: Tensor,
+    initial_noise_stddevs: Tensor,
     num_iterations: int,
     learning_rate: float,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
     device: Device,
 ) -> None:
+    is_noise_standard_deviation_trainable = False
+    num_inputs = len(inputs)
+    num_noises = len(initial_noise_stddevs)
+    is_noise_heteroscedastic = num_inputs == num_noises
+
+    if is_noise_heteroscedastic:
+        print("Use heteroscedastic noise for hyperparameter optimization")
+
+        _validate_heteroscedastic_noise_standard_deviations(
+            initial_noise_stddevs, gaussian_process
+        )
+        _set_heteroscedastic_noise_dtandard_deviations(
+            initial_noise_stddevs,
+            gaussian_process,
+            is_noise_standard_deviation_trainable,
+            device,
+        )
+
+    else:
+        _set_noise_standard_deviation(
+            initial_noise_stddevs,
+            gaussian_process,
+            is_noise_standard_deviation_trainable,
+        )
+
     print("Start optimization of gaussian process hyperparameters ...")
     inputs, outputs = _preprocess_training_data(inputs, outputs, device)
-    is_noise_standard_deviation_trainable = True
 
     gaussian_process.eval()
 
-    _set_noise_standard_deviation(
-        initial_noise_standard_deviations,
-        gaussian_process,
-        is_noise_standard_deviation_trainable,
-    )
     _set_training_data(gaussian_process, inputs, outputs)
     gaussian_process.train()
     gaussian_process.likelihood.train()
@@ -142,6 +161,37 @@ def _set_noise_standard_deviation(
 ) -> None:
     noise_variances = _calculate_variance_from_std(noise_standard_deviations)
     gaussian_process.set_likelihood_noise_variance(noise_variances, is_noise_trainable)
+
+
+def _validate_heteroscedastic_noise_standard_deviations(
+    initial_noise_stddevs: Tensor, gaussian_process: GaussianProcess
+) -> None:
+    noise_dims = initial_noise_stddevs.shape[1]
+    output_dims = gaussian_process.num_gps
+    if not noise_dims == output_dims:
+        raise GPError(
+            f"""It is expected that the second dimension of the heteroscedastic 
+                noise tensor corresponds to the output dimension of the GP, 
+                but is {noise_dims} and {output_dims}."""
+        )
+
+
+def _set_heteroscedastic_noise_dtandard_deviations(
+    noise_standard_deviations: Tensor,
+    gaussian_process: GaussianProcess,
+    is_noise_trainable: bool,
+    device: Device,
+) -> None:
+    output_dims = noise_standard_deviations.shape[1]
+    noise_variance = _calculate_variance_from_std(noise_standard_deviations)
+    likelihood_list = tuple(
+        gpytorch.likelihoods.FixedNoiseGaussianLikelihood(
+            noise_variance[:, output_dim],
+            learn_additional_noise=is_noise_trainable,
+        ).to(device)
+        for output_dim in range(output_dims)
+    )
+    gaussian_process.set_likelihood(likelihood_list)
 
 
 def _calculate_variance_from_std(std: Tensor) -> Tensor:

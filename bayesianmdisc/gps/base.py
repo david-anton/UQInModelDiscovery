@@ -3,14 +3,13 @@ from typing import Optional, TypeAlias
 import gpytorch
 import torch
 
-from bayesianmdisc.customtypes import Tensor
+from bayesianmdisc.customtypes import Tensor, GPLikelihood
 from bayesianmdisc.errors import GPError
 
 GPMultivariateNormal: TypeAlias = gpytorch.distributions.MultivariateNormal
 GPMultivariateNormalList: TypeAlias = list[GPMultivariateNormal]
+GPLikelihoodsTuple: TypeAlias = tuple[GPLikelihood]
 NamedParameters: TypeAlias = dict[str, Tensor]
-GaussianLikelihood: TypeAlias = gpytorch.likelihoods.GaussianLikelihood
-GaussianLikelihoodList: TypeAlias = list[GaussianLikelihood]
 TrainingDataTuple: TypeAlias = tuple[Optional[Tensor], ...]
 MarginalLogLikelihood: TypeAlias = gpytorch.mlls.MarginalLogLikelihood
 
@@ -45,4 +44,13 @@ def validate_likelihood_noise_variance(
         raise GPError(
             """Noise standard deviation tensor is expected 
             to have one entry for each GP output."""
+        )
+
+
+def validate_likelihoods(likelihoods: GPLikelihoodsTuple, num_gps: int) -> None:
+    num_likelihoods = len(likelihoods)
+    if not num_likelihoods == num_gps:
+        raise GPError(
+            f"""The number of likelihoods is expected to be the same as 
+                      the number of GPs, but is {num_likelihoods} and {num_gps}."""
         )

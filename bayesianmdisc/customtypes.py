@@ -22,6 +22,7 @@ TorchLRScheduler: TypeAlias = torch.optim.lr_scheduler.LRScheduler
 GPModel: TypeAlias = gpytorch.models.ExactGP
 GPMean: TypeAlias = gpytorch.means.Mean
 GPKernel: TypeAlias = gpytorch.kernels.Kernel
+GPLikelihood: TypeAlias = gpytorch.likelihoods.Likelihood
 
 # normflows
 NFFlow: TypeAlias = nf.flows.Flow
