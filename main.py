@@ -40,8 +40,8 @@ from bayesianmdisc.statistics.utility import (
     determine_moments_of_multivariate_normal_distribution,
 )
 
-data_set = "linka"
-use_gp_prior = True
+data_set = "treloar"
+use_gp_prior = False
 
 # Settings
 settings = Settings()
@@ -71,7 +71,6 @@ if data_set == "linka":
 elif data_set == "treloar":
     model = IsotropicModelLibrary(device)
 num_parameters = model.num_parameters
-
 
 relative_noise_stddevs = 1e-2
 min_noise_stddev = 1e-3
@@ -241,9 +240,9 @@ normalizing_flow_config = NormalizingFlowConfig(
     num_flows=32,
     relative_width_flow_layers=4,
     num_samples=64,
-    learning_rate=1e-4,
+    learning_rate=5e-4,
     learning_rate_decay_rate=1.0,
-    num_iterations=20_000,
+    num_iterations=10_000,
     output_subdirectory=output_directory,
     project_directory=project_directory,
 )
