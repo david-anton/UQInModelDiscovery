@@ -13,8 +13,8 @@ from bayesianmdisc.models.base import (
     ParameterNames,
     Parameters,
     SplittedParameters,
-    StrainEnergyGradient,
-    StrainEnergyGradients,
+    StrainEnergyDerivative,
+    StrainEnergyDerivativesTuple,
     Stretch,
     Stretches,
     validate_deformation_input_dimension,
@@ -263,9 +263,9 @@ class OrthotropicCANN:
     ) -> CauchyStresses:
 
         def calculate_fiber_stress(
-            dPsi_dI_1: StrainEnergyGradient,
-            dPsi_dI_2: StrainEnergyGradient,
-            dPsi_dI_4f: StrainEnergyGradient,
+            dPsi_dI_1: StrainEnergyDerivative,
+            dPsi_dI_2: StrainEnergyDerivative,
+            dPsi_dI_4f: StrainEnergyDerivative,
             stretches: Stretches,
         ) -> CauchyStress:
             stretch_fiber, stretch_normal = self._split_stretches(stretches)
@@ -284,9 +284,9 @@ class OrthotropicCANN:
             )
 
         def calculate_normal_stress(
-            dPsi_dI_1: StrainEnergyGradient,
-            dPsi_dI_2: StrainEnergyGradient,
-            dPsi_dI_4n: StrainEnergyGradient,
+            dPsi_dI_1: StrainEnergyDerivative,
+            dPsi_dI_2: StrainEnergyDerivative,
+            dPsi_dI_4n: StrainEnergyDerivative,
             stretches: Stretches,
         ) -> CauchyStress:
             stretch_fiber, stretch_normal = self._split_stretches(stretches)
@@ -321,11 +321,11 @@ class OrthotropicCANN:
 
     def _calculate_strain_energy_derivatives(
         self, stretches: Stretches, parameters: Parameters
-    ) -> StrainEnergyGradients:
+    ) -> StrainEnergyDerivativesTuple:
 
         def calculate_strain_energy_derivative(
             corrected_invariant: Invariant, parameters: Parameters
-        ) -> StrainEnergyGradient:
+        ) -> StrainEnergyDerivative:
             two = torch.tensor(2.0, device=self._device)
             param_1 = parameters[0]
             param_2 = parameters[1]
