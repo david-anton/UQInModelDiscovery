@@ -6,13 +6,13 @@ import torch
 from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.errors import GPError
 from bayesianmdisc.gps.base import (
+    GPLikelihoodsTuple,
     GPMultivariateNormal,
     NamedParameters,
     TrainingDataTuple,
-    GPLikelihoodsTuple,
     validate_likelihood_noise_variance,
-    validate_training_data,
     validate_likelihoods,
+    validate_training_data,
 )
 from bayesianmdisc.gps.kernels import Kernel, ScaledMaternKernel, ScaledRBFKernel
 from bayesianmdisc.gps.means import ZeroMean

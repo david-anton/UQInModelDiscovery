@@ -3,7 +3,7 @@ from typing import Optional, TypeAlias
 import gpytorch
 import torch
 
-from bayesianmdisc.customtypes import Tensor, GPLikelihood
+from bayesianmdisc.customtypes import GPLikelihood, Tensor
 from bayesianmdisc.errors import GPError
 
 GPMultivariateNormal: TypeAlias = gpytorch.distributions.MultivariateNormal

@@ -7,14 +7,14 @@ import torch
 from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.errors import GPError
 from bayesianmdisc.gps.base import (
+    GPLikelihoodsTuple,
     GPMultivariateNormal,
     GPMultivariateNormalList,
-    GPLikelihoodsTuple,
     NamedParameters,
     TrainingDataTuple,
     validate_likelihood_noise_variance,
-    validate_training_data,
     validate_likelihoods,
+    validate_training_data,
 )
 from bayesianmdisc.gps.gp import GP
 from bayesianmdisc.gps.utility import validate_parameters_size
