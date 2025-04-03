@@ -1,5 +1,5 @@
 from .base import ModelProtocol
-from .linkacann import LinkaCANN
-from .treloarcann import TreloarCANN
+from .orthotropiccann import OrthotropicCANN
+from .isotropicmodellibrary import IsotropicModelLibrary
 
-__all__ = ["ModelProtocol", "LinkaCANN", "TreloarCANN"]
+__all__ = ["ModelProtocol", "OrthotropicCANN", "IsotropicModelLibrary"]

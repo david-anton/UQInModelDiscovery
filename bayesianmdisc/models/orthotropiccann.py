@@ -170,7 +170,7 @@ from bayesianmdisc.models.base import (
 #     return deformation_gradient.reshape((3, 3))
 
 
-class LinkaCANN:
+class OrthotropicCANN:
 
     def __init__(self, device: Device):
         self._device = device

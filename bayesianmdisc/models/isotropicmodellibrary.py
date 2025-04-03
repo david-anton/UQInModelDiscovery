@@ -378,7 +378,7 @@ StretchesTuple: TypeAlias = tuple[Stretch, Stretch, Stretch]
 #         return torch.unsqueeze(tensor, dim=0)
 
 
-class TreloarCANN:
+class IsotropicModelLibrary:
 
     def __init__(self, device: Device):
         self._device = device

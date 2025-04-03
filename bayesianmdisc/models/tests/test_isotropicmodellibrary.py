@@ -1,6 +1,6 @@
 import torch
 
-from bayesianmdisc.models.treloarcann import TreloarCANN
+from bayesianmdisc.models.isotropicmodellibrary import IsotropicModelLibrary
 
 device = torch.device("cpu")
 
@@ -46,7 +46,7 @@ def get_expected_parameter_names() -> tuple[str, ...]:
 
 
 def test_get_parameter_names() -> None:
-    sut = TreloarCANN(device)
+    sut = IsotropicModelLibrary(device)
 
     actual = sut.get_parameter_names()
 

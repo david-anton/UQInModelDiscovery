@@ -1,6 +1,6 @@
 import torch
 
-from bayesianmdisc.models.linkacann import LinkaCANN
+from bayesianmdisc.models.orthotropiccann import OrthotropicCANN
 
 device = torch.device("cpu")
 
@@ -35,7 +35,7 @@ def get_expected_parameter_names() -> tuple[str, ...]:
 
 
 def test_get_parameter_names() -> None:
-    sut = LinkaCANN(device)
+    sut = OrthotropicCANN(device)
 
     actual = sut.get_parameter_names()
 

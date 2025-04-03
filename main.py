@@ -27,7 +27,7 @@ from bayesianmdisc.gps import (
     optimize_gp_hyperparameters,
 )
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.models import LinkaCANN, ModelProtocol, TreloarCANN
+from bayesianmdisc.models import OrthotropicCANN, ModelProtocol, IsotropicModelLibrary
 from bayesianmdisc.normalizingflows import NormalizingFlowConfig, fit_normalizing_flow
 from bayesianmdisc.postprocessing.plot import (
     plot_histograms,
@@ -67,9 +67,9 @@ inputs, test_cases, outputs = data_reader.read()
 
 
 if data_set == "linka":
-    model: ModelProtocol = LinkaCANN(device)
+    model: ModelProtocol = OrthotropicCANN(device)
 elif data_set == "treloar":
-    model = TreloarCANN(device)
+    model = IsotropicModelLibrary(device)
 num_parameters = model.num_parameters
 
 

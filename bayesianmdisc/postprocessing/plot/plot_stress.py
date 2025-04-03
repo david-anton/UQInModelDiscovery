@@ -12,7 +12,7 @@ from bayesianmdisc.data.testcases import (
     test_case_identifier_pure_shear,
 )
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.models import LinkaCANN, TreloarCANN, ModelProtocol
+from bayesianmdisc.models import OrthotropicCANN, IsotropicModelLibrary, ModelProtocol
 from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
     root_mean_squared_error,
@@ -66,7 +66,7 @@ class StressPlotterConfigLinka:
 
 
 def plot_stresses_linka(
-    model: LinkaCANN,
+    model: OrthotropicCANN,
     parameter_samples: NPArray,
     inputs: NPArray,
     outputs: NPArray,
@@ -96,7 +96,7 @@ def plot_stresses_linka(
         return input_sets, output_sets, test_cases_sets
 
     def calculate_coefficient_of_determinant(
-        model: LinkaCANN,
+        model: OrthotropicCANN,
         parameter_samples: NPArray,
         inputs: NPArray,
         test_cases: NPArray,
@@ -108,7 +108,7 @@ def plot_stresses_linka(
         return coefficient_of_determination(mean_model_outputs, outputs)
 
     def calculate_root_mean_squared_error(
-        model: LinkaCANN,
+        model: OrthotropicCANN,
         parameter_samples: NPArray,
         inputs: NPArray,
         test_cases: NPArray,
@@ -332,7 +332,7 @@ class StressPlotterConfigTreloar:
 
 
 def plot_stresses_treloar(
-    model: TreloarCANN,
+    model: IsotropicModelLibrary,
     parameter_samples: NPArray,
     inputs: NPArray,
     outputs: NPArray,
