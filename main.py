@@ -240,9 +240,9 @@ normalizing_flow_config = NormalizingFlowConfig(
     num_flows=32,
     relative_width_flow_layers=4,
     num_samples=64,
-    learning_rate=5e-4,
-    learning_rate_decay_rate=1.0,
-    num_iterations=10_000,
+    initial_learning_rate=5e-4,
+    final_learning_rate=1e-4,
+    num_iterations=20_000,
     output_subdirectory=output_directory,
     project_directory=project_directory,
 )
@@ -264,7 +264,7 @@ plot_histograms(
     true_parameters=tuple(None for _ in range(num_parameters)),
     moments=posterior_moments,
     samples=posterior_samples,
-    algorithm_name="normalizing_flow",
+    algorithm_name="nf",
     output_subdirectory=output_subdirectory_posterior,
     project_directory=project_directory,
 )

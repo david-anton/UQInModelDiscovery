@@ -252,13 +252,14 @@ class IsotropicModelLibrary:
         self, deformation_gradient: DeformationGradient, parameters: Parameters
     ) -> StrainEnergy:
         ogden_parameters, mr_parameters = self._split_parameters(parameters)
-        ogden_strain_energy_terms = self._calculate_ogden_strain_energy_terms(
-            deformation_gradient, ogden_parameters
-        )
+        # ogden_strain_energy_terms = self._calculate_ogden_strain_energy_terms(
+        #     deformation_gradient, ogden_parameters
+        # )
         mr_strain_energy_terms = self._calculate_mr_strain_energy_terms(
             deformation_gradient, mr_parameters
         )
-        return ogden_strain_energy_terms + mr_strain_energy_terms
+        # return ogden_strain_energy_terms + mr_strain_energy_terms
+        return mr_strain_energy_terms
 
     def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
         ogden_parameters = parameters[: self._num_ogden_parameters]
