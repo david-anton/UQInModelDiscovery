@@ -2,7 +2,7 @@ from typing import Protocol, TypeAlias
 
 import torch
 
-from bayesianmdisc.customtypes import Tensor
+from bayesianmdisc.customtypes import Tensor, Device
 from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
 from bayesianmdisc.data.testcases import AllowedTestCases
 from bayesianmdisc.errors import ModelError
@@ -25,11 +25,14 @@ Parameters: TypeAlias = Tensor
 SplittedParameters: TypeAlias = tuple[Parameters, ...]
 ParameterNames: TypeAlias = tuple[str, ...]
 TrueParameters: TypeAlias = tuple[float, ...]
+ParameterMask: TypeAlias = Tensor
+ParameterIndices: TypeAlias = list[int]
 
 
 class ModelProtocol(Protocol):
     output_dim: int
     num_parameters: int
+    parameter_mask: ParameterMask
 
     def __call__(
         self,
@@ -50,6 +53,8 @@ class ModelProtocol(Protocol):
         pass
 
     def get_parameter_names(self) -> ParameterNames: ...
+
+    def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None: ...
 
 
 def validate_input_numbers(inputs: DeformationInputs, test_cases: TestCases) -> None:
@@ -91,3 +96,7 @@ def validate_parameters(parameters: Parameters, expected_num_parameters: int) ->
             f"""The size of parameters is expected to be {expected_size}, 
             but is {parameter_size}"""
         )
+
+
+def assemble_parameter_mask(num_parameters: int, device: Device) -> ParameterMask:
+    return torch.ones((num_parameters,), device=device)

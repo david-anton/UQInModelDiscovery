@@ -7,6 +7,7 @@ from bayesianmdisc.bayes.likelihood import Likelihood
 from bayesianmdisc.bayes.prior import (
     PriorProtocol,
     create_independent_multivariate_gamma_distributed_prior,
+    create_independent_multivariate_inverse_gamma_distributed_prior,
 )
 from bayesianmdisc.customtypes import NPArray, Tensor
 from bayesianmdisc.data import (
@@ -213,11 +214,20 @@ def determine_prior(
 
         return prior
     else:
-        return create_independent_multivariate_gamma_distributed_prior(
+        # return create_independent_multivariate_gamma_distributed_prior(
+        #     concentrations=torch.tensor(
+        #         [0.1 for _ in range(num_parameters)], device=device
+        #     ),
+        #     rates=torch.tensor([2.0 for _ in range(num_parameters)], device=device),
+        #     device=device,
+        # )
+        return create_independent_multivariate_inverse_gamma_distributed_prior(
             concentrations=torch.tensor(
-                [0.1 for _ in range(num_parameters)], device=device
+                [99.0 for _ in range(num_parameters)], device=device
             ),
-            rates=torch.tensor([2.0 for _ in range(num_parameters)], device=device),
+            rates=torch.tensor(
+                [1 / 10000.0 for _ in range(num_parameters)], device=device
+            ),
             device=device,
         )
 
@@ -243,6 +253,7 @@ normalizing_flow_config = NormalizingFlowConfig(
     initial_learning_rate=5e-4,
     final_learning_rate=1e-4,
     num_iterations=100_000,
+    deactivate_parameters=True,
     output_subdirectory=output_directory,
     project_directory=project_directory,
 )

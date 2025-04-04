@@ -29,10 +29,12 @@ from bayesianmdisc.models.base import (
     StrainEnergyDerivatives,
     Stretch,
     Stretches,
+    ParameterIndices,
     validate_deformation_input_dimension,
     validate_input_numbers,
     validate_parameters,
     validate_test_cases,
+    assemble_parameter_mask,
 )
 
 StretchesTuple: TypeAlias = tuple[Stretch, Stretch, Stretch]
@@ -44,10 +46,10 @@ class IsotropicModelLibrary:
 
     def __init__(self, device: Device):
         self._device = device
-        self._num_negative_ogden_terms = 2
+        self._num_negative_ogden_terms = 16
         self._num_positive_ogden_terms = 16
         self._num_ogden_terms = self._determine_number_of_ogden_terms()
-        self._min_ogden_exponent = torch.tensor(-0.5, device=self._device)
+        self._min_ogden_exponent = torch.tensor(-4.0, device=self._device)
         self._max_ogden_exponent = torch.tensor(4.0, device=self._device)
         self._ogden_exponents = self._determine_ogden_exponents()
         self._degree_mr_terms = 3
@@ -62,6 +64,7 @@ class IsotropicModelLibrary:
         )
         self.output_dim = 1
         self.num_parameters = self._num_ogden_parameters + self._num_mr_parameters
+        self.parameter_mask = assemble_parameter_mask(self.num_parameters, self._device)
 
     def __call__(
         self,
@@ -88,6 +91,8 @@ class IsotropicModelLibrary:
 
         if validate_args:
             self._validate_inputs(inputs, test_cases, parameters)
+
+        parameters = self.parameter_mask * parameters
 
         stretches = self._assemble_stretches_if_necessary(inputs, test_cases)
 
@@ -123,6 +128,10 @@ class IsotropicModelLibrary:
         ogden_parameter_names = compose_ogden_parameter_names()
         mr_parameter_names = compose_mr_parameter_names()
         return ogden_parameter_names + mr_parameter_names
+
+    def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None:
+        for indice in parameter_indices:
+            self.parameter_mask[indice] = 0.0
 
     def _determine_number_of_ogden_terms(self) -> int:
         return self._num_negative_ogden_terms + self._num_positive_ogden_terms

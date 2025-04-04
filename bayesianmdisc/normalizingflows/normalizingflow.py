@@ -38,6 +38,9 @@ NormalizingFlowOutput: TypeAlias = tuple[MomentsMultivariateNormal, NPArray]
 
 is_print_info_on = True
 print_interval = 10
+deactivation_interval = 4000
+deactivation_threshold = 5e-5
+num_deactivation_condition_samples = 4096
 num_samples_output = int(1e4)
 
 
@@ -51,6 +54,7 @@ class NormalizingFlowConfig:
     initial_learning_rate: float
     final_learning_rate: float
     num_iterations: int
+    deactivate_parameters: bool
     output_subdirectory: str
     project_directory: ProjectDirectory
 
@@ -64,6 +68,7 @@ def _fit_normalizing_flow(
     initial_learning_rate: float,
     final_learning_rate: float,
     num_iterations: int,
+    deactivate_parameters: bool,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
     device: Device,
@@ -110,6 +115,14 @@ def _fit_normalizing_flow(
         is_interval_reached = iteration % print_interval == 0
         return is_first | is_last | is_interval_reached
 
+    def parameter_deactivation_condition(iteration: int) -> bool:
+        is_interval_reached = iteration % deactivation_interval == 0
+        return deactivate_parameters and is_interval_reached
+
+    def draw_samples(num_samples: int) -> list[Tensor]:
+        samples, _ = normalizing_flow.sample(num_samples)
+        return list(samples)
+
     def train_normalizing_flow() -> None:
         optimizer = create_optimizer(normalizing_flow.parameters())
         lr_scheduler = create_exponential_learning_rate_scheduler(optimizer)
@@ -131,6 +144,15 @@ def _fit_normalizing_flow(
             lr_scheduler.step()
             return kld.detach().cpu()
 
+        def deactivate_parameters() -> None:
+            samples_list = draw_samples(num_deactivation_condition_samples)
+            samples = torch.stack(samples_list, dim=0)
+            means = torch.mean(samples, dim=0)
+            parameter_mask = means < deactivation_threshold
+            indices = parameter_mask.nonzero().ravel().tolist()
+            print(f"Masks model parameters with indices {indices}.")
+            likelihood.model.deactivate_parameters(indices)
+
         print("############################################################")
         print(f"Start training ...")
         time_total_start = perf_counter()
@@ -147,6 +169,9 @@ def _fit_normalizing_flow(
                 print(f"Iteration: {iteration}")
                 print(f"KLD: {kld.item()}")
                 print(f"Time iteration: {time_iteration}")
+
+            if parameter_deactivation_condition(iteration):
+                deactivate_parameters()
 
         print("############################################################")
 
@@ -172,10 +197,6 @@ def _fit_normalizing_flow(
     print("Postprocessing ...")
     freeze_model(normalizing_flow)
 
-    def draw_samples(num_samples: int) -> list[Tensor]:
-        samples, _ = normalizing_flow.sample(num_samples)
-        return list(samples)
-
     samples_list = draw_samples(num_samples_output)
     moments, samples = determine_statistical_moments(samples_list)
     return moments, samples
@@ -193,6 +214,7 @@ def fit_normalizing_flow(
         initial_learning_rate=config.initial_learning_rate,
         final_learning_rate=config.final_learning_rate,
         num_iterations=config.num_iterations,
+        deactivate_parameters=config.deactivate_parameters,
         output_subdirectory=config.output_subdirectory,
         project_directory=config.project_directory,
         device=device,

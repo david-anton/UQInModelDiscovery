@@ -4,7 +4,7 @@ from typing import Protocol, TypeAlias
 import torch
 from torch import vmap
 
-from bayesianmdisc.bayes.utility import flatten_tensor, repeat_tensor
+from bayesianmdisc.bayes.utility import flatten_tensor
 from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.errors import LikelihoodError
 from bayesianmdisc.models import ModelProtocol
@@ -20,6 +20,8 @@ MSE: TypeAlias = Tensor
 
 
 class LikelihoodProtocol(Protocol):
+    model: ModelProtocol
+
     def prob(self, parameters: Tensor) -> Tensor:
         pass
 
@@ -88,9 +90,9 @@ class Likelihood:
         device: Device,
     ) -> None:
         self._validate_data(inputs, outputs)
+        self.model = model
         self.relative_noise_stddev = relative_noise_stddev
         self._min_noise_stddev = min_noise_stddev
-        self._model = model
         self._inputs = inputs
         self._test_cases = test_cases
         self._true_outputs = outputs
@@ -156,7 +158,7 @@ class Likelihood:
         return self._error_distribution.log_prob(flattened_errors)
 
     def _calculate_flattened_errors(self, parameters: Tensor) -> Tensor:
-        outputs = self._model(self._inputs, self._test_cases, parameters)
+        outputs = self.model(self._inputs, self._test_cases, parameters)
         flattened_outputs = flatten_tensor(outputs)
         return self._error_calculator.calculate(
             flattened_outputs, self._flattened_true_outputs
@@ -165,7 +167,7 @@ class Likelihood:
     def _calculate_mse_losses(self, parameters: Tensor) -> MSE:
 
         def vmap_mse_losses(parameters_: Tensor) -> MSE:
-            outputs = self._model(self._inputs, self._test_cases, parameters_)
+            outputs = self.model(self._inputs, self._test_cases, parameters_)
             flattened_outputs = flatten_tensor(outputs)
             return self._error_calculator.calculate_mse(
                 flattened_outputs, self._flattened_true_outputs

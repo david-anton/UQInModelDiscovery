@@ -17,10 +17,12 @@ from bayesianmdisc.models.base import (
     StrainEnergyDerivativesTuple,
     Stretch,
     Stretches,
+    ParameterIndices,
     validate_deformation_input_dimension,
     validate_input_numbers,
     validate_parameters,
     validate_test_cases,
+    assemble_parameter_mask,
 )
 
 # class LinkaOrthotropicIncompressibleCANN:
@@ -182,6 +184,7 @@ class OrthotropicCANN:
         self._allowed_input_dimensions = [2]
         self.output_dim = 2
         self.num_parameters = self._determine_number_of_parameters()
+        self.parameter_mask = assemble_parameter_mask(self.num_parameters, self._device)
 
     def __call__(
         self,
@@ -201,6 +204,8 @@ class OrthotropicCANN:
     ) -> StressOutputs:
         if validate_args:
             self._validate_inputs(inputs, test_cases, parameters)
+
+        parameters = self.parameter_mask * parameters
 
         def vmap_func(inputs_: Stretches, test_case_: TestCase) -> CauchyStresses:
             return self._calculate_stresses(inputs_, test_case_, parameters)
@@ -233,6 +238,10 @@ class OrthotropicCANN:
                     second_layer_indices += 1
 
         return tuple(parameter_names)
+
+    def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None:
+        for indice in parameter_indices:
+            self.parameter_mask[indice] = 0.0
 
     def _determine_number_of_parameters(self) -> int:
         num_invariants = self._num_invariants
