@@ -312,6 +312,35 @@ class UnivariateInverseGammaDistribution:
             raise ProbabilityDistributionError(f"Unexpected shape of sample: {shape}.")
 
 
+class IndependentMultivariateInverseGammaDistribution:
+    def __init__(self, concentrations: Tensor, rates: Tensor, device: Device) -> None:
+        self._distribution = torch.distributions.InverseGamma(
+            concentration=concentrations.to(device),
+            rate=rates.to(device),
+            validate_args=False,
+        )
+        self._device = device
+        self.dim = torch.numel(concentrations)
+
+    def log_probs_individual(self, sample: Tensor) -> Tensor:
+        return self._distribution.log_prob(sample)
+
+    def log_prob(self, sample: Tensor) -> Tensor:
+        self._validate_sample(sample)
+        log_probs_individual = self.log_probs_individual(sample)
+        log_prob = torch.sum(log_probs_individual)
+        return squeeze_if_necessary(log_prob)
+
+    def sample(self, num_samples: int = 1) -> Tensor:
+        sample_shape = define_samples_size(num_samples)
+        return self._distribution.rsample(sample_shape)
+
+    def _validate_sample(self, sample: Tensor) -> None:
+        shape = sample.shape
+        if not shape == torch.Size([self.dim]):
+            raise ProbabilityDistributionError(f"Unexpected shape of sample: {shape}.")
+
+
 class IndependentMultivariateStudentTDistribution:
     def __init__(
         self, degrees_of_freedom: Tensor, means: Tensor, scales: Tensor, device: Device
@@ -406,6 +435,14 @@ def create_univariate_inverse_gamma_distribution(
     concentration: float, rate: float, device: Device
 ) -> UnivariateInverseGammaDistribution:
     return UnivariateInverseGammaDistribution(concentration, rate, device)
+
+
+def create_independent_multivariate_inverse_gamma_distribution(
+    concentrations: Tensor, rates: Tensor, device: Device
+) -> IndependentMultivariateInverseGammaDistribution:
+    return IndependentMultivariateInverseGammaDistribution(
+        concentrations=concentrations, rates=rates, device=device
+    )
 
 
 def create_independent_multivariate_studentT_distribution(

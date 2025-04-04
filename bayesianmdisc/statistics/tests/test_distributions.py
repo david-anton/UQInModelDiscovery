@@ -5,6 +5,7 @@ from bayesianmdisc.customtypes import Tensor
 from bayesianmdisc.statistics.distributions import (
     create_independent_multivariate_gamma_distribution,
     create_independent_multivariate_half_normal_distribution,
+    create_independent_multivariate_inverse_gamma_distribution,
     create_independent_multivariate_normal_distribution,
     create_independent_multivariate_studentT_distribution,
     create_multivariate_normal_distribution,
@@ -391,6 +392,87 @@ def _expected_univariate_inverse_gamma_distribution() -> list[tuple[Tensor, Tens
             torch.distributions.InverseGamma(
                 concentration=concentration, rate=rate
             ).log_prob(torch.tensor([1.0]))[0],
+        ),
+    ]
+
+
+# independent multivariate inverse gamma
+def _expected_independent_multivariate_inverse_gamma_distribution() -> (
+    list[tuple[Tensor, Tensor]]
+):
+    concentration = torch.tensor([2.0])
+    rate = torch.tensor([1.0])
+    return [
+        (
+            torch.tensor([0.1, 0.1]),
+            2
+            * torch.distributions.InverseGamma(
+                concentration=concentration, rate=rate
+            ).log_prob(torch.tensor([0.1]))[0],
+        ),
+        (
+            torch.tensor([1.0, 1.0]),
+            2
+            * torch.distributions.InverseGamma(
+                concentration=concentration, rate=rate
+            ).log_prob(torch.tensor([1.0]))[0],
+        ),
+        (
+            torch.tensor([0.1, 1.0]),
+            (
+                torch.distributions.InverseGamma(
+                    concentration=concentration, rate=rate
+                ).log_prob(torch.tensor([0.1]))
+                + torch.distributions.InverseGamma(
+                    concentration=concentration, rate=rate
+                ).log_prob(torch.tensor([1.0]))
+            )[0],
+        ),
+    ]
+
+
+def _expected_independent_multivariate_inverse_gamma_distribution_individual() -> (
+    list[tuple[Tensor, Tensor]]
+):
+    concentration = torch.tensor([2.0])
+    rate = torch.tensor([1.0])
+    return [
+        (
+            torch.tensor([0.1, 0.1]),
+            torch.tensor(
+                [
+                    torch.distributions.InverseGamma(
+                        concentration=concentration, rate=rate
+                    ).log_prob(torch.tensor([0.1]))[0]
+                ]
+            ).repeat(
+                2,
+            ),
+        ),
+        (
+            torch.tensor([1.0, 1.0]),
+            torch.tensor(
+                [
+                    torch.distributions.InverseGamma(
+                        concentration=concentration, rate=rate
+                    ).log_prob(torch.tensor([1.0]))[0]
+                ],
+            ).repeat(
+                2,
+            ),
+        ),
+        (
+            torch.tensor([0.1, 1.0]),
+            torch.tensor(
+                [
+                    torch.distributions.InverseGamma(
+                        concentration=concentration, rate=rate
+                    ).log_prob(torch.tensor([0.1]))[0],
+                    torch.distributions.InverseGamma(
+                        concentration=concentration, rate=rate
+                    ).log_prob(torch.tensor([1.0]))[0],
+                ],
+            ),
         ),
     ]
 
@@ -854,6 +936,56 @@ def test_univariate_inverse_gamma_distribution_dimension() -> None:
 
     actual = sut.dim
     expected = 1
+
+    torch.testing.assert_close(actual, expected)
+
+
+# independent multivariate inverse gamma
+@pytest.mark.parametrize(
+    ("parameter", "expected"),
+    _expected_independent_multivariate_inverse_gamma_distribution(),
+)
+def test_independent_multivariate_inverse_gamma_distribution(
+    parameter: Tensor, expected: Tensor
+) -> None:
+    concentrations = torch.tensor([2.0, 2.0])
+    rates = torch.tensor([1.0, 1.0])
+    sut = create_independent_multivariate_inverse_gamma_distribution(
+        concentrations=concentrations, rates=rates, device=device
+    )
+
+    actual = sut.log_prob(parameter)
+
+    torch.testing.assert_close(actual, expected)
+
+
+@pytest.mark.parametrize(
+    ("parameter", "expected"),
+    _expected_independent_multivariate_inverse_gamma_distribution_individual(),
+)
+def test_independent_multivariate_inverse_gamma_distribution_individual(
+    parameter: Tensor, expected: Tensor
+) -> None:
+    concentrations = torch.tensor([2.0, 2.0])
+    rates = torch.tensor([1.0, 1.0])
+    sut = create_independent_multivariate_inverse_gamma_distribution(
+        concentrations=concentrations, rates=rates, device=device
+    )
+
+    actual = sut.log_probs_individual(parameter)
+
+    torch.testing.assert_close(actual, expected)
+
+
+def test_independent_multivariate_inverse_gamma_distribution_dimension() -> None:
+    concentrations = torch.tensor([2.0, 2.0])
+    rates = torch.tensor([1.0, 1.0])
+    sut = create_independent_multivariate_inverse_gamma_distribution(
+        concentrations=concentrations, rates=rates, device=device
+    )
+
+    actual = sut.dim
+    expected = 2
 
     torch.testing.assert_close(actual, expected)
 
