@@ -44,7 +44,7 @@ class IsotropicModelLibrary:
 
     def __init__(self, device: Device):
         self._device = device
-        self._num_negative_ogden_terms = 2  # 16
+        self._num_negative_ogden_terms = 2
         self._num_positive_ogden_terms = 16
         self._num_ogden_terms = self._determine_number_of_ogden_terms()
         self._min_ogden_exponent = torch.tensor(-0.5, device=self._device)
@@ -269,8 +269,7 @@ class IsotropicModelLibrary:
         mr_strain_energy_terms = self._calculate_mr_strain_energy_terms(
             deformation_gradient, mr_parameters
         )
-        # return ogden_strain_energy_terms + mr_strain_energy_terms
-        return ogden_strain_energy_terms
+        return ogden_strain_energy_terms + mr_strain_energy_terms
 
     def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
         ogden_parameters = parameters[: self._num_ogden_parameters]
