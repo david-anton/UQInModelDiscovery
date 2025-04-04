@@ -61,7 +61,7 @@ if data_set == "linka":
 elif data_set == "treloar":
     input_directory = "treloar"
     data_reader = TreloarDataReader(input_directory, project_directory, device)
-output_directory = current_date + "_" + input_directory  # + "ogden_only"
+output_directory = current_date + "_" + input_directory + "_not_deactivated"
 
 
 inputs, test_cases, outputs = data_reader.read()
@@ -253,7 +253,7 @@ normalizing_flow_config = NormalizingFlowConfig(
     initial_learning_rate=5e-4,
     final_learning_rate=1e-4,
     num_iterations=100_000,
-    deactivate_parameters=True,
+    deactivate_parameters=False,
     output_subdirectory=output_directory,
     project_directory=project_directory,
 )
