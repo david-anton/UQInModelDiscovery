@@ -44,7 +44,9 @@ class IsotropicModelLibrary:
 
     def __init__(self, device: Device):
         self._device = device
-        self._num_ogden_terms = 33
+        self._num_negative_ogden_terms = 16
+        self._num_positive_ogden_terms = 16
+        self._num_ogden_terms = self._determine_number_of_ogden_terms()
         self._min_ogden_exponent = torch.tensor(-4.0, device=self._device)
         self._max_ogden_exponent = torch.tensor(4.0, device=self._device)
         self._ogden_exponents = self._determine_ogden_exponents()
@@ -122,6 +124,9 @@ class IsotropicModelLibrary:
         mr_parameter_names = compose_mr_parameter_names()
         return ogden_parameter_names + mr_parameter_names
 
+    def _determine_number_of_ogden_terms(self) -> int:
+        return self._num_negative_ogden_terms + self._num_positive_ogden_terms
+
     def _determine_number_of_parameters(self) -> tuple[int, int]:
 
         def determine_number_of_ogden_parameters() -> int:
@@ -138,11 +143,17 @@ class IsotropicModelLibrary:
         return num_ogden_parameters, num_mr_parameters
 
     def _determine_ogden_exponents(self) -> OgdenExponents:
-        return torch.linspace(
+        negative_exponents = torch.linspace(
             start=self._min_ogden_exponent,
+            end=0.0,
+            steps=self._num_negative_ogden_terms + 1,
+        )[:-1].tolist()
+        positive_exponents = torch.linspace(
+            start=0.0,
             end=self._max_ogden_exponent,
-            steps=self._num_ogden_terms,
-        ).tolist()
+            steps=self._num_positive_ogden_terms + 1,
+        )[1:].tolist()
+        return negative_exponents + positive_exponents
 
     def _determine_mr_exponents(self) -> MRExponents:
         exponents = []
@@ -252,14 +263,13 @@ class IsotropicModelLibrary:
         self, deformation_gradient: DeformationGradient, parameters: Parameters
     ) -> StrainEnergy:
         ogden_parameters, mr_parameters = self._split_parameters(parameters)
-        # ogden_strain_energy_terms = self._calculate_ogden_strain_energy_terms(
-        #     deformation_gradient, ogden_parameters
-        # )
+        ogden_strain_energy_terms = self._calculate_ogden_strain_energy_terms(
+            deformation_gradient, ogden_parameters
+        )
         mr_strain_energy_terms = self._calculate_mr_strain_energy_terms(
             deformation_gradient, mr_parameters
         )
-        # return ogden_strain_energy_terms + mr_strain_energy_terms
-        return mr_strain_energy_terms
+        return ogden_strain_energy_terms + mr_strain_energy_terms
 
     def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
         ogden_parameters = parameters[: self._num_ogden_parameters]
