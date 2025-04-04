@@ -44,7 +44,7 @@ class IsotropicModelLibrary:
 
     def __init__(self, device: Device):
         self._device = device
-        self._num_negative_ogden_terms = 16
+        self._num_negative_ogden_terms = 0  # 16
         self._num_positive_ogden_terms = 16
         self._num_ogden_terms = self._determine_number_of_ogden_terms()
         self._min_ogden_exponent = torch.tensor(-4.0, device=self._device)
@@ -279,12 +279,15 @@ class IsotropicModelLibrary:
     def _calculate_ogden_strain_energy_terms(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
     ) -> StrainEnergy:
+        two = torch.tensor(2.0, device=self._device)
         three = torch.tensor(3.0, device=self._device)
         stretches = self._extract_stretches(deformation_gradient)
 
         terms = torch.concat(
             [
-                torch.sum(stretches**exponent, dim=0, keepdim=True) - three
+                (two / exponent**2)
+                * torch.sum(stretches**exponent, dim=0, keepdim=True)
+                - three
                 for exponent in self._ogden_exponents
             ]
         )
