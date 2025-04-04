@@ -36,6 +36,8 @@ from bayesianmdisc.models.base import (
 )
 
 StretchesTuple: TypeAlias = tuple[Stretch, Stretch, Stretch]
+OgdenExponents: TypeAlias = list[float]
+MRExponents: TypeAlias = list[list[int]]
 
 
 class IsotropicModelLibrary:
@@ -97,7 +99,7 @@ class IsotropicModelLibrary:
         def compose_ogden_parameter_names() -> ParameterNames:
             parameter_names = []
             for index, exponent in zip(
-                range(1, self._num_ogden_terms + 1), self._ogden_exponents.tolist()
+                range(1, self._num_ogden_terms + 1), self._ogden_exponents
             ):
                 parameter_names += [f"O_{index} (exponent: {round(exponent,2)})"]
             return tuple(parameter_names)
@@ -135,20 +137,23 @@ class IsotropicModelLibrary:
         num_mr_parameters = determine_number_of_mr_parameters()
         return num_ogden_parameters, num_mr_parameters
 
-    def _determine_ogden_exponents(self) -> Tensor:
+    def _determine_ogden_exponents(self) -> OgdenExponents:
         return torch.linspace(
             start=self._min_ogden_exponent,
             end=self._max_ogden_exponent,
             steps=self._num_ogden_terms,
-        ).to(self._device)
+        ).tolist()
 
-    def _determine_mr_exponents(self) -> Tensor:
+    def _determine_mr_exponents(self) -> MRExponents:
         exponents = []
         for n in range(1, self._degree_mr_terms + 1):
-            exponents_n = torch.linspace(start=1, end=n, steps=n).reshape((-1, 1))
-            exponents_m = torch.flip(exponents_n, dims=(0,))
-            exponents += [torch.concat((exponents_n, exponents_m), dim=1)]
-        return torch.concat(exponents, dim=0)
+            exponents_cI_1 = torch.linspace(
+                start=0, end=n, steps=n + 1, dtype=torch.int64
+            )
+            exponents_cI_1 = exponents_cI_1.reshape((-1, 1))
+            exponents_cI_2 = torch.flip(exponents_cI_1, dims=(0,))
+            exponents += [torch.concat((exponents_cI_1, exponents_cI_2), dim=1)]
+        return torch.concat(exponents, dim=0).tolist()
 
     def _determine_allowed_test_cases(self) -> AllowedTestCases:
         return torch.tensor(
@@ -266,10 +271,13 @@ class IsotropicModelLibrary:
         three = torch.tensor(3.0, device=self._device)
         stretches = self._extract_stretches(deformation_gradient)
 
-        def calculate_terms(exponent: Tensor) -> StrainEnergy:
-            return torch.sum(stretches**exponent) - three
+        terms = torch.concat(
+            [
+                torch.sum(stretches**exponent, dim=0, keepdim=True) - three
+                for exponent in self._ogden_exponents
+            ]
+        )
 
-        terms = vmap(calculate_terms)(self._ogden_exponents)
         weighted_terms = parameters * terms
         return torch.sum(weighted_terms)
 
@@ -278,12 +286,14 @@ class IsotropicModelLibrary:
     ) -> StrainEnergy:
         cI_1, cI_2 = self._calculate_corrected_invariants(deformation_gradient)
 
-        def calculate_terms(exponents: Tensor) -> StrainEnergy:
-            exponent_cI_1 = exponents[0]
-            exponent_cI_2 = exponents[1]
-            return cI_1**exponent_cI_1 * cI_2**exponent_cI_2
-
-        terms = vmap(calculate_terms)(self._mr_exponents)
+        terms = torch.concat(
+            [
+                self._unsqueeze_zero_dimension(
+                    cI_1 ** exponents[0] * cI_2 ** exponents[1]
+                )
+                for exponents in self._mr_exponents
+            ]
+        )
         weighted_terms = parameters * terms
         return torch.sum(weighted_terms)
 
