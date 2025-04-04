@@ -48,8 +48,8 @@ class NormalizingFlowConfig:
     num_flows: int
     relative_width_flow_layers: int
     num_samples: int
-    learning_rate: float
-    learning_rate_decay_rate: float
+    initial_learning_rate: float
+    final_learning_rate: float
     num_iterations: int
     output_subdirectory: str
     project_directory: ProjectDirectory
@@ -61,8 +61,8 @@ def _fit_normalizing_flow(
     num_flows: int,
     relative_width_flow_layers: int,
     num_samples: int,
-    learning_rate: float,
-    learning_rate_decay_rate: float,
+    initial_learning_rate: float,
+    final_learning_rate: float,
     num_iterations: int,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
@@ -93,12 +93,15 @@ def _fit_normalizing_flow(
 
     def create_optimizer(parameters: Iterator[Tensor]) -> TorchOptimizer:
         return torch.optim.Adam(
-            params=parameters, lr=learning_rate, betas=(0.95, 0.999)
+            params=parameters, lr=initial_learning_rate, betas=(0.95, 0.999)
         )
 
     def create_exponential_learning_rate_scheduler(
-        optimizer: TorchOptimizer, decay_rate: float
+        optimizer: TorchOptimizer,
     ) -> TorchLRScheduler:
+        decay_rate = (final_learning_rate / initial_learning_rate) ** (
+            1 / num_iterations
+        )
         return torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=decay_rate)
 
     def print_condition(iteration: int) -> bool:
@@ -109,9 +112,7 @@ def _fit_normalizing_flow(
 
     def train_normalizing_flow() -> None:
         optimizer = create_optimizer(normalizing_flow.parameters())
-        lr_scheduler = create_exponential_learning_rate_scheduler(
-            optimizer, learning_rate_decay_rate
-        )
+        lr_scheduler = create_exponential_learning_rate_scheduler(optimizer)
 
         def reverse_kld_func(samples_base: Tensor, log_probs_base: Tensor) -> Tensor:
             u = samples_base
@@ -189,8 +190,8 @@ def fit_normalizing_flow(
         num_flows=config.num_flows,
         relative_width_flow_layers=config.relative_width_flow_layers,
         num_samples=config.num_samples,
-        learning_rate=config.learning_rate,
-        learning_rate_decay_rate=config.learning_rate_decay_rate,
+        initial_learning_rate=config.initial_learning_rate,
+        final_learning_rate=config.final_learning_rate,
         num_iterations=config.num_iterations,
         output_subdirectory=config.output_subdirectory,
         project_directory=config.project_directory,
