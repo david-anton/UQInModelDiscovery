@@ -42,7 +42,7 @@ from bayesianmdisc.statistics.utility import (
 )
 
 data_set = "treloar"
-use_gp_prior = False
+use_gp_prior = True
 
 # Settings
 settings = Settings()
@@ -61,7 +61,7 @@ if data_set == "linka":
 elif data_set == "treloar":
     input_directory = "treloar"
     data_reader = TreloarDataReader(input_directory, project_directory, device)
-output_directory = current_date + "_" + input_directory + "_not_deactivated"
+output_directory = current_date + "_" + input_directory + "_gpprior"
 
 
 inputs, test_cases, outputs = data_reader.read()
@@ -175,7 +175,7 @@ def determine_prior(
             inputs=inputs,
             outputs=outputs,
             initial_noise_stddevs=heteroscedastic_noise_stddevs,
-            num_iterations=int(2e4),
+            num_iterations=int(5e4),
             learning_rate=1e-3,
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
@@ -185,14 +185,14 @@ def determine_prior(
         prior = infer_gp_induced_prior(
             gp=gaussian_process,
             model=model,
-            prior_type="Gamma",
+            prior_type="inverse Gamma",
             is_mean_trainable=True,
             inputs=inputs,
             test_cases=test_cases,
             num_func_samples=32,
             resample=True,
-            num_iters_wasserstein=int(20e3),
-            hiden_layer_size_lipschitz_nn=512,
+            num_iters_wasserstein=int(50e3),
+            hiden_layer_size_lipschitz_nn=256,
             num_iters_lipschitz=5,
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,

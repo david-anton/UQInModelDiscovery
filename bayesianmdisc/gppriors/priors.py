@@ -10,6 +10,7 @@ from bayesianmdisc.bayes.prior import (
     create_independent_multivariate_gamma_distributed_prior,
     create_independent_multivariate_normal_distributed_prior,
     create_independent_multivariate_studentT_distributed_prior,
+    create_independent_multivariate_inverse_gamma_distributed_prior,
 )
 from bayesianmdisc.customtypes import Device, Module, NFFlow, Parameter, Tensor
 from bayesianmdisc.errors import GPPriorError
@@ -53,6 +54,13 @@ def create_parameter_prior(
         if not is_mean_trainable:
             GPPriorError("Gamma prior has always a trainable mean.")
         return GammaParameterPrior(
+            model=model_library,
+            device=device,
+        )
+    elif prior_type == "inverse Gamma":
+        if not is_mean_trainable:
+            GPPriorError("Inverse Gamma prior has always a trainable mean.")
+        return InverseGammaParameterPrior(
             model=model_library,
             device=device,
         )
@@ -108,6 +116,63 @@ class GammaParameterPrior(nn.Module):
         # shape = concentrations (PyTorch)
         shapes, rates = self._shapes_and_rates()
         return create_independent_multivariate_gamma_distributed_prior(
+            concentrations=shapes,
+            rates=rates,
+            device=self._device,
+        )
+
+    def print_hyperparameters(self) -> None:
+        _shapes, _rates = self._shapes_and_rates()
+        shapes = _shapes.data.detach()
+        rates = _rates.data.detach()
+        print(f"Shapes: {shapes}")
+        print(f"Rates: {rates}")
+
+    def _init_rhos(self, initial_rho: float) -> Tensor:
+        rhos = torch.full(
+            (self._dim,),
+            initial_rho,
+            requires_grad=True,
+            device=self._device,
+        )
+        return nn.Parameter(rhos)
+
+    def _shapes_and_rates(self) -> tuple[Tensor, Tensor]:
+        def shapes_and_rates_func(rhos: Tensor) -> Tensor:
+            return torch.log(torch.tensor(1.0, device=self._device) + torch.exp(rhos))
+
+        shapes = shapes_and_rates_func(self._rhos_shapes)
+        rates = shapes_and_rates_func(self._rhos_rates)
+        return shapes, rates
+
+
+class InverseGammaParameterPrior(nn.Module):
+    def __init__(
+        self,
+        model: ModelProtocol,
+        device: Device,
+    ):
+        super().__init__()
+        self._dim = model.num_parameters
+        self._device = device
+        initial_shape = 99.0
+        initial_rate = 0.01
+        initial_rho_shape = math.log(math.exp(initial_shape) - 1.0)
+        initial_rho_rate = math.log(math.exp(initial_rate) - 1.0)
+        self._rhos_shapes = self._init_rhos(initial_rho_shape)
+        self._rhos_rates = self._init_rhos(initial_rho_rate)
+
+    def forward(self, num_samples: int) -> Tensor:
+        # shape = concentrations (PyTorch)
+        shapes, rates = self._shapes_and_rates()
+        return torch.distributions.InverseGamma(
+            concentration=shapes, rate=rates
+        ).rsample(torch.Size([num_samples]))
+
+    def get_prior_distribution(self) -> PriorProtocol:
+        # shape = concentrations (PyTorch)
+        shapes, rates = self._shapes_and_rates()
+        return create_independent_multivariate_inverse_gamma_distributed_prior(
             concentrations=shapes,
             rates=rates,
             device=self._device,
