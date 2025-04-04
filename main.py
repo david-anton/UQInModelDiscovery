@@ -60,7 +60,7 @@ if data_set == "linka":
 elif data_set == "treloar":
     input_directory = "treloar"
     data_reader = TreloarDataReader(input_directory, project_directory, device)
-output_directory = current_date + "_" + input_directory
+output_directory = current_date + "_" + input_directory + "ogden_only"
 
 
 inputs, test_cases, outputs = data_reader.read()
