@@ -242,7 +242,7 @@ normalizing_flow_config = NormalizingFlowConfig(
     num_samples=64,
     initial_learning_rate=5e-4,
     final_learning_rate=1e-4,
-    num_iterations=20_000,
+    num_iterations=100_000,
     output_subdirectory=output_directory,
     project_directory=project_directory,
 )
