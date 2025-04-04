@@ -251,7 +251,7 @@ def _plot_univariate_normal_distribution_histogram(
         useOffset=False,
         useMathText=True,
     )
-    file_name = f"estimated_pdf_{parameter_name.lower()}_{algorithm_name.lower()}.{config.file_format}"
+    file_name = f"estimated_pdf_{parameter_name}_{algorithm_name}.{config.file_format}"
     output_path = project_directory.create_output_file_path(
         file_name=file_name, subdir_name=output_subdirectory
     )

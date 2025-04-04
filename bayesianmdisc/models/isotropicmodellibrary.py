@@ -101,7 +101,7 @@ class IsotropicModelLibrary:
             for index, exponent in zip(
                 range(1, self._num_ogden_terms + 1), self._ogden_exponents
             ):
-                parameter_names += [f"O_{index} (exponent: {round(exponent,2)})"]
+                parameter_names += [f"O_{index} ({round(exponent,2)})"]
             return tuple(parameter_names)
 
         def compose_mr_parameter_names() -> ParameterNames:
