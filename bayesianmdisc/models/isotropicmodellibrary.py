@@ -15,6 +15,7 @@ from bayesianmdisc.data.testcases import (
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_pure_shear,
     test_case_identifier_uniaxial_tension,
+    test_case_identifier_biaxial_tension,
 )
 from bayesianmdisc.models.base import (
     DeformationGradient,
@@ -56,9 +57,10 @@ class IsotropicModelLibrary:
         self._mr_exponents = self._determine_mr_exponents()
         self._test_case_identifier_ut = test_case_identifier_uniaxial_tension
         self._test_case_identifier_ebt = test_case_identifier_equibiaxial_tension
+        self._test_case_identifier_bt = test_case_identifier_biaxial_tension
         self._test_case_identifier_ps = test_case_identifier_pure_shear
         self._allowed_test_cases = self._determine_allowed_test_cases()
-        self._allowed_input_dimensions = [1, 3]
+        self._allowed_input_dimensions = [1, 2, 3]
         self._num_ogden_parameters, self._num_mr_parameters = (
             self._determine_number_of_parameters()
         )
@@ -84,10 +86,13 @@ class IsotropicModelLibrary:
     ) -> StressOutputs:
         """The deformation input is expected to be either:
         (1) a tensor containing the stretches in all three dimensions (of shape [n, 3]) or
+        (2) a tensor containing the stretches in the first and second dimension (of shape [n, 2]) or
         (2) a tensor containing only the stretch in the first dimension
             which correpsonds to the stretch factor (of shape [n, 1]).
-        In case (2), the stretches in the second and third dimensions are calculated
-        from the stretch factor depending on the test case."""
+        In case (2), the stretch in the third dimension follows directly from the assumption of
+        incompressibility, regardless of the test case.
+        In case (3), the stretches in the second and third dimensions are calculated under the
+        assumption of perfekt incompressibility as a function of the test case."""
 
         if validate_args:
             self._validate_inputs(inputs, test_cases, parameters)
@@ -198,8 +203,9 @@ class IsotropicModelLibrary:
     ):
         stretch_dim = stretches.shape[1]
         if stretch_dim == 1:
-            stretch_facors = stretches
-            return self._assemble_stretches_from_factors(stretch_facors, test_cases)
+            return self._assemble_stretches_from_factors(stretches, test_cases)
+        if stretch_dim == 2:
+            return self._assemble_stretches_for_biaxial_tension(stretches, test_cases)
         else:
             return stretches
 
@@ -232,15 +238,35 @@ class IsotropicModelLibrary:
             stretch_3 = one / stretch_factors
             return torch.concat((stretch_1, stretch_2, stretch_3), dim=1)
 
-        stretches = []
+        all_stretches = []
         if not torch.numel(stretch_factors_ut) == 0:
-            stretches += [calculate_stretches_ut(stretch_factors_ut)]
+            all_stretches += [calculate_stretches_ut(stretch_factors_ut)]
         if not torch.numel(stretch_factors_ebt) == 0:
-            stretches += [calculate_stretches_ebt(stretch_factors_ebt)]
+            all_stretches += [calculate_stretches_ebt(stretch_factors_ebt)]
         if not torch.numel(stretch_factors_ps) == 0:
-            stretches += [calculate_stretches_ps(stretch_factors_ps)]
+            all_stretches += [calculate_stretches_ps(stretch_factors_ps)]
 
-        return torch.vstack(stretches)
+        return torch.vstack(all_stretches)
+
+    def _assemble_stretches_for_biaxial_tension(
+        self, stretches: Stretches, test_cases: TestCases
+    ) -> Stretches:
+        indices_bt = test_cases == self._test_case_identifier_bt
+        stretches_bt = stretches[indices_bt]
+
+        one = torch.tensor(1.0, device=self._device)
+
+        def calculate_stretches_bt(stretches: Stretches) -> Stretches:
+            stretch_1 = stretches[0]
+            stretch_2 = stretches[1]
+            stretch_3 = one / (stretch_1 * stretch_2)
+            return torch.concat((stretch_1, stretch_2, stretch_3), dim=1)
+
+        all_stretches = []
+        if not torch.numel(stretches_bt) == 0:
+            all_stretches += [calculate_stretches_bt(stretches_bt)]
+
+        return torch.vstack(all_stretches)
 
     def _calculate_stress(
         self, stretches: Stretches, parameters: Parameters
