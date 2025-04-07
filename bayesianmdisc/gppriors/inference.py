@@ -41,10 +41,11 @@ def infer_gp_induced_prior(
 
     lipschitz_penalty_coefficient = torch.tensor(10.0, device=device)
     initial_learning_rate = 5e-4
-    final_learning_rate = 1e-4
-    learning_rate_decay_rate = (final_learning_rate / initial_learning_rate) ** (
-        1 / num_iters_wasserstein
-    )
+    learning_rate_decay_rate = 1.0
+    # final_learning_rate = 1e-4
+    # learning_rate_decay_rate = (final_learning_rate / initial_learning_rate) ** (
+    #     1 / num_iters_wasserstein
+    # )
 
     prior = create_parameter_prior(
         prior_type=prior_type,

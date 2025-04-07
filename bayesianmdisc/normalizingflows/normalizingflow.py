@@ -38,8 +38,8 @@ NormalizingFlowOutput: TypeAlias = tuple[MomentsMultivariateNormal, NPArray]
 
 is_print_info_on = True
 print_interval = 10
-deactivation_interval = 4000
-deactivation_threshold = 5e-5
+deactivation_interval = 5000
+deactivation_threshold = 1e-6
 num_deactivation_condition_samples = 4096
 num_samples_output = int(1e4)
 
