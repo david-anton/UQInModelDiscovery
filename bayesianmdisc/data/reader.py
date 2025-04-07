@@ -50,63 +50,49 @@ class LinkaHeartDataReader:
 
     def read(self) -> Data:
         all_stretches = []
+        all_test_cases = []
         all_stresses = []
 
-        def add_data(start_column: int) -> tuple[NPArrayList, NPArrayList]:
-            all_stretches: NPArrayList = []
-            all_stresses: NPArrayList = []
-            stretches_fiber = self._read_column(start_column)
-            stresses_fiber = self._read_column(start_column + 1)
-            stretches_normal = self._read_column(start_column + 2)
-            stresses_normal = self._read_column(start_column + 3)
-
-            for stretch_fiber, stress_fiber, stretch_normal, stress_normal in zip(
-                stretches_fiber, stresses_fiber, stretches_normal, stresses_normal
-            ):
-                stretches = np.array(
-                    [stretch_fiber, stretch_normal],
-                    dtype=self._np_data_type,
-                )
-                all_stretches += [stretches]
-                stresses = np.array(
-                    [stress_fiber, stress_normal], dtype=self._np_data_type
-                )
-                all_stresses += [stresses]
-            return all_stretches, all_stresses
-
         column = self._start_column_biaxial
-        stretches_column, stresses_column = add_data(column)
-        all_stretches += stretches_column
-        all_stresses += stresses_column
+        stretches_column, test_cases_colum, stresses_column = self._read_data(column)
+        all_stretches.append(stretches_column)
+        all_test_cases.append(test_cases_colum)
+        all_stresses.append(stresses_column)
 
         column = column + 5
-        stretches_column, stresses_column = add_data(column)
-        all_stretches += stretches_column
-        all_stresses += stresses_column
+        stretches_column, test_cases_colum, stresses_column = self._read_data(column)
+        all_stretches.append(stretches_column)
+        all_test_cases.append(test_cases_colum)
+        all_stresses.append(stresses_column)
 
         column = column + 5
-        stretches_column, stresses_column = add_data(column)
-        all_stretches += stretches_column
-        all_stresses += stresses_column
+        stretches_column, test_cases_colum, stresses_column = self._read_data(column)
+        all_stretches.append(stretches_column)
+        all_test_cases.append(test_cases_colum)
+        all_stresses.append(stresses_column)
 
         column = column + 5
-        stretches_column, stresses_column = add_data(column)
-        all_stretches += stretches_column
-        all_stresses += stresses_column
+        stretches_column, test_cases_colum, stresses_column = self._read_data(column)
+        all_stretches.append(stretches_column)
+        all_test_cases.append(test_cases_colum)
+        all_stresses.append(stresses_column)
 
         column = column + 5
-        stretches_column, stresses_column = add_data(column)
-        all_stretches += stretches_column
-        all_stresses += stresses_column
+        stretches_column, test_cases_colum, stresses_column = self._read_data(column)
+        all_stretches.append(stretches_column)
+        all_test_cases.append(test_cases_colum)
+        all_stresses.append(stresses_column)
 
         stretches = stack_arrays(all_stretches)
+        test_cases = stack_arrays(all_test_cases)
+        test_cases = test_cases.reshape((-1,))
         stresses = stack_arrays(all_stresses)
 
-        deformation_inputs = convert_to_torch(stretches, self._device)
-        test_cases = self._assemble_test_cases(deformation_inputs)
-        stress_outputs = convert_to_torch(stresses, self._device)
+        stretches_torch = convert_to_torch(stretches, self._device)
+        test_cases_torch = convert_to_torch(test_cases, self._device)
+        stresses_torch = convert_to_torch(stresses, self._device)
 
-        return deformation_inputs, test_cases, stress_outputs
+        return stretches_torch, test_cases_torch, stresses_torch
 
     def _init_data_frame(self) -> PDDataFrame:
         input_path = self._join_input_path()
@@ -117,19 +103,38 @@ class LinkaHeartDataReader:
             file_name=self._file_name, subdir_name=self._input_directory
         )
 
+    def _read_data(self, start_column: int) -> tuple[NPArray, NPArray, NPArray]:
+        all_stretches: NPArrayList = []
+        all_stresses: NPArrayList = []
+        stretches_fiber = self._read_column(start_column)
+        stresses_fiber = self._read_column(start_column + 1)
+        stretches_normal = self._read_column(start_column + 2)
+        stresses_normal = self._read_column(start_column + 3)
+
+        for stretch_fiber, stress_fiber, stretch_normal, stress_normal in zip(
+            stretches_fiber, stresses_fiber, stretches_normal, stresses_normal
+        ):
+            stretches = np.array(
+                [stretch_fiber, stretch_normal],
+                dtype=self._np_data_type,
+            )
+            all_stretches += [stretches]
+            stresses = np.array([stress_fiber, stress_normal], dtype=self._np_data_type)
+            all_stresses += [stresses]
+
+        stretches = np.vstack(all_stretches)
+        test_cases = assemble_test_case_identifiers(
+            self._test_case_identifier_bt, stretches
+        )
+        stresses = np.vstack(all_stresses)
+        return stretches, test_cases, stresses
+
     def _read_column(self, column: int) -> NPArray:
         return (
             self._data_frame.iloc[self._row_offset :, column]
             .dropna()
             .astype(self._np_data_type)
             .values
-        )
-
-    def _assemble_test_cases(self, deformation_inputs: Tensor) -> TestCases:
-        return torch.tensor(
-            [self._test_case_identifier_bt for _ in deformation_inputs],
-            dtype=torch.int64,
-            device=self._device,
         )
 
 
@@ -182,15 +187,13 @@ class TreloarDataReader:
         data = self._read_csv_file(file_name)
         stretch_factors = data[:, self._index_stretch].reshape((-1, 1))
         stretches = self._calculate_stretches(stretch_factors, test_case_identifier)
+        test_cases = assemble_test_case_identifiers(test_case_identifier, stretches)
         stresses = data[:, self._index_stresses].reshape((-1, 1))
-        test_cases = self._assemble_test_case_identifiers(
-            test_case_identifier, stretches
-        )
         return stretches, test_cases, stresses
 
     def _read_csv_file(self, file_name: str) -> NPArray:
         return self._csv_reader.read(
-            file_name, subdir_name=self._input_directory, seperator=";"
+            file_name=file_name, subdir_name=self._input_directory, seperator=";"
         )
 
     def _calculate_stretches(
@@ -210,11 +213,59 @@ class TreloarDataReader:
 
         return np.hstack((stretches_1, stretches_2, stretches_3))
 
-    def _assemble_test_case_identifiers(
-        self, test_case_identifier: int, stretches: NPArray
-    ) -> NPArray:
-        num_stretches = len(stretches)
-        return np.full((num_stretches, 1), test_case_identifier, dtype=np.int64)
+
+class KawabataDataReader:
+    def __init__(
+        self,
+        input_directory: str,
+        project_directory: ProjectDirectory,
+        device: Device,
+    ):
+        self._input_directory = input_directory
+        self._project_directory = project_directory
+        self._device = device
+        self._csv_reader = CSVDataReader(self._project_directory)
+        self._file_name = "Kawabata.csv"
+        self._slice_stretches = slice(0, 2)
+        self._slice_stresses = slice(2, 4)
+        self._np_data_type = numpy_data_type
+        self._test_case_identifier_bt = test_case_identifier_biaxial_tension
+
+    def read(self) -> Data:
+        stretches, test_cases, stresses = self._read_data()
+        stretches_torch = convert_to_torch(stretches, self._device)
+        test_cases_torch = convert_to_torch(test_cases, self._device)
+        stresses_torch = convert_to_torch(stresses, self._device)
+        return stretches_torch, test_cases_torch, stresses_torch
+
+    def _read_data(self) -> tuple[NPArray, NPArray, NPArray]:
+        data = self._read_csv_file()
+        biaxial_stretches = data[:, self._slice_stretches]
+        stretches = self._calculate_stretches(biaxial_stretches)
+        test_cases = assemble_test_case_identifiers(
+            self._test_case_identifier_bt, stretches
+        )
+        stresses = data[:, self._slice_stresses]
+        return stretches, test_cases, stresses
+
+    def _read_csv_file(self) -> NPArray:
+        return self._csv_reader.read(
+            file_name=self._file_name, subdir_name=self._input_directory, seperator=";"
+        )
+
+    def _calculate_stretches(self, biaxial_stretches: NPArray) -> NPArray:
+        one = np.array(1.0)
+        stretches_1 = biaxial_stretches[0]
+        stretches_2 = biaxial_stretches[1]
+        stretches_3 = one / (stretches_1 * stretches_2)
+        return np.hstack((stretches_1, stretches_2, stretches_3))
+
+
+def assemble_test_case_identifiers(
+    test_case_identifier: int, deformation_input: NPArray
+) -> NPArray:
+    num_stretches = len(deformation_input)
+    return np.full((num_stretches, 1), test_case_identifier, dtype=np.int64)
 
 
 def convert_to_torch(array: NPArray, device: Device) -> Tensor:
