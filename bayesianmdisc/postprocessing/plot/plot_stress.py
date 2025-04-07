@@ -595,7 +595,7 @@ def plot_stresses_treloar(
         )
 
     input_sets, test_case_sets, output_sets = split_inputs_and_outputs(
-        inputs, outputs, test_cases
+        inputs, test_cases, outputs
     )
 
     for input_set, test_case, output_set in zip(
