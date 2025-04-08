@@ -21,6 +21,9 @@ from bayesianmdisc.statistics.metrics import (
 )
 
 
+factor_stddevs = 1.96  # corresponds to 95%-credible interval
+
+
 class StressPlotterConfigLinka:
     def __init__(self) -> None:
         # label size
@@ -158,8 +161,8 @@ def plot_stresses_linka(
         )
         axes.fill_between(
             model_stretches,
-            means_fiber - stddevs_fiber,
-            means_fiber + stddevs_fiber,
+            means_fiber - factor_stddevs * stddevs_fiber,
+            means_fiber + factor_stddevs * stddevs_fiber,
             color=config.model_color_stddev_normal_1,
             alpha=config.model_stddev_alpha,
         )
@@ -172,8 +175,8 @@ def plot_stresses_linka(
         )
         axes.fill_between(
             model_stretches,
-            means_normal - stddevs_normal,
-            means_normal + stddevs_normal,
+            means_normal - factor_stddevs * stddevs_normal,
+            means_normal + factor_stddevs * stddevs_normal,
             color=config.model_color_stddev_normal_2,
             alpha=config.model_stddev_alpha,
         )
@@ -454,8 +457,8 @@ def plot_stresses_treloar(
         )
         axes.fill_between(
             model_stretches_plot,
-            means_plot - stddevs_plot,
-            means_plot + stddevs_plot,
+            means_plot - factor_stddevs * stddevs_plot,
+            means_plot + factor_stddevs * stddevs_plot,
             color=model_color_stddev,
             alpha=config.model_stddev_alpha,
         )
@@ -467,8 +470,8 @@ def plot_stresses_treloar(
         )
         axes_all.fill_between(
             model_stretches_plot,
-            means_plot - stddevs_plot,
-            means_plot + stddevs_plot,
+            means_plot - factor_stddevs * stddevs_plot,
+            means_plot + factor_stddevs * stddevs_plot,
             color=model_color_stddev,
             alpha=config.model_stddev_alpha,
         )
@@ -758,8 +761,8 @@ def plot_stresses_kawabata(
             )
             axes.fill_between(
                 model_stretches_plot,
-                means_plot - stddevs_plot,
-                means_plot + stddevs_plot,
+                means_plot - factor_stddevs * stddevs_plot,
+                means_plot + factor_stddevs * stddevs_plot,
                 color=color,
                 alpha=config.model_stddev_alpha,
             )
