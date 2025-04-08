@@ -3,6 +3,7 @@ from typing import Any, Dict
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from torch import vmap
 
 from bayesianmdisc.customtypes import Device, NPArray
 from bayesianmdisc.data.testcases import (
@@ -82,10 +83,9 @@ def plot_stresses_linka(
     max_stretch = 1.1
     data_stretches = np.linspace(min_stretch, max_stretch, num_points_per_data_set)
     stretch_ratios = [(1.0, 1.0), (1.0, 0.75), (0.75, 1.0), (1.0, 0.5), (0.5, 1.0)]
-    output_dim = 2
     index_fiber = 0
     index_normal = 1
-    num_model_inputs = 512
+    num_model_inputs = 256
 
     def split_inputs_and_outputs(
         inputs: NPArray, test_cases: NPArray, outputs: NPArray
@@ -143,7 +143,7 @@ def plot_stresses_linka(
         model_stretches = np.linspace(min_stretch, max_stretch, num_model_inputs)
 
         means, stddevs = calculate_model_mean_and_stddev(
-            model, parameter_samples, model_inputs, model_test_cases, output_dim, device
+            model, parameter_samples, model_inputs, model_test_cases, device
         )
         means_fiber = means[:, index_fiber]
         means_normal = means[:, index_normal]
@@ -217,10 +217,10 @@ def plot_stresses_linka(
 
         # text box metrics
         r_squared = calculate_coefficient_of_determinant(
-            model, parameter_samples, inputs, test_cases, outputs
+            model, parameter_samples, inputs, test_cases, outputs, device
         )
         rmse = calculate_root_mean_squared_error(
-            model, parameter_samples, inputs, test_cases, outputs
+            model, parameter_samples, inputs, test_cases, outputs, device
         )
         text = "\n".join(
             (
@@ -251,7 +251,7 @@ def plot_stresses_linka(
     )
 
     for input_set, test_case_set, output_set, stretch_ratio in zip(
-        input_sets, output_sets, test_cases_sets, stretch_ratios
+        input_sets, test_cases_sets, output_sets, stretch_ratios
     ):
         plot_one_input_output_set(input_set, test_case_set, output_set, stretch_ratio)
 
@@ -327,7 +327,6 @@ def plot_stresses_treloar(
     num_data_points_ebt = 14
     num_data_points_ps = 14
     expected_set_sizes = [num_data_points_ut, num_data_points_ebt, num_data_points_ps]
-    output_dim = 1
     num_model_inputs = 256
 
     figure_all, axes_all = plt.subplots()
@@ -441,7 +440,6 @@ def plot_stresses_treloar(
             parameter_samples,
             model_stretches,
             model_test_cases,
-            output_dim,
             device,
         )
         model_stretches_plot = model_stretches.reshape((-1,))
@@ -503,7 +501,6 @@ def plot_stresses_treloar(
             inputs,
             metrics_test_cases,
             outputs,
-            output_dim,
             device,
         )
         rmse = calculate_root_mean_squared_error(
@@ -512,7 +509,6 @@ def plot_stresses_treloar(
             inputs,
             metrics_test_cases,
             outputs,
-            output_dim,
             device,
         )
         text = "\n".join(
@@ -572,10 +568,10 @@ def plot_stresses_treloar(
 
         # text box metrics
         r_squared = calculate_coefficient_of_determinant(
-            model, parameter_samples, inputs, test_cases, outputs, output_dim, device
+            model, parameter_samples, inputs, test_cases, outputs, device
         )
         rmse = calculate_root_mean_squared_error(
-            model, parameter_samples, inputs, test_cases, outputs, output_dim, device
+            model, parameter_samples, inputs, test_cases, outputs, device
         )
         text = "\n".join(
             (
@@ -658,7 +654,6 @@ def plot_stresses_kawabata(
     num_data_points = 76
     set_sizes = [1, 6, 6, 8, 8, 8, 8, 8, 7, 7, 6, 3]
     num_sets = len(set_sizes)
-    output_dim = 2
     num_model_inputs_per_set = 128
 
     def split_inputs_and_outputs(
@@ -750,7 +745,6 @@ def plot_stresses_kawabata(
                 parameter_samples,
                 model_stretches,
                 model_test_cases,
-                output_dim,
                 device,
             )
             model_stretches_plot = model_stretches_2
@@ -801,7 +795,6 @@ def plot_stresses_kawabata(
                 input_set,
                 test_case_set,
                 output_set,
-                output_dim,
                 device,
             )
             rmse = calculate_root_mean_squared_error(
@@ -810,7 +803,6 @@ def plot_stresses_kawabata(
                 input_set,
                 test_case_set,
                 output_set,
-                output_dim,
                 device,
             )
             text = "\n".join(
@@ -849,10 +841,9 @@ def calculate_model_mean_and_stddev(
     parameter_samples: NPArray,
     inputs: NPArray,
     test_cases: NPArray,
-    output_dim: int,
     device: Device,
 ) -> tuple[NPArray, NPArray]:
-    parameter_sample_list = list(
+    parameters_torch = (
         torch.from_numpy(parameter_samples).type(torch.get_default_dtype()).to(device)
     )
     inputs_torch = torch.from_numpy(inputs).type(torch.get_default_dtype()).to(device)
@@ -860,22 +851,12 @@ def calculate_model_mean_and_stddev(
         torch.from_numpy(test_cases).type(torch.get_default_dtype()).to(device)
     )
 
-    prediction_list = []
-    for parameter_sample in parameter_sample_list:
-        prediction_list += [
-            model(inputs_torch, test_cases_torch, parameter_sample)
-            .cpu()
-            .detach()
-            .numpy()
-        ]
-    if output_dim == 2:
-        predictions = np.stack(prediction_list, axis=2)
-        means = np.mean(predictions, axis=2)
-        standard_deviations = np.std(predictions, axis=2)
-    else:
-        predictions = np.stack(prediction_list, axis=1)
-        means = np.mean(predictions, axis=1)
-        standard_deviations = np.std(predictions, axis=1)
+    vmap_func = lambda parameters: model(inputs_torch, test_cases_torch, parameters)
+    predictions = vmap(vmap_func)(parameters_torch)
+    predictions_np = predictions.cpu().detach().numpy()
+
+    means = np.mean(predictions_np, axis=0)
+    standard_deviations = np.std(predictions_np, axis=0)
     return means, standard_deviations
 
 
@@ -885,11 +866,10 @@ def calculate_coefficient_of_determinant(
     inputs: NPArray,
     test_cases: NPArray,
     outputs: NPArray,
-    output_dim: int,
     device: Device,
 ) -> float:
     mean_model_outputs, _ = calculate_model_mean_and_stddev(
-        model, parameter_samples, inputs, test_cases, output_dim, device
+        model, parameter_samples, inputs, test_cases, device
     )
     return coefficient_of_determination(mean_model_outputs, outputs)
 
@@ -900,10 +880,9 @@ def calculate_root_mean_squared_error(
     inputs: NPArray,
     test_cases: NPArray,
     outputs: NPArray,
-    output_dim: int,
     device: Device,
 ) -> float:
     mean_model_outputs, _ = calculate_model_mean_and_stddev(
-        model, parameter_samples, inputs, test_cases, output_dim, device
+        model, parameter_samples, inputs, test_cases, device
     )
     return root_mean_squared_error(mean_model_outputs, outputs)
