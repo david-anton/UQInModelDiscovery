@@ -47,25 +47,32 @@ class IsotropicModelLibrary:
 
     def __init__(self, device: Device):
         self._device = device
-        self._num_negative_ogden_terms = 16
-        self._num_positive_ogden_terms = 16
+        self._degree_mr_terms = 3
+        self._mr_exponents = self._determine_mr_exponents()
+        self._num_negative_ogden_terms = 8
+        self._num_positive_ogden_terms = 8
         self._num_ogden_terms = self._determine_number_of_ogden_terms()
         self._min_ogden_exponent = torch.tensor(-4.0, device=self._device)
         self._max_ogden_exponent = torch.tensor(4.0, device=self._device)
         self._ogden_exponents = self._determine_ogden_exponents()
-        self._degree_mr_terms = 3
-        self._mr_exponents = self._determine_mr_exponents()
+        self._num_ln_feature_terms = 1
         self._test_case_identifier_ut = test_case_identifier_uniaxial_tension
         self._test_case_identifier_ebt = test_case_identifier_equibiaxial_tension
         self._test_case_identifier_bt = test_case_identifier_biaxial_tension
         self._test_case_identifier_ps = test_case_identifier_pure_shear
         self._allowed_test_cases = self._determine_allowed_test_cases()
         self._allowed_input_dimensions = [1, 2, 3]
-        self._num_ogden_parameters, self._num_mr_parameters = (
-            self._determine_number_of_parameters()
-        )
+        (
+            self._num_mr_parameters,
+            self._num_ogden_parameters,
+            self._num_ln_feature_parameters,
+        ) = self._determine_number_of_parameters()
         self.output_dim = 1
-        self.num_parameters = self._num_ogden_parameters + self._num_mr_parameters
+        self.num_parameters = (
+            self._num_mr_parameters
+            + self._num_ogden_parameters
+            + self._num_ln_feature_parameters
+        )
         self.parameter_mask = assemble_parameter_mask(self.num_parameters, self._device)
 
     def __call__(
@@ -108,14 +115,6 @@ class IsotropicModelLibrary:
 
     def get_parameter_names(self) -> ParameterNames:
 
-        def compose_ogden_parameter_names() -> ParameterNames:
-            parameter_names = []
-            for index, exponent in zip(
-                range(1, self._num_ogden_terms + 1), self._ogden_exponents
-            ):
-                parameter_names += [f"O_{index} ({round(exponent,2)})"]
-            return tuple(parameter_names)
-
         def compose_mr_parameter_names() -> ParameterNames:
             parameter_names = []
             for n in range(1, self._degree_mr_terms + 1):
@@ -130,9 +129,21 @@ class IsotropicModelLibrary:
                     parameter_names += [parameter_name]
             return tuple(parameter_names)
 
-        ogden_parameter_names = compose_ogden_parameter_names()
+        def compose_ogden_parameter_names() -> ParameterNames:
+            parameter_names = []
+            for index, exponent in zip(
+                range(1, self._num_ogden_terms + 1), self._ogden_exponents
+            ):
+                parameter_names += [f"O_{index} ({round(exponent,2)})"]
+            return tuple(parameter_names)
+
+        def compose_ln_feature_parameter_name() -> ParameterNames:
+            return ("ln_I2",)
+
         mr_parameter_names = compose_mr_parameter_names()
-        return ogden_parameter_names + mr_parameter_names
+        ogden_parameter_names = compose_ogden_parameter_names()
+        ln_feature_parameter_name = compose_ln_feature_parameter_name()
+        return mr_parameter_names + ogden_parameter_names + ln_feature_parameter_name
 
     def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None:
         for indice in parameter_indices:
@@ -141,10 +152,7 @@ class IsotropicModelLibrary:
     def _determine_number_of_ogden_terms(self) -> int:
         return self._num_negative_ogden_terms + self._num_positive_ogden_terms
 
-    def _determine_number_of_parameters(self) -> tuple[int, int]:
-
-        def determine_number_of_ogden_parameters() -> int:
-            return self._num_ogden_terms
+    def _determine_number_of_parameters(self) -> tuple[int, int, int]:
 
         def determine_number_of_mr_parameters() -> int:
             num_parameters = 0
@@ -152,9 +160,27 @@ class IsotropicModelLibrary:
                 num_parameters += n + 1
             return num_parameters
 
-        num_ogden_parameters = determine_number_of_ogden_parameters()
+        def determine_number_of_ogden_parameters() -> int:
+            return self._num_ogden_terms
+
+        def determine_number_of_ln_feature_parameters() -> int:
+            return self._num_ln_feature_terms
+
         num_mr_parameters = determine_number_of_mr_parameters()
-        return num_ogden_parameters, num_mr_parameters
+        num_ogden_parameters = determine_number_of_ogden_parameters()
+        num_ln_feature_parameters = determine_number_of_ln_feature_parameters()
+        return num_mr_parameters, num_ogden_parameters, num_ln_feature_parameters
+
+    def _determine_mr_exponents(self) -> MRExponents:
+        exponents = []
+        for n in range(1, self._degree_mr_terms + 1):
+            exponents_cI_1 = torch.linspace(
+                start=0, end=n, steps=n + 1, dtype=torch.int64
+            )
+            exponents_cI_1 = exponents_cI_1.reshape((-1, 1))
+            exponents_cI_2 = torch.flip(exponents_cI_1, dims=(0,))
+            exponents += [torch.concat((exponents_cI_1, exponents_cI_2), dim=1)]
+        return torch.concat(exponents, dim=0).tolist()
 
     def _determine_ogden_exponents(self) -> OgdenExponents:
         negative_exponents = torch.linspace(
@@ -168,17 +194,6 @@ class IsotropicModelLibrary:
             steps=self._num_positive_ogden_terms + 1,
         )[1:].tolist()
         return negative_exponents + positive_exponents
-
-    def _determine_mr_exponents(self) -> MRExponents:
-        exponents = []
-        for n in range(1, self._degree_mr_terms + 1):
-            exponents_cI_1 = torch.linspace(
-                start=0, end=n, steps=n + 1, dtype=torch.int64
-            )
-            exponents_cI_1 = exponents_cI_1.reshape((-1, 1))
-            exponents_cI_2 = torch.flip(exponents_cI_1, dims=(0,))
-            exponents += [torch.concat((exponents_cI_1, exponents_cI_2), dim=1)]
-        return torch.concat(exponents, dim=0).tolist()
 
     def _determine_allowed_test_cases(self) -> AllowedTestCases:
         return torch.tensor(
@@ -297,19 +312,49 @@ class IsotropicModelLibrary:
     def _calculate_strain_energy(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
     ) -> StrainEnergy:
-        ogden_parameters, mr_parameters = self._split_parameters(parameters)
-        ogden_strain_energy_terms = self._calculate_ogden_strain_energy_terms(
-            deformation_gradient, ogden_parameters
+        mr_parameters, ogden_parameters, ln_feature_parameters = self._split_parameters(
+            parameters
         )
         mr_strain_energy_terms = self._calculate_mr_strain_energy_terms(
             deformation_gradient, mr_parameters
         )
-        return ogden_strain_energy_terms + mr_strain_energy_terms
+        ogden_strain_energy_terms = self._calculate_ogden_strain_energy_terms(
+            deformation_gradient, ogden_parameters
+        )
+        ln_feature_strain_energy_term = self._calculate_ln_feature_strain_energy_terms(
+            deformation_gradient, ln_feature_parameters
+        )
+        return (
+            mr_strain_energy_terms
+            + ogden_strain_energy_terms
+            + ln_feature_strain_energy_term
+        )
 
     def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
-        ogden_parameters = parameters[: self._num_ogden_parameters]
-        mr_parameters = parameters[self._num_ogden_parameters :]
-        return ogden_parameters, mr_parameters
+        return torch.split(
+            parameters,
+            [
+                self._num_mr_parameters,
+                self._num_ogden_parameters,
+                self._num_ln_feature_parameters,
+            ],
+        )
+
+    def _calculate_mr_strain_energy_terms(
+        self, deformation_gradient: DeformationGradient, parameters: Parameters
+    ) -> StrainEnergy:
+        cI_1, cI_2 = self._calculate_corrected_invariants(deformation_gradient)
+
+        terms = torch.concat(
+            [
+                self._unsqueeze_zero_dimension(
+                    cI_1 ** exponents[0] * cI_2 ** exponents[1]
+                )
+                for exponents in self._mr_exponents
+            ]
+        )
+        weighted_terms = parameters * terms
+        return torch.sum(weighted_terms)
 
     def _calculate_ogden_strain_energy_terms(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
@@ -330,23 +375,27 @@ class IsotropicModelLibrary:
         weighted_terms = parameters * terms
         return torch.sum(weighted_terms)
 
-    def _calculate_mr_strain_energy_terms(
+    def _calculate_ln_feature_strain_energy_terms(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
     ) -> StrainEnergy:
-        cI_1, cI_2 = self._calculate_corrected_invariants(deformation_gradient)
-
-        terms = torch.concat(
-            [
-                self._unsqueeze_zero_dimension(
-                    cI_1 ** exponents[0] * cI_2 ** exponents[1]
-                )
-                for exponents in self._mr_exponents
-            ]
-        )
-        weighted_terms = parameters * terms
-        return torch.sum(weighted_terms)
+        _, I_2 = self._calculate_invariants(deformation_gradient)
+        three = torch.tensor(3.0, device=self._device)
+        ln_feature_parameter = parameters[0]
+        return ln_feature_parameter * torch.log(I_2 / three)
 
     def _calculate_corrected_invariants(
+        self, deformation_gradient: DeformationGradient
+    ) -> Invariants:
+        # Invariants
+        I_1, I_2 = self._calculate_invariants(deformation_gradient)
+        # Constants
+        three = torch.tensor(3.0, device=self._device)
+        # Corrected invariants
+        I_1_cor = I_1 - three
+        I_2_cor = I_2 - three
+        return I_1_cor, I_2_cor
+
+    def _calculate_invariants(
         self, deformation_gradient: DeformationGradient
     ) -> Invariants:
         # Deformation tensors
@@ -354,14 +403,10 @@ class IsotropicModelLibrary:
         C = torch.matmul(F.transpose(0, 1), F)  # right Cauchy-Green deformation tensor
         # Constants
         half = torch.tensor(1 / 2, device=self._device)
-        three = torch.tensor(3.0, device=self._device)
-
         # Isotropic invariants
         I_1 = torch.trace(C)
         I_2 = half * (I_1**2 - torch.tensordot(C, C))
-        I_1_cor = I_1 - three
-        I_2_cor = I_2 - three
-        return I_1_cor, I_2_cor
+        return I_1, I_2
 
     def _split_stretches(self, stretches: Stretches) -> StretchesTuple:
         F_11 = stretches[0]
