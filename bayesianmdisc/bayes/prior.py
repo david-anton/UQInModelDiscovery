@@ -5,6 +5,7 @@ import torch
 from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.statistics.distributions import (
     IndependentMultivariateGammaDistribution,
+    IndependentMultivariateHalfNormalDistribution,
     IndependentMultivariateInverseGammaDistribution,
     IndependentMultivariateNormalDistribution,
     IndependentMultivariateStudentTDistribution,
@@ -15,8 +16,8 @@ from bayesianmdisc.statistics.distributions import (
     UnivariateInverseGammaDistribution,
     UnivariateNormalDistribution,
     UnivariateUniformDistribution,
-    IndependentMultivariateHalfNormalDistribution,
     create_independent_multivariate_gamma_distribution,
+    create_independent_multivariate_half_normal_distribution,
     create_independent_multivariate_inverse_gamma_distribution,
     create_independent_multivariate_normal_distribution,
     create_independent_multivariate_studentT_distribution,
@@ -27,7 +28,6 @@ from bayesianmdisc.statistics.distributions import (
     create_univariate_inverse_gamma_distribution,
     create_univariate_normal_distribution,
     create_univariate_uniform_distribution,
-    create_independent_multivariate_half_normal_distribution,
 )
 
 PriorDistribution: TypeAlias = Union[

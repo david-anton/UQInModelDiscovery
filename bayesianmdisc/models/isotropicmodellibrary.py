@@ -12,15 +12,16 @@ from bayesianmdisc.data import (
     TestCases,
 )
 from bayesianmdisc.data.testcases import (
+    test_case_identifier_biaxial_tension,
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_pure_shear,
     test_case_identifier_uniaxial_tension,
-    test_case_identifier_biaxial_tension,
 )
 from bayesianmdisc.models.base import (
     DeformationGradient,
     IncompressibilityConstraint,
     Invariants,
+    ParameterIndices,
     ParameterNames,
     Parameters,
     PiolaStress,
@@ -30,12 +31,11 @@ from bayesianmdisc.models.base import (
     StrainEnergyDerivatives,
     Stretch,
     Stretches,
-    ParameterIndices,
+    assemble_parameter_mask,
     validate_deformation_input_dimension,
     validate_input_numbers,
     validate_parameters,
     validate_test_cases,
-    assemble_parameter_mask,
 )
 
 StretchesTuple: TypeAlias = tuple[Stretch, Stretch, Stretch]

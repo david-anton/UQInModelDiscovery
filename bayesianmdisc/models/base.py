@@ -2,7 +2,7 @@ from typing import Protocol, TypeAlias
 
 import torch
 
-from bayesianmdisc.customtypes import Tensor, Device
+from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
 from bayesianmdisc.data.testcases import AllowedTestCases
 from bayesianmdisc.errors import ModelError

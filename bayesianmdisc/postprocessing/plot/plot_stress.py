@@ -20,7 +20,6 @@ from bayesianmdisc.statistics.metrics import (
     root_mean_squared_error,
 )
 
-
 factor_stddevs = 1.96  # corresponds to 95%-credible interval
 
 

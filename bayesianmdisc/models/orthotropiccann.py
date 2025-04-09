@@ -10,6 +10,7 @@ from bayesianmdisc.models.base import (
     CauchyStresses,
     Invariant,
     Invariants,
+    ParameterIndices,
     ParameterNames,
     Parameters,
     SplittedParameters,
@@ -17,12 +18,11 @@ from bayesianmdisc.models.base import (
     StrainEnergyDerivativesTuple,
     Stretch,
     Stretches,
-    ParameterIndices,
+    assemble_parameter_mask,
     validate_deformation_input_dimension,
     validate_input_numbers,
     validate_parameters,
     validate_test_cases,
-    assemble_parameter_mask,
 )
 
 # class LinkaOrthotropicIncompressibleCANN:

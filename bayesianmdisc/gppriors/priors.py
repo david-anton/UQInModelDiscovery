@@ -8,10 +8,10 @@ import torch.nn as nn
 from bayesianmdisc.bayes.prior import (
     PriorProtocol,
     create_independent_multivariate_gamma_distributed_prior,
+    create_independent_multivariate_half_normal_distributed_prior,
+    create_independent_multivariate_inverse_gamma_distributed_prior,
     create_independent_multivariate_normal_distributed_prior,
     create_independent_multivariate_studentT_distributed_prior,
-    create_independent_multivariate_inverse_gamma_distributed_prior,
-    create_independent_multivariate_half_normal_distributed_prior,
 )
 from bayesianmdisc.customtypes import Device, Module, NFFlow, Parameter, Tensor
 from bayesianmdisc.errors import GPPriorError
