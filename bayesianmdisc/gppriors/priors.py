@@ -220,7 +220,7 @@ class HalfNormalParameterPrior(nn.Module):
         super().__init__()
         self._dim = model.num_parameters
         self._device = device
-        self._initial_stddev = 0.1
+        self._initial_stddev = 0.01
         self._initial_rho = math.log(math.exp(self._initial_stddev) - 1.0)
         self._rhos = self._init_rhos()
 

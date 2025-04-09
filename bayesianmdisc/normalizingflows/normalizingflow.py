@@ -38,8 +38,9 @@ NormalizingFlowOutput: TypeAlias = tuple[MomentsMultivariateNormal, NPArray]
 
 is_print_info_on = True
 print_interval = 10
-deactivation_interval = 5000
-deactivation_threshold = 5e-6
+deactivation_initial_phase = 10_000
+deactivation_interval = 1000
+deactivation_threshold = 1e-12
 num_deactivation_condition_samples = 4096
 num_samples_output = 4096
 
@@ -116,8 +117,9 @@ def _fit_normalizing_flow(
         return is_first | is_last | is_interval_reached
 
     def parameter_deactivation_condition(iteration: int) -> bool:
+        is_initial_phase_over = iteration >= deactivation_initial_phase
         is_interval_reached = iteration % deactivation_interval == 0
-        return deactivate_parameters and is_interval_reached
+        return deactivate_parameters and is_initial_phase_over and is_interval_reached
 
     def draw_samples(num_samples: int) -> list[Tensor]:
         samples, _ = normalizing_flow.sample(num_samples)
@@ -148,6 +150,7 @@ def _fit_normalizing_flow(
             samples_list = draw_samples(num_deactivation_condition_samples)
             samples = torch.stack(samples_list, dim=0)
             means = torch.mean(samples, dim=0)
+            print(f"Parameter means: {means}")
             parameter_mask = means < deactivation_threshold
             indices = parameter_mask.nonzero().ravel().tolist()
             print(f"Masks model parameters with indices {indices}.")
