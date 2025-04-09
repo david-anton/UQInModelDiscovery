@@ -22,10 +22,10 @@ def get_expected_parameter_names() -> tuple[str, ...]:
 
     def get_expected_ogden_parameter_names() -> tuple[str, ...]:
         parameter_names = []
-        num_negative_terms = 8
-        num_positive_terms = 8
-        min_exponent = torch.tensor(-4.0)
-        max_exponent = torch.tensor(4.0)
+        num_negative_terms = 4
+        num_positive_terms = 4
+        min_exponent = torch.tensor(-2.0)
+        max_exponent = torch.tensor(2.0)
         negative_exponents = torch.linspace(min_exponent, 0.0, num_negative_terms + 1)[
             :-1
         ].tolist()
