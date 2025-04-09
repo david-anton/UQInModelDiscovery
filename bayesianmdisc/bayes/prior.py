@@ -15,6 +15,7 @@ from bayesianmdisc.statistics.distributions import (
     UnivariateInverseGammaDistribution,
     UnivariateNormalDistribution,
     UnivariateUniformDistribution,
+    IndependentMultivariateHalfNormalDistribution,
     create_independent_multivariate_gamma_distribution,
     create_independent_multivariate_inverse_gamma_distribution,
     create_independent_multivariate_normal_distribution,
@@ -26,6 +27,7 @@ from bayesianmdisc.statistics.distributions import (
     create_univariate_inverse_gamma_distribution,
     create_univariate_normal_distribution,
     create_univariate_uniform_distribution,
+    create_independent_multivariate_half_normal_distribution,
 )
 
 PriorDistribution: TypeAlias = Union[
@@ -40,6 +42,7 @@ PriorDistribution: TypeAlias = Union[
     UnivariateGammaDistribution,
     UnivariateInverseGammaDistribution,
     IndependentMultivariateStudentTDistribution,
+    IndependentMultivariateHalfNormalDistribution,
 ]
 
 
@@ -175,6 +178,15 @@ def create_independent_multivariate_normal_distributed_prior(
 ) -> Prior:
     distribution = create_independent_multivariate_normal_distribution(
         means, standard_deviations, device
+    )
+    return Prior(distribution)
+
+
+def create_independent_multivariate_half_normal_distributed_prior(
+    standard_deviations: Tensor, device: Device
+) -> Prior:
+    distribution = create_independent_multivariate_half_normal_distribution(
+        standard_deviations, device
     )
     return Prior(distribution)
 

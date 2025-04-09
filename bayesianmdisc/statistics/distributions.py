@@ -126,6 +126,8 @@ class UnivariateHalfNormalDistribution:
             scale=torch.tensor([standard_deviation], device=device),
             validate_args=False,
         )
+        self.means = self._distribution.mean
+        self.standard_deviations = self._distribution.stddev
         self.dim = 1
 
     def log_prob(self, sample: Tensor) -> Tensor:
@@ -207,6 +209,7 @@ class IndependentMultivariateHalfNormalDistribution:
             scale=standard_deviations.to(device),
             validate_args=False,
         )
+        self.means = self._distribution.mean
         self.standard_deviations = self._distribution.stddev
         self.dim = torch.numel(standard_deviations)
 

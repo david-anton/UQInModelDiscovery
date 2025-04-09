@@ -11,6 +11,7 @@ from bayesianmdisc.bayes.prior import (
     create_independent_multivariate_normal_distributed_prior,
     create_independent_multivariate_studentT_distributed_prior,
     create_independent_multivariate_inverse_gamma_distributed_prior,
+    create_independent_multivariate_half_normal_distributed_prior,
 )
 from bayesianmdisc.customtypes import Device, Module, NFFlow, Parameter, Tensor
 from bayesianmdisc.errors import GPPriorError
@@ -61,6 +62,13 @@ def create_parameter_prior(
         if not is_mean_trainable:
             GPPriorError("Inverse Gamma prior has always a trainable mean.")
         return InverseGammaParameterPrior(
+            model=model_library,
+            device=device,
+        )
+    elif prior_type == "half Gaussian":
+        if is_mean_trainable:
+            GPPriorError("Half Gaussian prior has never a trainable mean.")
+        return HalfNormalParameterPrior(
             model=model_library,
             device=device,
         )
@@ -203,6 +211,52 @@ class InverseGammaParameterPrior(nn.Module):
         return shapes, rates
 
 
+class HalfNormalParameterPrior(nn.Module):
+    def __init__(
+        self,
+        model: ModelProtocol,
+        device: Device,
+    ):
+        super().__init__()
+        self._dim = model.num_parameters
+        self._device = device
+        self._initial_stddev = 0.1
+        self._initial_rho = math.log(math.exp(self._initial_stddev) - 1.0)
+        self._rhos = self._init_rhos()
+
+    def forward(self, num_samples: int) -> Tensor:
+        standard_deviations = self._sigmas()
+        return torch.distributions.HalfNormal(scale=standard_deviations).rsample(
+            torch.Size([num_samples])
+        )
+
+    def get_prior_distribution(self) -> PriorProtocol:
+        standard_deviations = self._sigmas().data.detach()
+        return create_independent_multivariate_half_normal_distributed_prior(
+            standard_deviations=standard_deviations,
+            device=self._device,
+        )
+
+    def print_hyperparameters(self) -> None:
+        standard_deviations = self._sigmas().data.detach()
+        print(f"Standard deviations: {standard_deviations}")
+
+    def _init_rhos(self) -> Tensor:
+        rhos = torch.full(
+            (self._dim,),
+            self._initial_rho,
+            requires_grad=True,
+            device=self._device,
+        )
+        return nn.Parameter(rhos)
+
+    def _sigmas(self) -> Tensor:
+        def _sigmas_func(rhos: Tensor) -> Tensor:
+            return torch.log(torch.tensor(1.0, device=self._device) + torch.exp(rhos))
+
+        return _sigmas_func(self._rhos)
+
+
 class GaussianMean(nn.Module):
     def __init__(
         self,
@@ -248,13 +302,14 @@ class GaussianParameterPrior(nn.Module):
             is_trainable=is_mean_trainable,
             device=self._device,
         )
-        self._initial_rho = math.log(math.exp(1.0) - 1.0)
+        self._initial_stddev = 1.0
+        self._initial_rho = math.log(math.exp(self._initial_stddev) - 1.0)
         self._rhos = self._init_rhos()
 
     def forward(self, num_samples: int) -> Tensor:
-        sigmas = self._sigmas()
+        standard_deviations = self._sigmas()
         means = self._means()
-        return torch.distributions.Normal(loc=means, scale=sigmas).rsample(
+        return torch.distributions.Normal(loc=means, scale=standard_deviations).rsample(
             torch.Size([num_samples])
         )
 
