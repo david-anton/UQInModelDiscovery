@@ -6,7 +6,7 @@ import torch
 from bayesianmdisc.bayes.likelihood import Likelihood
 from bayesianmdisc.bayes.prior import (
     PriorProtocol,
-    create_independent_multivariate_inverse_gamma_distributed_prior,
+    create_independent_multivariate_gamma_distributed_prior,
 )
 from bayesianmdisc.customtypes import NPArray, Tensor
 from bayesianmdisc.data import (
@@ -60,7 +60,9 @@ if data_set == "linka":
 elif data_set == "treloar":
     input_directory = "treloar"
     data_reader = TreloarDataReader(input_directory, project_directory, device)
-output_directory = current_date + "_" + input_directory + "_loweruncertainty"
+output_directory = (
+    current_date + "_" + input_directory + "_smallermodellibrary_noise_5e-2"
+)
 
 
 inputs, test_cases, outputs = data_reader.read()
@@ -72,8 +74,8 @@ elif data_set == "treloar":
     model = IsotropicModelLibrary(device)
 num_parameters = model.num_parameters
 
-relative_noise_stddevs = 5e-3
-min_noise_stddev = 1e-4
+relative_noise_stddevs = 5e-2
+min_noise_stddev = 1e-3
 
 
 def determine_prior(
@@ -184,13 +186,13 @@ def determine_prior(
         prior = infer_gp_induced_prior(
             gp=gaussian_process,
             model=model,
-            prior_type="inverse Gamma",
+            prior_type="Gamma",
             is_mean_trainable=True,
             inputs=inputs,
             test_cases=test_cases,
             num_func_samples=32,
             resample=True,
-            num_iters_wasserstein=int(20e3),
+            num_iters_wasserstein=int(10e3),
             hiden_layer_size_lipschitz_nn=128,
             num_iters_lipschitz=5,
             output_subdirectory=output_subdirectory,
@@ -213,11 +215,11 @@ def determine_prior(
 
         return prior
     else:
-        return create_independent_multivariate_inverse_gamma_distributed_prior(
+        return create_independent_multivariate_gamma_distributed_prior(
             concentrations=torch.tensor(
-                [99.0 for _ in range(num_parameters)], device=device
+                [0.5 for _ in range(num_parameters)], device=device
             ),
-            rates=torch.tensor([1e-2 for _ in range(num_parameters)], device=device),
+            rates=torch.tensor([1.0 for _ in range(num_parameters)], device=device),
             device=device,
         )
 
@@ -241,8 +243,8 @@ normalizing_flow_config = NormalizingFlowConfig(
     relative_width_flow_layers=4,
     num_samples=64,
     initial_learning_rate=5e-4,
-    final_learning_rate=2e-4,
-    num_iterations=50_000,
+    final_learning_rate=1e-4,
+    num_iterations=100_000,
     deactivate_parameters=False,
     output_subdirectory=output_directory,
     project_directory=project_directory,
