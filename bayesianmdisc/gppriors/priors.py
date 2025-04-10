@@ -1,5 +1,5 @@
 import math
-from typing import Iterator, Protocol, TypeAlias, cast
+from typing import Iterator, Protocol, TypeAlias, cast, Dict, Any
 
 import normflows as nf
 import torch
@@ -26,22 +26,26 @@ from bayesianmdisc.normalizingflows.prior import NormalizingFlowPrior
 from bayesianmdisc.normalizingflows.utility import freeze_model
 
 NumLayersList: TypeAlias = list[int]
+ParameterOptions: TypeAlias = list[Dict[str, Any]]
 
 
 class ParameterPrior(Protocol):
+    def __call__(self, num_samples: int) -> Tensor:
+        pass
+
     def forward(self, num_samples: int) -> Tensor:
+        pass
+
+    def parameters(self, recurse: bool = True) -> Iterator[Parameter]:
+        pass
+
+    def get_parameters_and_options(self) -> ParameterOptions:
         pass
 
     def get_prior_distribution(self) -> PriorProtocol:
         pass
 
     def print_hyperparameters(self) -> None:
-        pass
-
-    def __call__(self, num_samples: int) -> Tensor:
-        pass
-
-    def parameters(self, recurse: bool = True) -> Iterator[Parameter]:
         pass
 
 
@@ -110,14 +114,8 @@ class GammaParameterPrior(nn.Module):
         initial_rate = 10.0
         initial_rho_shape = math.log(math.exp(initial_shape) - 1.0)
         initial_rho_rate = math.log(math.exp(initial_rate) - 1.0)
-        self._normalization_factor_shapes = torch.tensor(0.1, device=self._device)
-        self._normalization_factor_rates = torch.tensor(10.0, device=self._device)
-        self._rhos_shapes = self._init_rhos(
-            initial_rho_shape, self._normalization_factor_shapes
-        )
-        self._rhos_rates = self._init_rhos(
-            initial_rho_rate, self._normalization_factor_rates
-        )
+        self._rhos_shapes = self._init_rhos(initial_rho_shape)
+        self._rhos_rates = self._init_rhos(initial_rho_rate)
 
     def forward(self, num_samples: int) -> Tensor:
         # shape = concentrations (PyTorch)
@@ -125,6 +123,12 @@ class GammaParameterPrior(nn.Module):
         return torch.distributions.Gamma(concentration=shapes, rate=rates).rsample(
             torch.Size([num_samples])
         )
+
+    def get_parameters_and_options(self) -> ParameterOptions:
+        return [
+            {"params": self._rhos_shapes, "lr": 0.1},
+            {"params": self._rhos_rates, "lr": 10.0},
+        ]
 
     def get_prior_distribution(self) -> PriorProtocol:
         # shape = concentrations (PyTorch)
@@ -142,30 +146,21 @@ class GammaParameterPrior(nn.Module):
         print(f"Shapes: {shapes}")
         print(f"Rates: {rates}")
 
-    def _init_rhos(self, initial_rho: float, normalization_factor: Tensor) -> Tensor:
-        rhos = (
-            torch.full(
-                (self._dim,),
-                initial_rho,
-                requires_grad=True,
-                device=self._device,
-            )
-            / normalization_factor
+    def _init_rhos(self, initial_rho: float) -> Tensor:
+        rhos = torch.full(
+            (self._dim,),
+            initial_rho,
+            requires_grad=True,
+            device=self._device,
         )
         return nn.Parameter(rhos)
 
     def _shapes_and_rates(self) -> tuple[Tensor, Tensor]:
-        def shapes_and_rates_func(rhos: Tensor, normalization_factor: Tensor) -> Tensor:
-            return normalization_factor * torch.log(
-                torch.tensor(1.0, device=self._device) + torch.exp(rhos)
-            )
+        def shapes_and_rates_func(rhos: Tensor) -> Tensor:
+            return torch.log(torch.tensor(1.0, device=self._device) + torch.exp(rhos))
 
-        shapes = shapes_and_rates_func(
-            self._rhos_shapes, self._normalization_factor_shapes
-        )
-        rates = shapes_and_rates_func(
-            self._rhos_rates, self._normalization_factor_rates
-        )
+        shapes = shapes_and_rates_func(self._rhos_shapes)
+        rates = shapes_and_rates_func(self._rhos_rates)
         return shapes, rates
 
 
@@ -182,14 +177,8 @@ class InverseGammaParameterPrior(nn.Module):
         initial_rate = 0.01
         initial_rho_shape = math.log(math.exp(initial_shape) - 1.0)
         initial_rho_rate = math.log(math.exp(initial_rate) - 1.0)
-        self._normalization_factor_shapes = torch.tensor(100.0, device=self._device)
-        self._normalization_factor_rates = torch.tensor(0.01, device=self._device)
-        self._rhos_shapes = self._init_rhos(
-            initial_rho_shape, self._normalization_factor_shapes
-        )
-        self._rhos_rates = self._init_rhos(
-            initial_rho_rate, self._normalization_factor_rates
-        )
+        self._rhos_shapes = self._init_rhos(initial_rho_shape)
+        self._rhos_rates = self._init_rhos(initial_rho_rate)
 
     def forward(self, num_samples: int) -> Tensor:
         # shape = concentrations (PyTorch)
@@ -197,6 +186,12 @@ class InverseGammaParameterPrior(nn.Module):
         return torch.distributions.InverseGamma(
             concentration=shapes, rate=rates
         ).rsample(torch.Size([num_samples]))
+
+    def get_parameters_and_options(self) -> ParameterOptions:
+        return [
+            {"params": self._rhos_shapes, "lr": 10.0},
+            {"params": self._rhos_rates, "lr": 1.0},
+        ]
 
     def get_prior_distribution(self) -> PriorProtocol:
         # shape = concentrations (PyTorch)
@@ -214,30 +209,21 @@ class InverseGammaParameterPrior(nn.Module):
         print(f"Shapes: {shapes}")
         print(f"Rates: {rates}")
 
-    def _init_rhos(self, initial_rho: float, normalization_factor: Tensor) -> Tensor:
-        rhos = (
-            torch.full(
-                (self._dim,),
-                initial_rho,
-                requires_grad=True,
-                device=self._device,
-            )
-            / normalization_factor
+    def _init_rhos(self, initial_rho: float) -> Tensor:
+        rhos = torch.full(
+            (self._dim,),
+            initial_rho,
+            requires_grad=True,
+            device=self._device,
         )
         return nn.Parameter(rhos)
 
     def _shapes_and_rates(self) -> tuple[Tensor, Tensor]:
-        def shapes_and_rates_func(rhos: Tensor, normalization_factor: Tensor) -> Tensor:
-            return normalization_factor * torch.log(
-                torch.tensor(1.0, device=self._device) + torch.exp(rhos)
-            )
+        def shapes_and_rates_func(rhos: Tensor) -> Tensor:
+            return torch.log(torch.tensor(1.0, device=self._device) + torch.exp(rhos))
 
-        shapes = shapes_and_rates_func(
-            self._rhos_shapes, self._normalization_factor_shapes
-        )
-        rates = shapes_and_rates_func(
-            self._rhos_rates, self._normalization_factor_rates
-        )
+        shapes = shapes_and_rates_func(self._rhos_shapes)
+        rates = shapes_and_rates_func(self._rhos_rates)
         return shapes, rates
 
 
@@ -259,6 +245,9 @@ class HalfNormalParameterPrior(nn.Module):
         return torch.distributions.HalfNormal(scale=standard_deviations).rsample(
             torch.Size([num_samples])
         )
+
+    def get_parameters_and_options(self) -> ParameterOptions:
+        return [{"params": self._rhos, "lr": 1.0}]
 
     def get_prior_distribution(self) -> PriorProtocol:
         standard_deviations = self._sigmas().data.detach()
@@ -304,6 +293,9 @@ class GaussianMean(nn.Module):
     def forward(self) -> Tensor:
         return self._means
 
+    def get_parameters_and_options(self) -> ParameterOptions:
+        return [{"params": self._means, "lr": 1.0}]
+
     def print_hyperparameters(self) -> None:
         print(f"Means: {self.forward().data.detach()}")
 
@@ -342,6 +334,11 @@ class GaussianParameterPrior(nn.Module):
         return torch.distributions.Normal(loc=means, scale=standard_deviations).rsample(
             torch.Size([num_samples])
         )
+
+    def get_parameters_and_options(self) -> ParameterOptions:
+        mean_parameter_options = self._means.get_parameters_and_options()
+        parameter_options = [{"params": self._rhos, "lr": 1.0}]
+        return mean_parameter_options + parameter_options
 
     def get_prior_distribution(self) -> PriorProtocol:
         means = self._means()
@@ -401,6 +398,12 @@ class HierarchicalGaussianParameterPrior(nn.Module):
         return torch.distributions.Normal(loc=means, scale=sigmas).rsample(
             torch.Size([num_samples])
         )
+
+    def get_parameters_and_options(self) -> ParameterOptions:
+        return [
+            {"params": self._rhos_shapes, "lr": 1.0},
+            {"params": self._rhos_rates, "lr": 1.0},
+        ]
 
     def get_prior_distribution(self) -> PriorProtocol:
         # alpha = shape
@@ -474,6 +477,9 @@ class NormalizingFlowParameterPrior(nn.Module):
     def forward(self, num_samples: int) -> Tensor:
         samples, _ = self._normalizing_flow.sample(num_samples)
         return samples
+
+    def get_parameters_and_options(self) -> ParameterOptions:
+        return [{"params": self._normalizing_flow.parameters(), "lr": 1.0}]
 
     def get_prior_distribution(self) -> PriorProtocol:
         freeze_model(cast(Module, self._normalizing_flow))
