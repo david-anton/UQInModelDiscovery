@@ -35,20 +35,22 @@ class UnivariateNormalPlotterConfig:
         self.truth_linestyle = "solid"
 
         # confidence interval
-        self.interval_num_stds = 1.959964  # quantile for 95% interval
+        self.interval_stddevs = 1.96  # 95%-credible interval
 
         # histogram
         self.hist_bins = 128
-        self.hist_range_in_std = 4
+        self.hist_range_in_std = 3
         self.hist_color = "tab:cyan"
 
-        # pdf
-        self.pdf_color = "tab:blue"
-        self.pdf_linestyle = "solid"
-        self.pdf_mean_color = "tab:red"
-        self.pdf_mean_linestyle = "solid"
-        self.pdf_interval_color = "tab:red"
-        self.pdf_interval_linestyle = "dashed"
+        # moments
+        self.mean_color = "tab:red"
+        self.mean_linestyle = "solid"
+        self.stddev_interval_color = "tab:red"
+        self.stddev_interval_linestyle = "dashed"
+
+        # kde
+        self.kde_color = "tab:blue"
+        self.kde_linestyle = "solid"
 
         # major ticks
         self.major_tick_label_size = 12
@@ -93,7 +95,7 @@ def plot_histograms(
             mean=mean_univariate, standard_deviation=std_univariate
         )
         config = UnivariateNormalPlotterConfig()
-        plot_univariate_normal_distribution(
+        plot_univariate_distribution(
             parameter_name,
             true_parameter,
             moments_univariate,
@@ -104,7 +106,7 @@ def plot_histograms(
             config,
         )
     else:
-        plot_multivariate_normal_distribution(
+        plot_multivariate_distribution(
             parameter_names,
             true_parameters,
             moments,
@@ -115,7 +117,7 @@ def plot_histograms(
         )
 
 
-def plot_multivariate_normal_distribution(
+def plot_multivariate_distribution(
     parameter_names: tuple[str, ...],
     true_parameters: TrueParametersTuple,
     moments: MomentsMultivariateNormal,
@@ -138,7 +140,7 @@ def plot_multivariate_normal_distribution(
         )
         samples_univariate = samples[:, parameter_idx]
         config = UnivariateNormalPlotterConfig()
-        plot_univariate_normal_distribution(
+        plot_univariate_distribution(
             parameter_name,
             true_parameter,
             moments_univariate,
@@ -150,7 +152,7 @@ def plot_multivariate_normal_distribution(
         )
 
 
-def plot_univariate_normal_distribution(
+def plot_univariate_distribution(
     parameter_name: str,
     true_parameter: TrueParameter,
     moments: MomentsUnivariateNormal,
@@ -160,7 +162,7 @@ def plot_univariate_normal_distribution(
     project_directory: ProjectDirectory,
     config: UnivariateNormalPlotterConfig,
 ) -> None:
-    _plot_univariate_normal_distribution_histogram(
+    _plot_univariate_distribution_histogram(
         parameter_name=parameter_name,
         true_parameter=true_parameter,
         moments=moments,
@@ -172,7 +174,7 @@ def plot_univariate_normal_distribution(
     )
 
 
-def _plot_univariate_normal_distribution_histogram(
+def _plot_univariate_distribution_histogram(
     parameter_name: str,
     true_parameter: TrueParameter,
     moments: MomentsUnivariateNormal,
@@ -194,10 +196,10 @@ def _plot_univariate_normal_distribution_histogram(
             linestyle=config.truth_linestyle,
             label="truth",
         )
+
     # Histogram
     range_hist = config.hist_range_in_std * standard_deviation
-
-    axes.hist(
+    _, bin_edges, _ = axes.hist(
         samples,
         bins=config.hist_bins,
         range=(mean - range_hist, mean + range_hist),
@@ -205,37 +207,38 @@ def _plot_univariate_normal_distribution_histogram(
         color=config.hist_color,
         label="samples",
     )
-    # PDF
-    x = np.linspace(
-        start=mean - range_hist, stop=mean + range_hist, num=10000, endpoint=True
+
+    # KDE
+    min_bin_edge = np.amin(bin_edges)
+    max_bin_edge = np.amax(bin_edges)
+    x = np.linspace(start=min_bin_edge, stop=max_bin_edge, num=1024, endpoint=True)
+    kde = scipy.stats.gaussian_kde(dataset=samples, bw_method="scott")
+    kde_bandwith = kde.factor
+    y = kde.pdf(x)
+    axes.plot(
+        x,
+        y,
+        color=config.kde_color,
+        linestyle=config.kde_linestyle,
+        label=f"KDE (bw={round(kde_bandwith,2)})",
     )
-    y = scipy.stats.norm.pdf(x, loc=mean, scale=standard_deviation)
-    axes.plot(x, y, color=config.pdf_color, linestyle=config.pdf_linestyle, label="PDF")
+
+    # Ticks
     x_ticks = [
-        mean - (config.interval_num_stds * standard_deviation),
+        mean - (config.interval_stddevs * standard_deviation),
         mean,
-        mean + (config.interval_num_stds * standard_deviation),
+        mean + (config.interval_stddevs * standard_deviation),
     ]
     x_tick_labels = [
         str(round(tick, 2)) if tick >= 1.0 else str(round(tick, 6)) for tick in x_ticks
     ]
     axes.axvline(
         x=mean,
-        color=config.pdf_mean_color,
-        linestyle=config.pdf_mean_linestyle,
+        color=config.mean_color,
+        linestyle=config.mean_linestyle,
         label="mean",
     )
-    axes.axvline(
-        x=mean - config.interval_num_stds * standard_deviation,
-        color=config.pdf_interval_color,
-        linestyle=config.pdf_interval_linestyle,
-        label=r"$95\%$" + "-interval",
-    )
-    axes.axvline(
-        x=mean + config.interval_num_stds * standard_deviation,
-        color=config.pdf_interval_color,
-        linestyle=config.pdf_interval_linestyle,
-    )
+
     axes.set_xticks(x_ticks)
     axes.set_xticklabels(x_tick_labels)
     axes.set_title(title, pad=config.title_pad, **config.font)
@@ -251,7 +254,7 @@ def _plot_univariate_normal_distribution_histogram(
         useOffset=False,
         useMathText=True,
     )
-    file_name = f"estimated_pdf_{parameter_name}_{algorithm_name}.{config.file_format}"
+    file_name = f"histogram_{parameter_name}_{algorithm_name}.{config.file_format}"
     output_path = project_directory.create_output_file_path(
         file_name=file_name, subdir_name=output_subdirectory
     )
