@@ -116,6 +116,8 @@ class GammaParameterPrior(nn.Module):
         initial_rho_rate = math.log(math.exp(initial_rate) - 1.0)
         self._rhos_shapes = self._init_rhos(initial_rho_shape)
         self._rhos_rates = self._init_rhos(initial_rho_rate)
+        self._learning_rate_shapes = 0.001
+        self._learning_rates_rates = 0.01
 
     def forward(self, num_samples: int) -> Tensor:
         # shape = concentrations (PyTorch)
@@ -126,8 +128,8 @@ class GammaParameterPrior(nn.Module):
 
     def get_parameters_and_options(self) -> ParameterOptions:
         return [
-            {"params": self._rhos_shapes, "lr": 0.1},
-            {"params": self._rhos_rates, "lr": 10.0},
+            {"params": self._rhos_shapes, "lr": self._learning_rate_shapes},
+            {"params": self._rhos_rates, "lr": self._learning_rates_rates},
         ]
 
     def get_prior_distribution(self) -> PriorProtocol:
@@ -179,6 +181,8 @@ class InverseGammaParameterPrior(nn.Module):
         initial_rho_rate = math.log(math.exp(initial_rate) - 1.0)
         self._rhos_shapes = self._init_rhos(initial_rho_shape)
         self._rhos_rates = self._init_rhos(initial_rho_rate)
+        self._learning_rate_shapes = 0.1
+        self._learning_rates_rates = 0.001
 
     def forward(self, num_samples: int) -> Tensor:
         # shape = concentrations (PyTorch)
@@ -189,8 +193,8 @@ class InverseGammaParameterPrior(nn.Module):
 
     def get_parameters_and_options(self) -> ParameterOptions:
         return [
-            {"params": self._rhos_shapes, "lr": 10.0},
-            {"params": self._rhos_rates, "lr": 1.0},
+            {"params": self._rhos_shapes, "lr": self._learning_rate_shapes},
+            {"params": self._rhos_rates, "lr": self._learning_rates_rates},
         ]
 
     def get_prior_distribution(self) -> PriorProtocol:
@@ -239,6 +243,7 @@ class HalfNormalParameterPrior(nn.Module):
         self._initial_stddev = 0.01
         self._initial_rho = math.log(math.exp(self._initial_stddev) - 1.0)
         self._rhos = self._init_rhos()
+        self._learning_rate_rhos = 0.001
 
     def forward(self, num_samples: int) -> Tensor:
         standard_deviations = self._sigmas()
@@ -247,7 +252,7 @@ class HalfNormalParameterPrior(nn.Module):
         )
 
     def get_parameters_and_options(self) -> ParameterOptions:
-        return [{"params": self._rhos, "lr": 1.0}]
+        return [{"params": self._rhos, "lr": self._learning_rate_rhos}]
 
     def get_prior_distribution(self) -> PriorProtocol:
         standard_deviations = self._sigmas().data.detach()
@@ -289,12 +294,13 @@ class GaussianMean(nn.Module):
         self._device = device
         self._initial_mean = 0.0
         self._means = self._init_means()
+        self._learning_rate_means = 0.001
 
     def forward(self) -> Tensor:
         return self._means
 
     def get_parameters_and_options(self) -> ParameterOptions:
-        return [{"params": self._means, "lr": 1.0}]
+        return [{"params": self._means, "lr": self._learning_rate_means}]
 
     def print_hyperparameters(self) -> None:
         print(f"Means: {self.forward().data.detach()}")
@@ -327,6 +333,7 @@ class GaussianParameterPrior(nn.Module):
         self._initial_stddev = 1.0
         self._initial_rho = math.log(math.exp(self._initial_stddev) - 1.0)
         self._rhos = self._init_rhos()
+        self._learning_rate_rhos = 0.001
 
     def forward(self, num_samples: int) -> Tensor:
         standard_deviations = self._sigmas()
@@ -337,7 +344,7 @@ class GaussianParameterPrior(nn.Module):
 
     def get_parameters_and_options(self) -> ParameterOptions:
         mean_parameter_options = self._means.get_parameters_and_options()
-        parameter_options = [{"params": self._rhos, "lr": 1.0}]
+        parameter_options = [{"params": self._rhos, "lr": self._learning_rate_rhos}]
         return mean_parameter_options + parameter_options
 
     def get_prior_distribution(self) -> PriorProtocol:
@@ -391,6 +398,8 @@ class HierarchicalGaussianParameterPrior(nn.Module):
         self._initial_rho_rate = math.log(math.exp(initial_rate) - 1.0)
         self._rhos_shapes = self._init_rhos_shapes()
         self._rhos_rates = self._init_rhos_rates()
+        self._learning_rate_shapes = 0.001
+        self._learning_rates_rates = 0.001
 
     def forward(self, num_samples: int) -> Tensor:
         sigmas = self._sigmas()
@@ -401,8 +410,8 @@ class HierarchicalGaussianParameterPrior(nn.Module):
 
     def get_parameters_and_options(self) -> ParameterOptions:
         return [
-            {"params": self._rhos_shapes, "lr": 1.0},
-            {"params": self._rhos_rates, "lr": 1.0},
+            {"params": self._rhos_shapes, "lr": self._learning_rate_shapes},
+            {"params": self._rhos_rates, "lr": self._learning_rates_rates},
         ]
 
     def get_prior_distribution(self) -> PriorProtocol:

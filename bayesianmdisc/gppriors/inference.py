@@ -44,11 +44,7 @@ def infer_gp_induced_prior(
     penalty_coefficient_lipschitz = torch.tensor(10.0, device=device)
     learning_rate_lipschitz_func = 1e-3
 
-    initial_learning_rate_prior = 5e-4
-    final_learning_rate_prior = 1e-4
-    lr_decay_rate_prior = (final_learning_rate_prior / initial_learning_rate_prior) ** (
-        1 / num_iters_wasserstein
-    )
+    lr_decay_rate_prior = 1.0
 
     prior = create_parameter_prior(
         prior_type=prior_type,
@@ -83,9 +79,7 @@ def infer_gp_induced_prior(
             parameters.requires_grad = False
 
     def create_prior_optimizer() -> TorchOptimizer:
-        return torch.optim.RMSprop(
-            params=prior.get_parameters_and_options(), lr=initial_learning_rate_prior
-        )
+        return torch.optim.RMSprop(params=prior.get_parameters_and_options())
 
     def create_lipschitz_func_optimizer() -> TorchOptimizer:
         return torch.optim.RMSprop(
