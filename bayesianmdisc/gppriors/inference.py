@@ -84,7 +84,7 @@ def infer_gp_induced_prior(
 
     def create_prior_optimizer() -> TorchOptimizer:
         return torch.optim.RMSprop(
-            params=prior.parameters(), lr=initial_learning_rate_prior
+            params=prior.get_parameters_and_options(), lr=initial_learning_rate_prior
         )
 
     def create_lipschitz_func_optimizer() -> TorchOptimizer:
