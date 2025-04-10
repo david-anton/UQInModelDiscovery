@@ -187,7 +187,7 @@ class InverseGammaParameterPrior(nn.Module):
         max_rate = torch.tensor(500)
         self._rhos_shapes = self._init_rhos(initial_shape, min_shape, max_shape)
         self._rhos_rates = self._init_rhos(initial_rate, min_rate, max_rate)
-        self._learning_rate_shapes = 0.1
+        self._learning_rate_shapes = 0.01
         self._learning_rates_rates = 0.001
 
     def forward(self, num_samples: int) -> Tensor:

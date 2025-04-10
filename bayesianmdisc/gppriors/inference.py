@@ -42,7 +42,7 @@ def infer_gp_induced_prior(
     num_flattened_outputs = len(inputs) * output_dim
 
     penalty_coefficient_lipschitz = torch.tensor(10.0, device=device)
-    learning_rate_lipschitz_func = 1e-3
+    learning_rate_lipschitz_func = 5e-4
 
     lr_decay_rate_prior = 1.0
 

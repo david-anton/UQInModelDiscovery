@@ -310,7 +310,7 @@ def determine_prior() -> PriorProtocol:
             num_func_samples=32,
             resample=True,
             num_iters_wasserstein=int(2e4),
-            hiden_layer_size_lipschitz_nn=512,
+            hiden_layer_size_lipschitz_nn=256,
             num_iters_lipschitz=5,
             lipschitz_func_pretraining=True,
             output_subdirectory=output_subdirectory,
