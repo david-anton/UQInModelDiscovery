@@ -27,6 +27,11 @@ class DataError(Error):
         super().__init__(message)
 
 
+class DataSetError(Error):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
 class GPError(Error):
     def __init__(self, message: str) -> None:
         super().__init__(message)
