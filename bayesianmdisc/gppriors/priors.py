@@ -107,11 +107,17 @@ class GammaParameterPrior(nn.Module):
         self._dim = model.num_parameters
         self._device = device
         initial_shape = 0.1
-        initial_rate = 2.0
+        initial_rate = 10.0
         initial_rho_shape = math.log(math.exp(initial_shape) - 1.0)
         initial_rho_rate = math.log(math.exp(initial_rate) - 1.0)
-        self._rhos_shapes = self._init_rhos(initial_rho_shape)
-        self._rhos_rates = self._init_rhos(initial_rho_rate)
+        self._normalization_factor_shapes = torch.tensor(0.1, device=self._device)
+        self._normalization_factor_rates = torch.tensor(10.0, device=self._device)
+        self._rhos_shapes = self._init_rhos(
+            initial_rho_shape, self._normalization_factor_shapes
+        )
+        self._rhos_rates = self._init_rhos(
+            initial_rho_rate, self._normalization_factor_rates
+        )
 
     def forward(self, num_samples: int) -> Tensor:
         # shape = concentrations (PyTorch)
@@ -136,21 +142,30 @@ class GammaParameterPrior(nn.Module):
         print(f"Shapes: {shapes}")
         print(f"Rates: {rates}")
 
-    def _init_rhos(self, initial_rho: float) -> Tensor:
-        rhos = torch.full(
-            (self._dim,),
-            initial_rho,
-            requires_grad=True,
-            device=self._device,
+    def _init_rhos(self, initial_rho: float, normalization_factor: Tensor) -> Tensor:
+        rhos = (
+            torch.full(
+                (self._dim,),
+                initial_rho,
+                requires_grad=True,
+                device=self._device,
+            )
+            / normalization_factor
         )
         return nn.Parameter(rhos)
 
     def _shapes_and_rates(self) -> tuple[Tensor, Tensor]:
-        def shapes_and_rates_func(rhos: Tensor) -> Tensor:
-            return torch.log(torch.tensor(1.0, device=self._device) + torch.exp(rhos))
+        def shapes_and_rates_func(rhos: Tensor, normalization_factor: Tensor) -> Tensor:
+            return normalization_factor * torch.log(
+                torch.tensor(1.0, device=self._device) + torch.exp(rhos)
+            )
 
-        shapes = shapes_and_rates_func(self._rhos_shapes)
-        rates = shapes_and_rates_func(self._rhos_rates)
+        shapes = shapes_and_rates_func(
+            self._rhos_shapes, self._normalization_factor_shapes
+        )
+        rates = shapes_and_rates_func(
+            self._rhos_rates, self._normalization_factor_rates
+        )
         return shapes, rates
 
 
@@ -163,12 +178,18 @@ class InverseGammaParameterPrior(nn.Module):
         super().__init__()
         self._dim = model.num_parameters
         self._device = device
-        initial_shape = 99.0
+        initial_shape = 100.0
         initial_rate = 0.01
         initial_rho_shape = math.log(math.exp(initial_shape) - 1.0)
         initial_rho_rate = math.log(math.exp(initial_rate) - 1.0)
-        self._rhos_shapes = self._init_rhos(initial_rho_shape)
-        self._rhos_rates = self._init_rhos(initial_rho_rate)
+        self._normalization_factor_shapes = torch.tensor(100.0, device=self._device)
+        self._normalization_factor_rates = torch.tensor(0.01, device=self._device)
+        self._rhos_shapes = self._init_rhos(
+            initial_rho_shape, self._normalization_factor_shapes
+        )
+        self._rhos_rates = self._init_rhos(
+            initial_rho_rate, self._normalization_factor_rates
+        )
 
     def forward(self, num_samples: int) -> Tensor:
         # shape = concentrations (PyTorch)
@@ -193,21 +214,30 @@ class InverseGammaParameterPrior(nn.Module):
         print(f"Shapes: {shapes}")
         print(f"Rates: {rates}")
 
-    def _init_rhos(self, initial_rho: float) -> Tensor:
-        rhos = torch.full(
-            (self._dim,),
-            initial_rho,
-            requires_grad=True,
-            device=self._device,
+    def _init_rhos(self, initial_rho: float, normalization_factor: Tensor) -> Tensor:
+        rhos = (
+            torch.full(
+                (self._dim,),
+                initial_rho,
+                requires_grad=True,
+                device=self._device,
+            )
+            / normalization_factor
         )
         return nn.Parameter(rhos)
 
     def _shapes_and_rates(self) -> tuple[Tensor, Tensor]:
-        def shapes_and_rates_func(rhos: Tensor) -> Tensor:
-            return torch.log(torch.tensor(1.0, device=self._device) + torch.exp(rhos))
+        def shapes_and_rates_func(rhos: Tensor, normalization_factor: Tensor) -> Tensor:
+            return normalization_factor * torch.log(
+                torch.tensor(1.0, device=self._device) + torch.exp(rhos)
+            )
 
-        shapes = shapes_and_rates_func(self._rhos_shapes)
-        rates = shapes_and_rates_func(self._rhos_rates)
+        shapes = shapes_and_rates_func(
+            self._rhos_shapes, self._normalization_factor_shapes
+        )
+        rates = shapes_and_rates_func(
+            self._rhos_rates, self._normalization_factor_rates
+        )
         return shapes, rates
 
 
