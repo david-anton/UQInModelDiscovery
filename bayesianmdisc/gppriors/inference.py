@@ -18,6 +18,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 
 print_interval = 10
+num_iters_lipschitz_pretraining = 2_000
 
 
 def infer_gp_induced_prior(
@@ -32,6 +33,7 @@ def infer_gp_induced_prior(
     num_iters_wasserstein: int,
     hiden_layer_size_lipschitz_nn: int,
     num_iters_lipschitz: int,
+    lipschitz_func_pretraining: bool,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
     device: Device,
@@ -40,7 +42,7 @@ def infer_gp_induced_prior(
     num_flattened_outputs = len(inputs) * output_dim
 
     lipschitz_penalty_coefficient = torch.tensor(10.0, device=device)
-    initial_learning_rate = 10e-4
+    initial_learning_rate = 5e-4
     final_learning_rate = 1e-4
     learning_rate_decay_rate = (final_learning_rate / initial_learning_rate) ** (
         1 / num_iters_wasserstein
@@ -79,17 +81,11 @@ def infer_gp_induced_prior(
             parameters.requires_grad = False
 
     def create_prior_optimizer() -> TorchOptimizer:
-        # For hyperparameters, see Gulrajani et al, 2017.
-        return torch.optim.Adam(
-            params=prior.parameters(), lr=initial_learning_rate, betas=(0.0, 0.9)
-        )
+        return torch.optim.RMSprop(params=prior.parameters(), lr=initial_learning_rate)
 
     def create_lipschitz_func_optimizer() -> TorchOptimizer:
-        # For hyperparameters, see Gulrajani et al, 2017.
-        return torch.optim.Adam(
-            params=lipschitz_func.parameters(),
-            lr=initial_learning_rate,
-            betas=(0.0, 0.9),
+        return torch.optim.RMSprop(
+            params=lipschitz_func.parameters(), lr=initial_learning_rate
         )
 
     def create_learning_rate_scheduler(optimizer: TorchOptimizer) -> TorchLRScheduler:
@@ -112,9 +108,9 @@ def infer_gp_induced_prior(
         return vmap(vmap_model_func)(model_parameters)
 
     def wasserstein_loss(gp_func_values: Tensor, model_func_values: Tensor) -> Tensor:
-        expectation_gp = torch.mean(lipschitz_func(gp_func_values))
-        expectation_model = torch.mean(lipschitz_func(model_func_values))
-        return expectation_gp - expectation_model
+        lipschitz_func_gp = lipschitz_func(gp_func_values)
+        lipschitz_func_model = lipschitz_func(model_func_values)
+        return torch.mean(lipschitz_func_gp - lipschitz_func_model)
 
     def lipschitz_func_loss(
         gp_func_values: Tensor, model_func_values: Tensor, penalty_coefficient: Tensor
@@ -122,6 +118,7 @@ def infer_gp_induced_prior(
         def gradient_penalty(
             gp_func_values: Tensor, model_func_values: Tensor
         ) -> Tensor:
+            one = torch.tensor(1.0, device=device)
             _lipschitz_func = lambda func_values: lipschitz_func(func_values)[0]
 
             def l2_norm(values: Tensor) -> Tensor:
@@ -129,14 +126,12 @@ def infer_gp_induced_prior(
 
             epsilon = torch.rand((num_func_samples, 1), device=device)
             combined_funcs = (
-                epsilon * model_func_values
-                + (torch.tensor(1.0, device=device) - epsilon) * gp_func_values
+                epsilon * model_func_values + (one - epsilon) * gp_func_values
             )
 
             vmap_grad_penalty = lambda func_values: (
                 torch.square(
-                    l2_norm(grad(_lipschitz_func, argnums=0)(func_values))
-                    - torch.tensor(1.0, device=device)
+                    l2_norm(grad(_lipschitz_func, argnums=0)(func_values)) - one
                 )
             )
             return torch.mean(vmap(vmap_grad_penalty)(combined_funcs))
@@ -144,6 +139,26 @@ def infer_gp_induced_prior(
         return -wasserstein_loss(
             gp_func_values, model_func_values
         ) + penalty_coefficient * gradient_penalty(gp_func_values, model_func_values)
+
+    def pretrain_lipschitz_func() -> None:
+        print("Start pretraining of Lipschitz function ...")
+        optimizer_lipschitz = create_lipschitz_func_optimizer()
+
+        for iter_pretraining in range(num_iters_lipschitz_pretraining):
+            gp_func_values = draw_gp_func_values()
+            model_func_values = draw_model_func_values()
+
+            optimizer_lipschitz.zero_grad(set_to_none=True)
+            loss_lipschitz = lipschitz_func_loss(
+                gp_func_values=gp_func_values,
+                model_func_values=model_func_values,
+                penalty_coefficient=lipschitz_penalty_coefficient,
+            )
+            loss_lipschitz.backward(retain_graph=True)
+            optimizer_lipschitz.step()
+
+            if print_condition(iter_pretraining):
+                print(f"Lipschitz loss: {loss_lipschitz}")
 
     def print_condition(iter_wasserstein: int) -> bool:
         is_first = iter_wasserstein == 1
@@ -161,6 +176,9 @@ def infer_gp_induced_prior(
             print(f"Loss Lipschitz function: {loss_lipschitz_func}")
 
     freeze_gp(gp)
+    if lipschitz_func_pretraining:
+        pretrain_lipschitz_func()
+
     optimizer_prior = create_prior_optimizer()
     optimizer_lipschitz = create_lipschitz_func_optimizer()
     lr_scheduler_prior = create_learning_rate_scheduler(optimizer_prior)
