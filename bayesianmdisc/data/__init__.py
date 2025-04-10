@@ -2,6 +2,7 @@ from .reader import (
     DataReaderProtocol,
     DeformationInputs,
     LinkaHeartDataReader,
+    KawabataDataReader,
     StressOutputs,
     TreloarDataReader,
 )
@@ -24,4 +25,5 @@ __all__ = [
     "TreloarDataReader",
     "DataReaderProtocol",
     "AllowedTestCases",
+    "KawabataDataReader",
 ]
