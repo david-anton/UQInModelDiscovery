@@ -41,10 +41,12 @@ def infer_gp_induced_prior(
     output_dim = model.output_dim
     num_flattened_outputs = len(inputs) * output_dim
 
-    lipschitz_penalty_coefficient = torch.tensor(10.0, device=device)
-    initial_learning_rate = 5e-4
-    final_learning_rate = 1e-4
-    learning_rate_decay_rate = (final_learning_rate / initial_learning_rate) ** (
+    penalty_coefficient_lipschitz = torch.tensor(10.0, device=device)
+    learning_rate_lipschitz_func = 1e-3
+
+    initial_learning_rate_prior = 5e-4
+    final_learning_rate_prior = 1e-4
+    lr_decay_rate_prior = (final_learning_rate_prior / initial_learning_rate_prior) ** (
         1 / num_iters_wasserstein
     )
 
@@ -81,17 +83,19 @@ def infer_gp_induced_prior(
             parameters.requires_grad = False
 
     def create_prior_optimizer() -> TorchOptimizer:
-        return torch.optim.RMSprop(params=prior.parameters(), lr=initial_learning_rate)
+        return torch.optim.RMSprop(
+            params=prior.parameters(), lr=initial_learning_rate_prior
+        )
 
     def create_lipschitz_func_optimizer() -> TorchOptimizer:
         return torch.optim.RMSprop(
-            params=lipschitz_func.parameters(), lr=initial_learning_rate
+            params=lipschitz_func.parameters(), lr=learning_rate_lipschitz_func
         )
 
-    def create_learning_rate_scheduler(optimizer: TorchOptimizer) -> TorchLRScheduler:
-        return torch.optim.lr_scheduler.ExponentialLR(
-            optimizer, gamma=learning_rate_decay_rate
-        )
+    def create_learning_rate_scheduler(
+        optimizer: TorchOptimizer, decay_rate: float
+    ) -> TorchLRScheduler:
+        return torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=decay_rate)
 
     def draw_gp_func_values() -> Tensor:
         # Output of multi-output GP is already flattened, output = [output1_1:n, output2_1:n, ...].
@@ -152,7 +156,7 @@ def infer_gp_induced_prior(
             loss_lipschitz = lipschitz_func_loss(
                 gp_func_values=gp_func_values,
                 model_func_values=model_func_values,
-                penalty_coefficient=lipschitz_penalty_coefficient,
+                penalty_coefficient=penalty_coefficient_lipschitz,
             )
             loss_lipschitz.backward(retain_graph=True)
             optimizer_lipschitz.step()
@@ -181,8 +185,9 @@ def infer_gp_induced_prior(
 
     optimizer_prior = create_prior_optimizer()
     optimizer_lipschitz = create_lipschitz_func_optimizer()
-    lr_scheduler_prior = create_learning_rate_scheduler(optimizer_prior)
-    lr_scheduler_lipschitz = create_learning_rate_scheduler(optimizer_lipschitz)
+    lr_scheduler_prior = create_learning_rate_scheduler(
+        optimizer_prior, lr_decay_rate_prior
+    )
     wasserstein_loss_hist = []
 
     for iter_wasserstein in range(1, num_iters_wasserstein + 1):
@@ -194,7 +199,7 @@ def infer_gp_induced_prior(
             loss_lipschitz = lipschitz_func_loss(
                 gp_func_values=gp_func_values,
                 model_func_values=model_func_values,
-                penalty_coefficient=lipschitz_penalty_coefficient,
+                penalty_coefficient=penalty_coefficient_lipschitz,
             )
             loss_lipschitz.backward(retain_graph=True)
             optimizer_lipschitz.step()
@@ -208,7 +213,6 @@ def infer_gp_induced_prior(
         loss_wasserstein.backward(retain_graph=True)
         optimizer_prior.step()
         lr_scheduler_prior.step()
-        lr_scheduler_lipschitz.step()
         loss_wasserstein_float = loss_wasserstein.detach().cpu().item()
         loss_lipschitz_float = loss_lipschitz.detach().cpu().item()
         wasserstein_loss_hist += [loss_wasserstein_float]
