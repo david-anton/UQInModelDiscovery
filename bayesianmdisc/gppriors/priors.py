@@ -1,4 +1,3 @@
-import math
 from typing import Iterator, Protocol, TypeAlias, cast, Dict, Any
 
 import normflows as nf
@@ -110,12 +109,14 @@ class GammaParameterPrior(nn.Module):
         super().__init__()
         self._dim = model.num_parameters
         self._device = device
-        initial_shape = 0.1
-        initial_rate = 10.0
-        initial_rho_shape = math.log(math.exp(initial_shape) - 1.0)
-        initial_rho_rate = math.log(math.exp(initial_rate) - 1.0)
-        self._rhos_shapes = self._init_rhos(initial_rho_shape)
-        self._rhos_rates = self._init_rhos(initial_rho_rate)
+        initial_shape = torch.tensor(0.1)
+        initial_rate = torch.tensor(10.0)
+        min_shape = torch.tensor(1e-6)
+        max_shape = torch.tensor(1e4)
+        min_rate = torch.tensor(1e-6)
+        max_rate = torch.tensor(1e4)
+        self._rhos_shapes = self._init_rhos(initial_shape, min_shape, max_shape)
+        self._rhos_rates = self._init_rhos(initial_rate, min_rate, max_rate)
         self._learning_rate_shapes = 0.001
         self._learning_rates_rates = 0.01
 
@@ -148,21 +149,24 @@ class GammaParameterPrior(nn.Module):
         print(f"Shapes: {shapes}")
         print(f"Rates: {rates}")
 
-    def _init_rhos(self, initial_rho: float) -> Tensor:
-        rhos = torch.full(
-            (self._dim,),
-            initial_rho,
-            requires_grad=True,
-            device=self._device,
+    def _init_rhos(
+        self, initial_parameter: Tensor, min_parameter: Tensor, max_parameter: Tensor
+    ) -> Tensor:
+        rhos = (
+            parameters_to_rhos(initial_parameter)
+            .repeat((self._dim,))
+            .requires_grad_(True)
+            .to(self._device)
+            .clamp(
+                min=(parameters_to_rhos(min_parameter)),
+                max=parameters_to_rhos(max_parameter),
+            )
         )
         return nn.Parameter(rhos)
 
     def _shapes_and_rates(self) -> tuple[Tensor, Tensor]:
-        def shapes_and_rates_func(rhos: Tensor) -> Tensor:
-            return torch.log(torch.tensor(1.0, device=self._device) + torch.exp(rhos))
-
-        shapes = shapes_and_rates_func(self._rhos_shapes)
-        rates = shapes_and_rates_func(self._rhos_rates)
+        shapes = rhos_to_parameters(self._rhos_shapes)
+        rates = rhos_to_parameters(self._rhos_rates)
         return shapes, rates
 
 
@@ -175,12 +179,14 @@ class InverseGammaParameterPrior(nn.Module):
         super().__init__()
         self._dim = model.num_parameters
         self._device = device
-        initial_shape = 100.0
-        initial_rate = 0.01
-        initial_rho_shape = math.log(math.exp(initial_shape) - 1.0)
-        initial_rho_rate = math.log(math.exp(initial_rate) - 1.0)
-        self._rhos_shapes = self._init_rhos(initial_rho_shape)
-        self._rhos_rates = self._init_rhos(initial_rho_rate)
+        initial_shape = torch.tensor(100.0)
+        initial_rate = torch.tensor(0.01)
+        min_shape = torch.tensor(1e-6)
+        max_shape = torch.tensor(500)
+        min_rate = torch.tensor(1e-6)
+        max_rate = torch.tensor(500)
+        self._rhos_shapes = self._init_rhos(initial_shape, min_shape, max_shape)
+        self._rhos_rates = self._init_rhos(initial_rate, min_rate, max_rate)
         self._learning_rate_shapes = 0.1
         self._learning_rates_rates = 0.001
 
@@ -213,21 +219,24 @@ class InverseGammaParameterPrior(nn.Module):
         print(f"Shapes: {shapes}")
         print(f"Rates: {rates}")
 
-    def _init_rhos(self, initial_rho: float) -> Tensor:
-        rhos = torch.full(
-            (self._dim,),
-            initial_rho,
-            requires_grad=True,
-            device=self._device,
+    def _init_rhos(
+        self, initial_parameter: Tensor, min_parameter: Tensor, max_parameter: Tensor
+    ) -> Tensor:
+        rhos = (
+            parameters_to_rhos(initial_parameter)
+            .repeat((self._dim,))
+            .requires_grad_(True)
+            .to(self._device)
+            .clamp(
+                min=(parameters_to_rhos(min_parameter)),
+                max=parameters_to_rhos(max_parameter),
+            )
         )
         return nn.Parameter(rhos)
 
     def _shapes_and_rates(self) -> tuple[Tensor, Tensor]:
-        def shapes_and_rates_func(rhos: Tensor) -> Tensor:
-            return torch.log(torch.tensor(1.0, device=self._device) + torch.exp(rhos))
-
-        shapes = shapes_and_rates_func(self._rhos_shapes)
-        rates = shapes_and_rates_func(self._rhos_rates)
+        shapes = rhos_to_parameters(self._rhos_shapes)
+        rates = rhos_to_parameters(self._rhos_rates)
         return shapes, rates
 
 
@@ -240,8 +249,7 @@ class HalfNormalParameterPrior(nn.Module):
         super().__init__()
         self._dim = model.num_parameters
         self._device = device
-        self._initial_stddev = 0.01
-        self._initial_rho = math.log(math.exp(self._initial_stddev) - 1.0)
+        self._initial_stddev = torch.tensor(0.01)
         self._rhos = self._init_rhos()
         self._learning_rate_rhos = 0.001
 
@@ -266,19 +274,16 @@ class HalfNormalParameterPrior(nn.Module):
         print(f"Standard deviations: {standard_deviations}")
 
     def _init_rhos(self) -> Tensor:
-        rhos = torch.full(
-            (self._dim,),
-            self._initial_rho,
-            requires_grad=True,
-            device=self._device,
+        rhos = (
+            parameters_to_rhos(self._initial_stddev)
+            .repeat((self._dim,))
+            .requires_grad_(True)
+            .to(self._device)
         )
         return nn.Parameter(rhos)
 
     def _sigmas(self) -> Tensor:
-        def _sigmas_func(rhos: Tensor) -> Tensor:
-            return torch.log(torch.tensor(1.0, device=self._device) + torch.exp(rhos))
-
-        return _sigmas_func(self._rhos)
+        return rhos_to_parameters(self._rhos)
 
 
 class GaussianMean(nn.Module):
@@ -292,7 +297,7 @@ class GaussianMean(nn.Module):
         self._dim = model.num_parameters
         self._is_trainable = is_trainable
         self._device = device
-        self._initial_mean = 0.0
+        self._initial_mean = torch.tensor(0.0)
         self._means = self._init_means()
         self._learning_rate_means = 0.001
 
@@ -306,11 +311,10 @@ class GaussianMean(nn.Module):
         print(f"Means: {self.forward().data.detach()}")
 
     def _init_means(self) -> Tensor:
-        means = torch.full(
-            (self._dim,),
-            self._initial_mean,
-            requires_grad=self._is_trainable,
-            device=self._device,
+        means = (
+            self._initial_mean.repeat((self._dim,))
+            .requires_grad_(self._is_trainable)
+            .to(self._device)
         )
         return nn.Parameter(means).requires_grad_(self._is_trainable)
 
@@ -330,8 +334,7 @@ class GaussianParameterPrior(nn.Module):
             is_trainable=is_mean_trainable,
             device=self._device,
         )
-        self._initial_stddev = 1.0
-        self._initial_rho = math.log(math.exp(self._initial_stddev) - 1.0)
+        self._initial_stddev = torch.tensor(1.0)
         self._rhos = self._init_rhos()
         self._learning_rate_rhos = 0.001
 
@@ -362,19 +365,16 @@ class GaussianParameterPrior(nn.Module):
         print(f"Standard deviations: {standard_deviations}")
 
     def _init_rhos(self) -> Tensor:
-        rhos = torch.full(
-            (self._dim,),
-            self._initial_rho,
-            requires_grad=True,
-            device=self._device,
+        rhos = (
+            parameters_to_rhos(self._initial_stddev)
+            .repeat((self._dim,))
+            .requires_grad_(True)
+            .to(self._device)
         )
         return nn.Parameter(rhos)
 
     def _sigmas(self) -> Tensor:
-        def sigmas_func(rhos: Tensor) -> Tensor:
-            return torch.log(torch.tensor(1.0, device=self._device) + torch.exp(rhos))
-
-        return sigmas_func(self._rhos)
+        return rhos_to_parameters(self._rhos)
 
 
 class HierarchicalGaussianParameterPrior(nn.Module):
@@ -392,12 +392,14 @@ class HierarchicalGaussianParameterPrior(nn.Module):
             is_trainable=is_mean_trainable,
             device=self._device,
         )
-        initial_shape = 1.0
-        initial_rate = 1.0
-        self._initial_rho_shape = math.log(math.exp(initial_shape) - 1.0)
-        self._initial_rho_rate = math.log(math.exp(initial_rate) - 1.0)
-        self._rhos_shapes = self._init_rhos_shapes()
-        self._rhos_rates = self._init_rhos_rates()
+        initial_shape = torch.tensor(1.0)
+        initial_rate = torch.tensor(1.0)
+        min_shape = torch.tensor(1e-6)
+        max_shape = torch.tensor(1e4)
+        min_rate = torch.tensor(1e-6)
+        max_rate = torch.tensor(1e4)
+        self._rhos_shapes = self._init_rhos(initial_shape, min_shape, max_shape)
+        self._rhos_rates = self._init_rhos(initial_rate, min_rate, max_rate)
         self._learning_rate_shapes = 0.001
         self._learning_rates_rates = 0.001
 
@@ -437,23 +439,20 @@ class HierarchicalGaussianParameterPrior(nn.Module):
         print(f"Shapes: {shapes}")
         print(f"Rates: {rates}")
 
-    def _init_rhos_shapes(self) -> Tensor:
-        rhos_shapes = torch.full(
-            (self._dim,),
-            self._initial_rho_shape,
-            requires_grad=True,
-            device=self._device,
+    def _init_rhos(
+        self, initial_parameter: Tensor, min_parameter: Tensor, max_parameter: Tensor
+    ) -> Tensor:
+        rhos = (
+            parameters_to_rhos(initial_parameter)
+            .repeat((self._dim,))
+            .requires_grad_(True)
+            .to(self._device)
+            .clamp(
+                min=(parameters_to_rhos(min_parameter)),
+                max=parameters_to_rhos(max_parameter),
+            )
         )
-        return nn.Parameter(rhos_shapes)
-
-    def _init_rhos_rates(self) -> Tensor:
-        rhos_rates = torch.full(
-            (self._dim,),
-            self._initial_rho_rate,
-            requires_grad=True,
-            device=self._device,
-        )
-        return nn.Parameter(rhos_rates)
+        return nn.Parameter(rhos)
 
     def _sigmas(self) -> Tensor:
         shapes, rates = self._shapes_and_rates()
@@ -463,13 +462,8 @@ class HierarchicalGaussianParameterPrior(nn.Module):
         return torch.sqrt(variances)
 
     def _shapes_and_rates(self) -> tuple[Tensor, Tensor]:
-        def shapes_and_rates_func(rhos: Tensor) -> Tensor:
-            return torch.log(torch.tensor(1.0, device=self._device) + torch.exp(rhos))
-
-        rhos_shapes = self._rhos_shapes
-        rhos_rates = self._rhos_rates
-        shapes = shapes_and_rates_func(rhos_shapes)
-        rates = shapes_and_rates_func(rhos_rates)
+        shapes = rhos_to_parameters(self._rhos_shapes)
+        rates = rhos_to_parameters(self._rhos_rates)
         return shapes, rates
 
 
@@ -528,3 +522,11 @@ class NormalizingFlowParameterPrior(nn.Module):
             )
         ]
         return flows
+
+
+def parameters_to_rhos(parameters: Tensor) -> Tensor:
+    return torch.log(torch.exp(parameters) - 1.0)
+
+
+def rhos_to_parameters(rhos: Tensor) -> Tensor:
+    return torch.log(1.0 + torch.exp(rhos))
