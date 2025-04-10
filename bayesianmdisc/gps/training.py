@@ -30,30 +30,9 @@ def optimize_gp_hyperparameters(
     project_directory: ProjectDirectory,
     device: Device,
 ) -> None:
-    is_noise_standard_deviation_trainable = False
-    num_inputs = len(inputs)
-    num_noises = len(initial_noise_stddevs)
-    is_noise_heteroscedastic = num_inputs == num_noises
-
-    if is_noise_heteroscedastic:
-        print("Use heteroscedastic noise for hyperparameter optimization")
-
-        _validate_heteroscedastic_noise_standard_deviations(
-            initial_noise_stddevs, gaussian_process
-        )
-        _set_heteroscedastic_noise_dtandard_deviations(
-            initial_noise_stddevs,
-            gaussian_process,
-            is_noise_standard_deviation_trainable,
-            device,
-        )
-
-    else:
-        _set_noise_standard_deviation(
-            initial_noise_stddevs,
-            gaussian_process,
-            is_noise_standard_deviation_trainable,
-        )
+    _set_noise_standard_deviations(
+        gaussian_process, inputs, initial_noise_stddevs, device
+    )
 
     print("Start optimization of gaussian process hyperparameters ...")
     inputs, outputs = _preprocess_training_data(inputs, outputs, device)
@@ -129,8 +108,10 @@ def condition_gp(
     gaussian_process: GaussianProcess,
     inputs: Tensor,
     outputs: Tensor,
+    noise_stddevs: Tensor,
     device: Device,
 ) -> None:
+    _set_noise_standard_deviations(gaussian_process, inputs, noise_stddevs, device)
     inputs, outputs = _preprocess_training_data(inputs, outputs, device)
     _set_training_data(gaussian_process, inputs, outputs)
 
@@ -154,7 +135,36 @@ def _validate_training_data(inputs: Tensor, outputs: Tensor) -> None:
         )
 
 
-def _set_noise_standard_deviation(
+def _set_noise_standard_deviations(
+    gaussian_process: GaussianProcess, inputs: Tensor, noise_stddevs, device: Device
+) -> None:
+    is_noise_standard_deviation_trainable = False
+    num_inputs = len(inputs)
+    num_noise_stddevs = len(noise_stddevs)
+    is_noise_heteroscedastic = num_inputs == num_noise_stddevs
+
+    if is_noise_heteroscedastic:
+        print("Use heteroscedastic noise for hyperparameter optimization")
+
+        _validate_heteroscedastic_noise_standard_deviations(
+            noise_stddevs, gaussian_process
+        )
+        _set_heteroscedastic_noise_dtandard_deviations(
+            noise_stddevs,
+            gaussian_process,
+            is_noise_standard_deviation_trainable,
+            device,
+        )
+
+    else:
+        _set_homoscedastic_noise_standard_deviation(
+            noise_stddevs,
+            gaussian_process,
+            is_noise_standard_deviation_trainable,
+        )
+
+
+def _set_homoscedastic_noise_standard_deviation(
     noise_standard_deviations: Tensor,
     gaussian_process: GaussianProcess,
     is_noise_trainable: bool,
