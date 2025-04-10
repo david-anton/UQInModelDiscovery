@@ -17,6 +17,7 @@ from bayesianmdisc.data import (
     StressOutputs,
     TestCases,
     TreloarDataReader,
+    KawabataDataReader,
     test_case_identifier_pure_shear,
     test_case_identifier_biaxial_tension,
     test_case_identifier_equibiaxial_tension,
@@ -58,15 +59,19 @@ set_seed(0)
 
 # Input/output
 current_date = date.today().strftime("%Y%m%d")
-if data_set == "linka":
-    input_directory = "heart_data_linka"
-    data_reader: DataReaderProtocol = LinkaHeartDataReader(
+if data_set == "treloar":
+    input_directory = data_set
+    data_reader: DataReaderProtocol = TreloarDataReader(
         input_directory, project_directory, device
     )
-elif data_set == "treloar":
-    input_directory = "treloar"
-    data_reader = TreloarDataReader(input_directory, project_directory, device)
-output_directory = current_date + "_" + input_directory + "_test"
+if data_set == "kawabata":
+    input_directory = data_set
+    data_reader = KawabataDataReader(input_directory, project_directory, device)
+elif data_set == "linka":
+    input_directory = "heart_data_linka"
+    data_reader = LinkaHeartDataReader(input_directory, project_directory, device)
+
+output_directory = current_date + "_" + input_directory + "_splitted_data"
 
 
 if data_set == "linka":
@@ -169,10 +174,10 @@ def split_data(
         noise_stddevs_posterior = noise_stddevs[indices_posterior]
 
         validate_data(
-            indices_prior, test_cases_prior, outputs_prior, noise_stddevs_prior
+            inputs_prior, test_cases_prior, outputs_prior, noise_stddevs_prior
         )
         validate_data(
-            indices_posterior,
+            inputs_posterior,
             test_cases_posterior,
             outputs_posterior,
             noise_stddevs_posterior,
@@ -212,7 +217,6 @@ noise_stddevs_posterior = splitted_data.noise_stddevs_posterior
 
 
 def determine_prior() -> PriorProtocol:
-
     if use_gp_prior:
 
         def create_gaussian_process() -> GaussianProcess:
@@ -287,7 +291,7 @@ def determine_prior() -> PriorProtocol:
             inputs=inputs,
             outputs=outputs,
             initial_noise_stddevs=noise_stddevs,
-            num_iterations=10,  # int(5e4),
+            num_iterations=int(5e4),
             learning_rate=1e-3,
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
@@ -305,7 +309,7 @@ def determine_prior() -> PriorProtocol:
             test_cases=test_cases,
             num_func_samples=32,
             resample=True,
-            num_iters_wasserstein=10,  # int(50e3),
+            num_iters_wasserstein=int(2e4),
             hiden_layer_size_lipschitz_nn=512,
             num_iters_lipschitz=5,
             lipschitz_func_pretraining=True,
@@ -358,7 +362,7 @@ normalizing_flow_config = NormalizingFlowConfig(
     num_samples=64,
     initial_learning_rate=5e-4,
     final_learning_rate=1e-4,
-    num_iterations=10,  # 100_000,
+    num_iterations=100_000,
     deactivate_parameters=False,
     output_subdirectory=output_directory,
     project_directory=project_directory,
