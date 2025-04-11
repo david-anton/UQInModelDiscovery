@@ -239,6 +239,14 @@ class OrthotropicCANN:
 
         return tuple(parameter_names)
 
+    def get_active_parameter_names(self) -> ParameterNames:
+        parameter_names = self.get_active_parameter_names()
+        parameter_mask = self.parameter_mask.detach().cpu().tolist()
+        return parameter_names[parameter_mask]
+
+    def reset_parameter_deactivations(self) -> None:
+        self.parameter_mask = assemble_parameter_mask(self.num_parameters, self._device)
+
     def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None:
         for indice in parameter_indices:
             self.parameter_mask[indice] = 0.0
