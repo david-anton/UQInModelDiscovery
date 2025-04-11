@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass
 from datetime import date
+from typing import cast
 
 import torch
 
@@ -34,9 +35,15 @@ from bayesianmdisc.gps import (
     optimize_gp_hyperparameters,
 )
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.models import IsotropicModelLibrary, ModelProtocol, OrthotropicCANN
+from bayesianmdisc.models import (
+    IsotropicModelLibrary,
+    ModelProtocol,
+    OrthotropicCANN,
+    trim_model,
+)
 from bayesianmdisc.normalizingflows import (
-    NormalizingFlowConfig,
+    FitNormalizingFlowConfig,
+    LoadNormalizingFlowConfig,
     NormalizingFlowProtocol,
     determine_statistical_moments,
     fit_normalizing_flow,
@@ -55,7 +62,7 @@ from bayesianmdisc.statistics.utility import (
 
 data_set = "treloar"
 use_gp_prior = True
-retrain_normalizing_flow = True
+retrain_normalizing_flow = False
 
 # Settings
 settings = Settings()
@@ -78,7 +85,7 @@ elif data_set == "linka":
     input_directory = "heart_data_linka"
     data_reader = LinkaHeartDataReader(input_directory, project_directory, device)
 
-output_directory = current_date + "_" + input_directory + "_splitted_data"
+output_directory = f"{current_date}_{input_directory}_splitted_data"
 
 
 if data_set == "linka":
@@ -362,47 +369,81 @@ def sample_from_posterior(
     return determine_statistical_moments(samples_list)
 
 
-prior = determine_prior()
+def plot_stresses(model: ModelProtocol, is_model_trimmed: bool) -> None:
+    if is_model_trimmed:
+        subdirectory_name = "trimmed_model"
+    else:
+        subdirectory_name = "untrimmed_model"
+    output_subdirectory = os.path.join(output_directory, subdirectory_name)
 
-likelihood = Likelihood(
-    model=model,
-    relative_noise_stddev=relative_noise_stddevs,
-    min_noise_stddev=min_noise_stddev,
-    inputs=inputs_posterior,
-    test_cases=test_cases_posterior,
-    outputs=outputs_posterior,
-    device=device,
-)
+    if data_set == "treloar":
+        plot_stresses_treloar(
+            model=cast(IsotropicModelLibrary, model),
+            parameter_samples=posterior_samples,
+            inputs=inputs.detach().cpu().numpy(),
+            outputs=outputs.detach().cpu().numpy(),
+            test_cases=test_cases.detach().cpu().numpy(),
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+            device=device,
+        )
+    elif data_set == "linka":
+        plot_stresses_linka(
+            model=cast(OrthotropicCANN, model),
+            parameter_samples=posterior_samples,
+            inputs=inputs.detach().cpu().numpy(),
+            outputs=outputs.detach().cpu().numpy(),
+            test_cases=test_cases.detach().cpu().numpy(),
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+            device=device,
+        )
 
-normalizing_flow_config = NormalizingFlowConfig(
-    likelihood=likelihood,
-    prior=prior,
-    num_flows=16,
-    relative_width_flow_layers=4,
-    num_samples=64,
-    initial_learning_rate=5e-4,
-    final_learning_rate=1e-4,
-    num_iterations=100_000,
-    deactivate_parameters=False,
-    output_subdirectory=output_directory,
-    project_directory=project_directory,
-)
+
+num_flows = 16
+relative_width_flow_layers = 4
 
 if retrain_normalizing_flow:
-    normalizing_flow = fit_normalizing_flow(normalizing_flow_config, device)
+    prior = determine_prior()
+
+    likelihood = Likelihood(
+        model=model,
+        relative_noise_stddev=relative_noise_stddevs,
+        min_noise_stddev=min_noise_stddev,
+        inputs=inputs_posterior,
+        test_cases=test_cases_posterior,
+        outputs=outputs_posterior,
+        device=device,
+    )
+
+    fit_normalizing_flow_config = FitNormalizingFlowConfig(
+        likelihood=likelihood,
+        prior=prior,
+        num_flows=num_flows,
+        relative_width_flow_layers=relative_width_flow_layers,
+        num_samples=64,
+        initial_learning_rate=5e-4,
+        final_learning_rate=1e-4,
+        num_iterations=100_000,
+        deactivate_parameters=False,
+        output_subdirectory=output_directory,
+        project_directory=project_directory,
+    )
+
+    normalizing_flow = fit_normalizing_flow(fit_normalizing_flow_config, device)
 else:
-    normalizing_flow = load_normalizing_flow(normalizing_flow_config, device)
+    load_normalizing_flow_config = LoadNormalizingFlowConfig(
+        num_parameters=num_parameters,
+        num_flows=num_flows,
+        relative_width_flow_layers=relative_width_flow_layers,
+        output_subdirectory=output_directory,
+        project_directory=project_directory,
+    )
+    normalizing_flow = load_normalizing_flow(load_normalizing_flow_config, device)
 
 posterior_moments, posterior_samples = sample_from_posterior(normalizing_flow)
 
-mse_statistics = likelihood.mse_loss_statistics(
-    torch.from_numpy(posterior_samples).type(torch.get_default_dtype()).to(device)
-)
-print(f"Mean mse: {mse_statistics.mean}")
-print(f"Stddev mse: {mse_statistics.stddev}")
-
 output_subdirectory_posterior = os.path.join(output_directory, "posterior")
-
 plot_histograms(
     parameter_names=model.get_parameter_names(),
     true_parameters=tuple(None for _ in range(num_parameters)),
@@ -413,25 +454,20 @@ plot_histograms(
     project_directory=project_directory,
 )
 
-if data_set == "linka":
-    plot_stresses_linka(
-        model=model,
-        parameter_samples=posterior_samples,
-        inputs=inputs.detach().cpu().numpy(),
-        outputs=outputs.detach().cpu().numpy(),
-        test_cases=test_cases.detach().cpu().numpy(),
-        output_subdirectory=output_directory,
-        project_directory=project_directory,
-        device=device,
-    )
-elif data_set == "treloar":
-    plot_stresses_treloar(
-        model=model,
-        parameter_samples=posterior_samples,
-        inputs=inputs.detach().cpu().numpy(),
-        outputs=outputs.detach().cpu().numpy(),
-        test_cases=test_cases.detach().cpu().numpy(),
-        output_subdirectory=output_directory,
-        project_directory=project_directory,
-        device=device,
-    )
+plot_stresses(model, is_model_trimmed=False)
+
+posterior_samples_torch = (
+    torch.from_numpy(posterior_samples).type(torch.get_default_dtype()).to(device)
+)
+trim_model(
+    model=model,
+    metric="rmse",
+    relative_thresshold=0.1,
+    parameter_samples=posterior_samples_torch,
+    inputs=inputs,
+    test_cases=test_cases,
+    outputs=outputs,
+    output_subdirectory=output_directory,
+    project_directory=project_directory,
+)
+plot_stresses(model, is_model_trimmed=True)

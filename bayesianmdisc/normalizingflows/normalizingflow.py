@@ -47,7 +47,7 @@ file_name_model = "normalizing_flow_parameters"
 
 
 @dataclass
-class NormalizingFlowConfig:
+class FitNormalizingFlowConfig:
     likelihood: LikelihoodProtocol
     prior: PriorProtocol
     num_flows: int
@@ -220,6 +220,8 @@ def _fit_normalizing_flow(
         base_distribution=base_distribution,
         device=device,
     )
+
+    print("Train normalizing flow ...")
     train_normalizing_flow()
     save_normalizing_flow()
 
@@ -230,7 +232,7 @@ def _fit_normalizing_flow(
 
 
 def fit_normalizing_flow(
-    config: NormalizingFlowConfig, device: Device
+    config: FitNormalizingFlowConfig, device: Device
 ) -> NormalizingFlowOutput:
     return _fit_normalizing_flow(
         likelihood=config.likelihood,
@@ -248,13 +250,23 @@ def fit_normalizing_flow(
     )
 
 
+@dataclass
+class LoadNormalizingFlowConfig:
+    num_parameters: int
+    num_flows: int
+    relative_width_flow_layers: int
+    output_subdirectory: str
+    project_directory: ProjectDirectory
+
+
 def load_normalizing_flow(
-    config: NormalizingFlowConfig, device: Device
+    config: LoadNormalizingFlowConfig, device: Device
 ) -> NormalizingFlowProtocol:
-    base_distribution = _create_base_distribution(config.prior.dim, device)
+    print("Load normalizing flow ...")
+    base_distribution = _create_base_distribution(config.num_parameters, device)
     normalizing_flow = _create_normalizing_flow(
         relative_width_flow_layers=config.relative_width_flow_layers,
-        num_parameters=config.prior.dim,
+        num_parameters=config.num_parameters,
         num_flows=config.num_flows,
         base_distribution=base_distribution,
         device=device,
