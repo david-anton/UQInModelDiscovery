@@ -21,6 +21,7 @@ from bayesianmdisc.normalizingflows.flows import (
     create_exponential_constrained_flow,
     create_masked_autoregressive_flow,
 )
+from bayesianmdisc.io.loaderssavers import PytorchModelSaver
 from bayesianmdisc.normalizingflows.postprocessing import determine_statistical_moments
 from bayesianmdisc.normalizingflows.target import (
     TargetDistributionWrapper,
@@ -194,14 +195,22 @@ def _fit_normalizing_flow(
         time_total = time_total_end - time_total_start
         print(f"Total training time: {time_total}")
 
+    def save_normalizing_flow() -> None:
+        print("Save model ...")
+        model_saver = PytorchModelSaver(project_directory)
+        file_name = "normalizing_flow_parameters"
+        model_saver.save(normalizing_flow, file_name, output_subdirectory, device)
+
     normalizing_flow = create_normalizing_flow()
     train_normalizing_flow()
+    save_normalizing_flow()
 
     print("Postprocessing ...")
     freeze_model(normalizing_flow)
 
     samples_list = draw_samples(num_samples_output)
     moments, samples = determine_statistical_moments(samples_list)
+
     return moments, samples
 
 
