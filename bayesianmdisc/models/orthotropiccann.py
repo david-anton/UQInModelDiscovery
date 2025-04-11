@@ -1,6 +1,7 @@
+from itertools import compress
+
 import torch
 from torch import vmap
-from itertools import compress
 
 from bayesianmdisc.customtypes import Device
 from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
@@ -13,15 +14,18 @@ from bayesianmdisc.models.base import (
     Invariants,
     ParameterIndices,
     ParameterNames,
+    ParameterPopulationIndices,
     Parameters,
     SplittedParameters,
     StrainEnergyDerivative,
     StrainEnergyDerivativesTuple,
     Stretch,
     Stretches,
-    assemble_parameter_mask,
+    assemble_parameter_population_indices,
+    init_parameter_mask,
     validate_deformation_input_dimension,
     validate_input_numbers,
+    validate_model_state,
     validate_parameters,
     validate_test_cases,
 )
@@ -185,7 +189,10 @@ class OrthotropicCANN:
         self._allowed_input_dimensions = [2]
         self.output_dim = 2
         self.num_parameters = self._determine_number_of_parameters()
-        self.parameter_mask = assemble_parameter_mask(self.num_parameters, self._device)
+        self.parameter_mask = init_parameter_mask(self.num_parameters, self._device)
+        self._parameter_population_indices = assemble_parameter_population_indices(
+            self.parameter_mask, self._device
+        )
 
     def __call__(
         self,
@@ -206,7 +213,7 @@ class OrthotropicCANN:
         if validate_args:
             self._validate_inputs(inputs, test_cases, parameters)
 
-        parameters = self.parameter_mask * parameters
+        parameters = self._preprocess_parameters(parameters)
 
         def vmap_func(inputs_: Stretches, test_case_: TestCase) -> CauchyStresses:
             return self._calculate_stresses(inputs_, test_case_, parameters)
@@ -254,7 +261,28 @@ class OrthotropicCANN:
             self.parameter_mask[indice] = True
 
     def reset_parameter_deactivations(self) -> None:
-        self.parameter_mask = assemble_parameter_mask(self.num_parameters, self._device)
+        self.parameter_mask = init_parameter_mask(self.num_parameters, self._device)
+
+    def get_number_of_active_parameters(self) -> int:
+        return int(torch.sum(self.parameter_mask))
+
+    def reduce_to_activated_parameters(self) -> None:
+        self.num_parameters = self.get_number_of_active_parameters()
+        self.parameter_mask = init_parameter_mask(self.num_parameters, self._device)
+        self._parameter_population_indices = assemble_parameter_population_indices(
+            self.parameter_mask, self._device
+        )
+
+    def get_model_state(self) -> ParameterPopulationIndices:
+        return self._parameter_population_indices
+
+    def init_reduced_model(
+        self, parameter_population_indices: ParameterPopulationIndices
+    ) -> None:
+        validate_model_state(parameter_population_indices)
+        self.num_parameters = len(parameter_population_indices)
+        self.parameter_mask = init_parameter_mask(self.num_parameters, self._device)
+        self._parameter_population_indices = parameter_population_indices
 
     def _determine_number_of_parameters(self) -> int:
         num_invariants = self._num_invariants
@@ -279,6 +307,20 @@ class OrthotropicCANN:
         validate_deformation_input_dimension(inputs, self._allowed_input_dimensions)
         validate_test_cases(test_cases, self._allowed_test_cases)
         validate_parameters(parameters, self.num_parameters)
+
+    def _preprocess_parameters(self, parameters: Parameters) -> Parameters:
+        masked_parameters = self.parameter_mask * parameters
+        return self._populate_parameters(masked_parameters)
+
+    def _populate_parameters(self, parameters: Parameters) -> Parameters:
+        populated_parameters = torch.full(
+            (self.num_parameters,),
+            0,
+            device=self._device,
+            dtype=torch.int64,
+        )
+        populated_parameters[self._parameter_population_indices] = parameters
+        return parameters
 
     def _calculate_stresses(
         self, stretches: Stretches, test_case: TestCase, parameters: Parameters

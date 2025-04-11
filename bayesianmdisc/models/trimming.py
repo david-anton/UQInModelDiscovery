@@ -1,20 +1,19 @@
 import torch
 from torch import vmap
 
-from bayesianmdisc.models import ModelProtocol
-
 from bayesianmdisc.customtypes import Tensor
-from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.statistics.metrics import (
-    coefficient_of_determination,
-    root_mean_squared_error,
-)
 from bayesianmdisc.data import (
     DeformationInputs,
     StressOutputs,
     TestCases,
 )
 from bayesianmdisc.errors import ModelTrimmingError
+from bayesianmdisc.io import ProjectDirectory
+from bayesianmdisc.models import ModelProtocol
+from bayesianmdisc.statistics.metrics import (
+    coefficient_of_determination,
+    root_mean_squared_error,
+)
 
 file_name_parameters = "relevant_parameters.txt"
 

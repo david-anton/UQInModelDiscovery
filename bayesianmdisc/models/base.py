@@ -27,6 +27,7 @@ ParameterNames: TypeAlias = tuple[str, ...]
 TrueParameters: TypeAlias = tuple[float, ...]
 ParameterMask: TypeAlias = Tensor
 ParameterIndices: TypeAlias = list[int]
+ParameterPopulationIndices = Tensor
 
 
 class ModelProtocol(Protocol):
@@ -61,6 +62,16 @@ class ModelProtocol(Protocol):
     def activate_parameters(self, parameter_indices: ParameterIndices) -> None: ...
 
     def reset_parameter_deactivations(self) -> None: ...
+
+    def get_number_of_active_parameters(self) -> int: ...
+
+    def reduce_to_activated_parameters(self) -> None: ...
+
+    def get_model_state(self) -> ParameterPopulationIndices: ...
+
+    def init_model_state(
+        self, parameter_population_indices: ParameterPopulationIndices
+    ) -> None: ...
 
 
 def validate_input_numbers(inputs: DeformationInputs, test_cases: TestCases) -> None:
@@ -104,5 +115,26 @@ def validate_parameters(parameters: Parameters, expected_num_parameters: int) ->
         )
 
 
-def assemble_parameter_mask(num_parameters: int, device: Device) -> ParameterMask:
+def init_parameter_mask(num_parameters: int, device: Device) -> ParameterMask:
     return torch.full((num_parameters,), True, device=device)
+
+
+def assemble_parameter_population_indices(
+    parameter_mask: ParameterMask, device: Device
+) -> ParameterPopulationIndices:
+    parameter_mask.nonzero(as_tuple=True)[0]
+    return parameter_mask.to(device)
+
+
+def validate_model_state(
+    parameter_population_indices: ParameterPopulationIndices,
+) -> None:
+    dims = parameter_population_indices.dim()
+    expected_dims = 1
+    dtype = parameter_population_indices.dtype
+    expected_dtype = torch.int
+    if not dims == expected_dims and dtype == expected_dtype:
+        raise ModelError(
+            f"""The number of dimensions and/or data type of the population 
+            indices tensor does not match the requirements."""
+        )
