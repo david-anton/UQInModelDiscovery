@@ -5,18 +5,23 @@ from bayesianmdisc.models import ModelProtocol
 
 from bayesianmdisc.customtypes import Tensor
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.statistics.metrics import coefficient_of_determination
+from bayesianmdisc.statistics.metrics import (
+    coefficient_of_determination,
+    root_mean_squared_error,
+)
 from bayesianmdisc.data import (
     DeformationInputs,
     StressOutputs,
     TestCases,
 )
+from bayesianmdisc.errors import ModelTrimmingError
 
 file_name_parameters = "relevant_parameters.txt"
 
 
 def trim_model(
     model: ModelProtocol,
+    metric: str,
     relative_thresshold: float,
     parameter_samples: Tensor,
     inputs: DeformationInputs,
@@ -27,7 +32,17 @@ def trim_model(
 ) -> None:
     model.reset_parameter_deactivations()
     parameter_names = model.get_parameter_names()
-    metric = "R2"
+
+    if metric == "rmse":
+        metric_name = metric
+        metric_func = root_mean_squared_error
+    elif metric == "R2":
+        metric_name = metric
+        metric_func = coefficient_of_determination
+    else:
+        raise ModelTrimmingError(
+            f"No implementation for requested error metric: {metric}"
+        )
 
     def order_parameters_according_to_relevance() -> list[int]:
         mean_parameters = torch.mean(parameter_samples, dim=0)
@@ -41,22 +56,27 @@ def trim_model(
 
     def determine_model_accuracy() -> float:
         mean_model_outputs = evaluate_mean_model_ouputs()
-        return coefficient_of_determination(mean_model_outputs, outputs)
+        return metric_func(mean_model_outputs, outputs)
 
-    def calculate_relative_deterioration(accuracy: float, trimmed_accuracy: float):
-        return (accuracy - trimmed_accuracy) / accuracy
+    def calculate_absolute_relative_deterioration(
+        accuracy: float, trimmed_accuracy: float
+    ):
+        return abs(accuracy - trimmed_accuracy) / accuracy
 
     def print_initial_info(accuracy: float) -> None:
-        accuracy = round(accuracy, 4)
+        accuracy = round(accuracy, 6)
         print("Start trimming model ...")
-        print(f"Initial accuracy: {metric}={accuracy}")
+        print(f"Initial accuracy: {metric_name}={accuracy}")
+
+    def continue_trimming_condition(deterioration: float) -> bool:
+        return deterioration < relative_thresshold
 
     def print_info(parameter_name: str, accuracy: float, deterioration: float) -> None:
-        accuracy = round(accuracy, 4)
-        deterioration = round(deterioration, 4)
+        accuracy = round(accuracy, 6)
+        deterioration = round(deterioration, 6)
         print(f"Trimm parameter {parameter_name}")
         print(
-            f"Remaining accuracy: {metric}={accuracy}, deterioration: {deterioration}"
+            f"Remaining accuracy: {metric_name}={accuracy}, deterioration: {deterioration}"
         )
 
     def save_relevant_parameter_names() -> None:
@@ -70,17 +90,21 @@ def trim_model(
 
     parameter_indices = order_parameters_according_to_relevance()
 
-    accuracy = determine_model_accuracy()
-    print_initial_info(accuracy)
+    initial_accuracy = determine_model_accuracy()
+    print_initial_info(initial_accuracy)
     deterioration = 0.0
     parameter = 0
-    while deterioration < relative_thresshold:
+    while continue_trimming_condition(deterioration):
         parameter_index = parameter_indices[parameter]
         parameter_name = parameter_names[parameter_index]
         model.deactivate_parameters([parameter_index])
-        trimmed_accuracy = determine_model_accuracy()
-        deterioration = calculate_relative_deterioration(accuracy, trimmed_accuracy)
-        accuracy = trimmed_accuracy
+        accuracy = determine_model_accuracy()
+        deterioration = calculate_absolute_relative_deterioration(
+            initial_accuracy, accuracy
+        )
+        if not continue_trimming_condition(deterioration):
+            model.activate_parameters([parameter_index])
+            break
         parameter += 1
         print_info(parameter_name, accuracy, deterioration)
 
