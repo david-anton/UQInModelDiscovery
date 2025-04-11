@@ -68,7 +68,7 @@ def trim_model(
         print("Start trimming model ...")
         print(f"Initial accuracy: {metric_name}={accuracy}")
 
-    def continue_trimming_condition(deterioration: float) -> bool:
+    def trim_condition(deterioration: float) -> bool:
         return deterioration < relative_thresshold
 
     def print_info(parameter_name: str, accuracy: float, deterioration: float) -> None:
@@ -88,24 +88,29 @@ def trim_model(
         with open(output_path, mode="w") as output_file:
             output_file.write("\n".join(relevant_parameter_names) + "\n")
 
+    def print_relevant_parameter_names() -> None:
+        relevant_parameter_names = model.get_active_parameter_names()
+
+        for parameter_name in relevant_parameter_names:
+            print(parameter_name)
+
     parameter_indices = order_parameters_according_to_relevance()
 
-    initial_accuracy = determine_model_accuracy()
-    print_initial_info(initial_accuracy)
+    accuracy = determine_model_accuracy()
+    print_initial_info(accuracy)
     deterioration = 0.0
-    parameter = 0
-    while continue_trimming_condition(deterioration):
-        parameter_index = parameter_indices[parameter]
+    for parameter_index in parameter_indices:
         parameter_name = parameter_names[parameter_index]
         model.deactivate_parameters([parameter_index])
-        accuracy = determine_model_accuracy()
+        trimmed_accuracy = determine_model_accuracy()
         deterioration = calculate_absolute_relative_deterioration(
-            initial_accuracy, accuracy
+            accuracy, trimmed_accuracy
         )
-        if not continue_trimming_condition(deterioration):
+        if trim_condition(deterioration):
+            print_info(parameter_name, accuracy, deterioration)
+            accuracy = trimmed_accuracy
+        else:
             model.activate_parameters([parameter_index])
-            break
-        parameter += 1
-        print_info(parameter_name, accuracy, deterioration)
 
     save_relevant_parameter_names()
+    print_relevant_parameter_names()
