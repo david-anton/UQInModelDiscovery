@@ -1,5 +1,6 @@
 import torch
 from torch import vmap
+from itertools import compress
 
 from bayesianmdisc.customtypes import Device
 from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
@@ -240,16 +241,20 @@ class OrthotropicCANN:
         return tuple(parameter_names)
 
     def get_active_parameter_names(self) -> ParameterNames:
-        parameter_names = self.get_active_parameter_names()
+        parameter_names = self.get_parameter_names()
         parameter_mask = self.parameter_mask.detach().cpu().tolist()
-        return parameter_names[parameter_mask]
-
-    def reset_parameter_deactivations(self) -> None:
-        self.parameter_mask = assemble_parameter_mask(self.num_parameters, self._device)
+        return tuple(compress(parameter_names, parameter_mask))
 
     def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None:
         for indice in parameter_indices:
-            self.parameter_mask[indice] = 0.0
+            self.parameter_mask[indice] = False
+
+    def activate_parameters(self, parameter_indices: ParameterIndices) -> None:
+        for indice in parameter_indices:
+            self.parameter_mask[indice] = True
+
+    def reset_parameter_deactivations(self) -> None:
+        self.parameter_mask = assemble_parameter_mask(self.num_parameters, self._device)
 
     def _determine_number_of_parameters(self) -> int:
         num_invariants = self._num_invariants

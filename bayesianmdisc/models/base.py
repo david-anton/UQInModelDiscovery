@@ -56,9 +56,11 @@ class ModelProtocol(Protocol):
 
     def get_active_parameter_names(self) -> ParameterNames: ...
 
-    def reset_parameter_deactivations(self) -> None: ...
-
     def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None: ...
+
+    def activate_parameters(self, parameter_indices: ParameterIndices) -> None: ...
+
+    def reset_parameter_deactivations(self) -> None: ...
 
 
 def validate_input_numbers(inputs: DeformationInputs, test_cases: TestCases) -> None:
@@ -103,4 +105,4 @@ def validate_parameters(parameters: Parameters, expected_num_parameters: int) ->
 
 
 def assemble_parameter_mask(num_parameters: int, device: Device) -> ParameterMask:
-    return torch.ones((num_parameters,), device=device)
+    return torch.full((num_parameters,), True, device=device)

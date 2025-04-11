@@ -1,4 +1,5 @@
 from typing import TypeAlias
+from itertools import compress
 
 import torch
 from torch import vmap
@@ -146,16 +147,20 @@ class IsotropicModelLibrary:
         return mr_parameter_names + ogden_parameter_names + ln_feature_parameter_name
 
     def get_active_parameter_names(self) -> ParameterNames:
-        parameter_names = self.get_active_parameter_names()
+        parameter_names = self.get_parameter_names()
         parameter_mask = self.parameter_mask.detach().cpu().tolist()
-        return parameter_names[parameter_mask]
-
-    def reset_parameter_deactivations(self) -> None:
-        self.parameter_mask = assemble_parameter_mask(self.num_parameters, self._device)
+        return tuple(compress(parameter_names, parameter_mask))
 
     def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None:
         for indice in parameter_indices:
-            self.parameter_mask[indice] = 0.0
+            self.parameter_mask[indice] = False
+
+    def activate_parameters(self, parameter_indices: ParameterIndices) -> None:
+        for indice in parameter_indices:
+            self.parameter_mask[indice] = True
+
+    def reset_parameter_deactivations(self) -> None:
+        self.parameter_mask = assemble_parameter_mask(self.num_parameters, self._device)
 
     def _determine_number_of_ogden_terms(self) -> int:
         return self._num_negative_ogden_terms + self._num_positive_ogden_terms
