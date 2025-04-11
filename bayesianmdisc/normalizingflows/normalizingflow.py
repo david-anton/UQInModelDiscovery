@@ -9,20 +9,20 @@ from bayesianmdisc.bayes.likelihood import LikelihoodProtocol
 from bayesianmdisc.bayes.prior import PriorProtocol
 from bayesianmdisc.customtypes import (
     Device,
+    NFBaseDistribution,
     NFNormalizingFlow,
-    NPArray,
     Tensor,
     TorchLRScheduler,
     TorchOptimizer,
 )
 from bayesianmdisc.io import ProjectDirectory
+from bayesianmdisc.io.loaderssavers import PytorchModelLoader, PytorchModelSaver
 from bayesianmdisc.normalizingflows.flows import (
     NormalizingFlow,
+    NormalizingFlowProtocol,
     create_exponential_constrained_flow,
     create_masked_autoregressive_flow,
 )
-from bayesianmdisc.io.loaderssavers import PytorchModelSaver
-from bayesianmdisc.normalizingflows.postprocessing import determine_statistical_moments
 from bayesianmdisc.normalizingflows.target import (
     TargetDistributionWrapper,
 )
@@ -31,11 +31,10 @@ from bayesianmdisc.postprocessing.plot import (
     HistoryPlotterConfig,
     plot_statistical_loss_history,
 )
-from bayesianmdisc.statistics.utility import MomentsMultivariateNormal
 
 NFNormalizingFlows: TypeAlias = list[NFNormalizingFlow]
 ConstrainedOutputIndices: TypeAlias = list[int]
-NormalizingFlowOutput: TypeAlias = tuple[MomentsMultivariateNormal, NPArray]
+NormalizingFlowOutput: TypeAlias = NormalizingFlowProtocol
 
 is_print_info_on = True
 print_interval = 10
@@ -43,7 +42,8 @@ deactivation_initial_phase = 10_000
 deactivation_interval = 1000
 deactivation_threshold = 1e-12
 num_deactivation_condition_samples = 4096
-num_samples_output = 4096
+
+file_name_model = "normalizing_flow_parameters"
 
 
 @dataclass
@@ -61,6 +61,38 @@ class NormalizingFlowConfig:
     project_directory: ProjectDirectory
 
 
+def _create_base_distribution(
+    num_parameters: int, device: Device
+) -> NFBaseDistribution:
+    return nf.distributions.base.DiagGaussian(num_parameters, trainable=False).to(
+        device
+    )
+
+
+def _init_constrained_output_range(num_parameters: int) -> ConstrainedOutputIndices:
+    return [_ for _ in range(num_parameters)]
+
+
+def _create_normalizing_flow(
+    relative_width_flow_layers: int,
+    num_parameters: int,
+    num_flows: int,
+    base_distribution: NFBaseDistribution,
+    device: Device,
+) -> NormalizingFlow:
+
+    width_layers = int(relative_width_flow_layers * num_parameters)
+    constrained_output_indices = _init_constrained_output_range(num_parameters)
+    flows = [
+        create_masked_autoregressive_flow(num_parameters, width_layers)
+        for _ in range(num_flows)
+    ]
+    flows += [
+        create_exponential_constrained_flow(num_parameters, constrained_output_indices)
+    ]
+    return NormalizingFlow(flows, base_distribution, device).to(device)
+
+
 def _fit_normalizing_flow(
     likelihood: LikelihoodProtocol,
     prior: PriorProtocol,
@@ -76,27 +108,8 @@ def _fit_normalizing_flow(
     device: Device,
 ) -> NormalizingFlowOutput:
     num_parameters = prior.dim
-    base_distribution = nf.distributions.base.DiagGaussian(
-        num_parameters, trainable=False
-    ).to(device)
+    base_distribution = _create_base_distribution(num_parameters, device)
     target_distribution = TargetDistributionWrapper(likelihood, prior, device)
-
-    def create_normalizing_flow() -> NormalizingFlow:
-        width_layers = int(relative_width_flow_layers * num_parameters)
-        constrained_output_indices = init_constrained_output_range()
-        flows = [
-            create_masked_autoregressive_flow(num_parameters, width_layers)
-            for _ in range(num_flows)
-        ]
-        flows += [
-            create_exponential_constrained_flow(
-                num_parameters, constrained_output_indices
-            )
-        ]
-        return NormalizingFlow(flows, base_distribution, device).to(device)
-
-    def init_constrained_output_range() -> ConstrainedOutputIndices:
-        return [_ for _ in range(num_parameters)]
 
     def create_optimizer(parameters: Iterator[Tensor]) -> TorchOptimizer:
         return torch.optim.Adam(
@@ -198,20 +211,22 @@ def _fit_normalizing_flow(
     def save_normalizing_flow() -> None:
         print("Save model ...")
         model_saver = PytorchModelSaver(project_directory)
-        file_name = "normalizing_flow_parameters"
-        model_saver.save(normalizing_flow, file_name, output_subdirectory, device)
+        model_saver.save(normalizing_flow, file_name_model, output_subdirectory, device)
 
-    normalizing_flow = create_normalizing_flow()
+    normalizing_flow = _create_normalizing_flow(
+        relative_width_flow_layers=relative_width_flow_layers,
+        num_parameters=num_parameters,
+        num_flows=num_flows,
+        base_distribution=base_distribution,
+        device=device,
+    )
     train_normalizing_flow()
     save_normalizing_flow()
 
     print("Postprocessing ...")
     freeze_model(normalizing_flow)
 
-    samples_list = draw_samples(num_samples_output)
-    moments, samples = determine_statistical_moments(samples_list)
-
-    return moments, samples
+    return normalizing_flow
 
 
 def fit_normalizing_flow(
@@ -230,4 +245,21 @@ def fit_normalizing_flow(
         output_subdirectory=config.output_subdirectory,
         project_directory=config.project_directory,
         device=device,
+    )
+
+
+def load_normalizing_flow(
+    config: NormalizingFlowConfig, device: Device
+) -> NormalizingFlowProtocol:
+    base_distribution = _create_base_distribution(config.prior.dim, device)
+    normalizing_flow = _create_normalizing_flow(
+        relative_width_flow_layers=config.relative_width_flow_layers,
+        num_parameters=config.prior.dim,
+        num_flows=config.num_flows,
+        base_distribution=base_distribution,
+        device=device,
+    )
+    model_loader = PytorchModelLoader(config.project_directory)
+    return model_loader.load(
+        normalizing_flow, file_name_model, config.output_subdirectory
     )

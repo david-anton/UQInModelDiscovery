@@ -1,4 +1,4 @@
-from typing import Iterator, Protocol, TypeAlias, cast, Dict, Any
+from typing import Any, Dict, Iterator, Protocol, TypeAlias, cast
 
 import normflows as nf
 import torch

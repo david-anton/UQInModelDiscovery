@@ -1,6 +1,6 @@
 import os
-from datetime import date
 from dataclasses import dataclass
+from datetime import date
 
 import torch
 
@@ -13,14 +13,14 @@ from bayesianmdisc.customtypes import NPArray, Tensor
 from bayesianmdisc.data import (
     DataReaderProtocol,
     DeformationInputs,
+    KawabataDataReader,
     LinkaHeartDataReader,
     StressOutputs,
     TestCases,
     TreloarDataReader,
-    KawabataDataReader,
-    test_case_identifier_pure_shear,
     test_case_identifier_biaxial_tension,
     test_case_identifier_equibiaxial_tension,
+    test_case_identifier_pure_shear,
     test_case_identifier_uniaxial_tension,
 )
 from bayesianmdisc.errors import DataError, DataSetError
@@ -29,13 +29,19 @@ from bayesianmdisc.gps import (
     GP,
     GaussianProcess,
     IndependentMultiOutputGP,
+    condition_gp,
     create_scaled_rbf_gaussian_process,
     optimize_gp_hyperparameters,
-    condition_gp,
 )
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import IsotropicModelLibrary, ModelProtocol, OrthotropicCANN
-from bayesianmdisc.normalizingflows import NormalizingFlowConfig, fit_normalizing_flow
+from bayesianmdisc.normalizingflows import (
+    NormalizingFlowConfig,
+    NormalizingFlowProtocol,
+    determine_statistical_moments,
+    fit_normalizing_flow,
+    load_normalizing_flow,
+)
 from bayesianmdisc.postprocessing.plot import (
     plot_histograms,
     plot_stresses_linka,
@@ -49,6 +55,7 @@ from bayesianmdisc.statistics.utility import (
 
 data_set = "treloar"
 use_gp_prior = True
+retrain_normalizing_flow = True
 
 # Settings
 settings = Settings()
@@ -82,6 +89,7 @@ num_parameters = model.num_parameters
 
 relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
+num_samples_posterior = 4096
 
 
 def validate_data(
@@ -342,6 +350,18 @@ def determine_prior() -> PriorProtocol:
         )
 
 
+def sample_from_posterior(
+    normalizing_flow: NormalizingFlowProtocol,
+) -> tuple[MomentsMultivariateNormal, NPArray]:
+
+    def draw_samples() -> list[Tensor]:
+        samples, _ = normalizing_flow.sample(num_samples_posterior)
+        return list(samples)
+
+    samples_list = draw_samples()
+    return determine_statistical_moments(samples_list)
+
+
 prior = determine_prior()
 
 likelihood = Likelihood(
@@ -368,9 +388,12 @@ normalizing_flow_config = NormalizingFlowConfig(
     project_directory=project_directory,
 )
 
-posterior_moments, posterior_samples = fit_normalizing_flow(
-    normalizing_flow_config, device
-)
+if retrain_normalizing_flow:
+    normalizing_flow = fit_normalizing_flow(normalizing_flow_config, device)
+else:
+    normalizing_flow = load_normalizing_flow(normalizing_flow_config, device)
+
+posterior_moments, posterior_samples = sample_from_posterior(normalizing_flow)
 
 mse_statistics = likelihood.mse_loss_statistics(
     torch.from_numpy(posterior_samples).type(torch.get_default_dtype()).to(device)
