@@ -101,6 +101,8 @@ relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
 num_flows = 16
 relative_width_flow_layers = 4
+trim_metric = "rmse"
+trim_relative_thresshold = 0.1
 num_samples_posterior = 4096
 
 
@@ -465,8 +467,8 @@ if retrain_normalizing_flow:
 
         trim_model(
             model=model,
-            metric="rmse",
-            relative_thresshold=0.1,
+            metric=trim_metric,
+            relative_thresshold=trim_relative_thresshold,
             parameter_samples=torch.from_numpy(posterior_samples)
             .type(torch.get_default_dtype())
             .to(device),
@@ -514,8 +516,8 @@ else:
 
         trim_model(
             model=model,
-            metric="rmse",
-            relative_thresshold=0.1,
+            metric=trim_metric,
+            relative_thresshold=trim_relative_thresshold,
             parameter_samples=torch.from_numpy(posterior_samples)
             .type(torch.get_default_dtype())
             .to(device),
