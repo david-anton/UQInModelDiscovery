@@ -1,4 +1,3 @@
-from itertools import compress
 from typing import TypeAlias
 
 import torch
@@ -24,7 +23,7 @@ from bayesianmdisc.models.base import (
     Invariants,
     ParameterIndices,
     ParameterNames,
-    ParameterPopulationIndices,
+    ParameterPopulationMatrix,
     Parameters,
     PiolaStress,
     PiolaStresses,
@@ -33,8 +32,14 @@ from bayesianmdisc.models.base import (
     StrainEnergyDerivatives,
     Stretch,
     Stretches,
-    assemble_parameter_population_indices,
+    count_active_parameters,
+    determine_initial_parameter_mask,
+    filter_active_parameter_names,
     init_parameter_mask,
+    init_parameter_population_matrix,
+    mask_parameters,
+    preprocess_parameters,
+    update_parameter_population_matrix,
     validate_deformation_input_dimension,
     validate_input_numbers,
     validate_model_state,
@@ -71,15 +76,18 @@ class IsotropicModelLibrary:
             self._num_ogden_parameters,
             self._num_ln_feature_parameters,
         ) = self._determine_number_of_parameters()
-        self.output_dim = 1
-        self.num_parameters = (
+        self._num_initial_parameters = (
             self._num_mr_parameters
             + self._num_ogden_parameters
             + self._num_ln_feature_parameters
         )
-        self.parameter_mask = init_parameter_mask(self.num_parameters, self._device)
-        self._parameter_population_indices = assemble_parameter_population_indices(
-            self.parameter_mask, self._device
+        self._initial_parameter_names = self._init_parameter_names()
+        self.output_dim = 1
+        self.num_parameters = self._num_initial_parameters
+        self.parameter_names = self._initial_parameter_names
+        self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
+        self._parameter_population_matrix = init_parameter_population_matrix(
+            self.num_parameters, self._device
         )
 
     def __call__(
@@ -119,7 +127,133 @@ class IsotropicModelLibrary:
 
         return vmap(vmap_func)(stretches)
 
-    def get_parameter_names(self) -> ParameterNames:
+    def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None:
+        mask_parameters(parameter_indices, self._parameter_mask, False)
+
+    def activate_parameters(self, parameter_indices: ParameterIndices) -> None:
+        mask_parameters(parameter_indices, self._parameter_mask, True)
+
+    def reset_parameter_deactivations(self) -> None:
+        self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
+
+    def get_active_parameter_names(self) -> ParameterNames:
+        return filter_active_parameter_names(self._parameter_mask, self.parameter_names)
+
+    def get_number_of_active_parameters(self) -> int:
+        return count_active_parameters(self._parameter_mask)
+
+    def reduce_to_activated_parameters(self) -> None:
+        old_parameter_mask = self._parameter_mask
+
+        def reduce_num_parameters() -> None:
+            self.num_parameters = self.get_number_of_active_parameters()
+
+        def reduce_parameter_names() -> None:
+            self.parameter_names = self.get_active_parameter_names()
+
+        def reduce_parameter_mask() -> None:
+            self._parameter_mask = init_parameter_mask(
+                self.num_parameters, self._device
+            )
+
+        def reduce_parameter_population_matrix() -> None:
+            self._parameter_population_matrix = update_parameter_population_matrix(
+                self._parameter_population_matrix, old_parameter_mask
+            )
+
+        reduce_num_parameters()
+        reduce_parameter_names()
+        reduce_parameter_mask()
+        reduce_parameter_population_matrix()
+
+    def get_model_state(self) -> ParameterPopulationMatrix:
+        return self._parameter_population_matrix
+
+    def init_reduced_model(
+        self, parameter_population_matrix: ParameterPopulationMatrix
+    ) -> None:
+        population_matrix = parameter_population_matrix
+        validate_model_state(population_matrix, self._num_initial_parameters)
+        initial_parameter_mask = determine_initial_parameter_mask(population_matrix)
+
+        def init_reuced_models_num_parameters() -> None:
+            self.num_parameters = len(initial_parameter_mask)
+
+        def init_reduced_models_parameter_names() -> None:
+            self.parameter_names = filter_active_parameter_names(
+                initial_parameter_mask, self._initial_parameter_names
+            )
+
+        def init_reduced_models_parameter_mask() -> None:
+            self._parameter_mask = init_parameter_mask(
+                self.num_parameters, self._device
+            )
+
+        def init_reduced_models_population_matrix() -> None:
+            self._parameter_population_matrix = population_matrix
+
+        init_reuced_models_num_parameters()
+        init_reduced_models_parameter_names()
+        init_reduced_models_parameter_mask()
+        init_reduced_models_population_matrix()
+
+    def _determine_mr_exponents(self) -> MRExponents:
+        exponents = []
+        for n in range(1, self._degree_mr_terms + 1):
+            exponents_cI_1 = torch.linspace(
+                start=0, end=n, steps=n + 1, dtype=torch.int64
+            )
+            exponents_cI_1 = exponents_cI_1.reshape((-1, 1))
+            exponents_cI_2 = torch.flip(exponents_cI_1, dims=(0,))
+            exponents += [torch.concat((exponents_cI_1, exponents_cI_2), dim=1)]
+        return torch.concat(exponents, dim=0).tolist()
+
+    def _determine_number_of_ogden_terms(self) -> int:
+        return self._num_negative_ogden_terms + self._num_positive_ogden_terms
+
+    def _determine_ogden_exponents(self) -> OgdenExponents:
+        negative_exponents = torch.linspace(
+            start=self._min_ogden_exponent,
+            end=0.0,
+            steps=self._num_negative_ogden_terms + 1,
+        )[:-1].tolist()
+        positive_exponents = torch.linspace(
+            start=0.0,
+            end=self._max_ogden_exponent,
+            steps=self._num_positive_ogden_terms + 1,
+        )[1:].tolist()
+        return negative_exponents + positive_exponents
+
+    def _determine_allowed_test_cases(self) -> AllowedTestCases:
+        return torch.tensor(
+            [
+                self._test_case_identifier_ut,
+                self._test_case_identifier_ebt,
+                self._test_case_identifier_ps,
+            ],
+            device=self._device,
+        )
+
+    def _determine_number_of_parameters(self) -> tuple[int, int, int]:
+
+        def determine_number_of_mr_parameters() -> int:
+            num_parameters = 0
+            for n in range(1, self._degree_mr_terms + 1):
+                num_parameters += n + 1
+            return num_parameters
+
+        def determine_number_of_ogden_parameters() -> int:
+            return self._num_ogden_terms
+
+        def determine_number_of_ln_feature_parameters() -> int:
+            return self._num_ln_feature_terms
+
+        num_mr_parameters = determine_number_of_mr_parameters()
+        num_ogden_parameters = determine_number_of_ogden_parameters()
+        num_ln_feature_parameters = determine_number_of_ln_feature_parameters()
+        return num_mr_parameters, num_ogden_parameters, num_ln_feature_parameters
+
+    def _init_parameter_names(self) -> ParameterNames:
 
         def compose_mr_parameter_names() -> ParameterNames:
             parameter_names = []
@@ -151,99 +285,6 @@ class IsotropicModelLibrary:
         ln_feature_parameter_name = compose_ln_feature_parameter_name()
         return mr_parameter_names + ogden_parameter_names + ln_feature_parameter_name
 
-    def get_active_parameter_names(self) -> ParameterNames:
-        parameter_names = self.get_parameter_names()
-        parameter_mask = self.parameter_mask.detach().cpu().tolist()
-        return tuple(compress(parameter_names, parameter_mask))
-
-    def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None:
-        for indice in parameter_indices:
-            self.parameter_mask[indice] = False
-
-    def activate_parameters(self, parameter_indices: ParameterIndices) -> None:
-        for indice in parameter_indices:
-            self.parameter_mask[indice] = True
-
-    def reset_parameter_deactivations(self) -> None:
-        self.parameter_mask = init_parameter_mask(self.num_parameters, self._device)
-
-    def get_number_of_active_parameters(self) -> int:
-        return int(torch.sum(self.parameter_mask))
-
-    def reduce_to_activated_parameters(self) -> None:
-        self.num_parameters = self.get_number_of_active_parameters()
-        self.parameter_mask = init_parameter_mask(self.num_parameters, self._device)
-        self._parameter_population_indices = assemble_parameter_population_indices(
-            self.parameter_mask, self._device
-        )
-
-    def get_model_state(self) -> ParameterPopulationIndices:
-        return self._parameter_population_indices
-
-    def init_reduced_model(
-        self, parameter_population_indices: ParameterPopulationIndices
-    ) -> None:
-        validate_model_state(parameter_population_indices)
-        self.num_parameters = len(parameter_population_indices)
-        self.parameter_mask = init_parameter_mask(self.num_parameters, self._device)
-        self._parameter_population_indices = parameter_population_indices
-
-    def _determine_number_of_ogden_terms(self) -> int:
-        return self._num_negative_ogden_terms + self._num_positive_ogden_terms
-
-    def _determine_number_of_parameters(self) -> tuple[int, int, int]:
-
-        def determine_number_of_mr_parameters() -> int:
-            num_parameters = 0
-            for n in range(1, self._degree_mr_terms + 1):
-                num_parameters += n + 1
-            return num_parameters
-
-        def determine_number_of_ogden_parameters() -> int:
-            return self._num_ogden_terms
-
-        def determine_number_of_ln_feature_parameters() -> int:
-            return self._num_ln_feature_terms
-
-        num_mr_parameters = determine_number_of_mr_parameters()
-        num_ogden_parameters = determine_number_of_ogden_parameters()
-        num_ln_feature_parameters = determine_number_of_ln_feature_parameters()
-        return num_mr_parameters, num_ogden_parameters, num_ln_feature_parameters
-
-    def _determine_mr_exponents(self) -> MRExponents:
-        exponents = []
-        for n in range(1, self._degree_mr_terms + 1):
-            exponents_cI_1 = torch.linspace(
-                start=0, end=n, steps=n + 1, dtype=torch.int64
-            )
-            exponents_cI_1 = exponents_cI_1.reshape((-1, 1))
-            exponents_cI_2 = torch.flip(exponents_cI_1, dims=(0,))
-            exponents += [torch.concat((exponents_cI_1, exponents_cI_2), dim=1)]
-        return torch.concat(exponents, dim=0).tolist()
-
-    def _determine_ogden_exponents(self) -> OgdenExponents:
-        negative_exponents = torch.linspace(
-            start=self._min_ogden_exponent,
-            end=0.0,
-            steps=self._num_negative_ogden_terms + 1,
-        )[:-1].tolist()
-        positive_exponents = torch.linspace(
-            start=0.0,
-            end=self._max_ogden_exponent,
-            steps=self._num_positive_ogden_terms + 1,
-        )[1:].tolist()
-        return negative_exponents + positive_exponents
-
-    def _determine_allowed_test_cases(self) -> AllowedTestCases:
-        return torch.tensor(
-            [
-                self._test_case_identifier_ut,
-                self._test_case_identifier_ebt,
-                self._test_case_identifier_ps,
-            ],
-            device=self._device,
-        )
-
     def _validate_inputs(
         self, inputs: DeformationInputs, test_cases: TestCases, parameters: Parameters
     ) -> None:
@@ -253,18 +294,9 @@ class IsotropicModelLibrary:
         validate_parameters(parameters, self.num_parameters)
 
     def _preprocess_parameters(self, parameters: Parameters) -> Parameters:
-        masked_parameters = self.parameter_mask * parameters
-        return self._populate_parameters(masked_parameters)
-
-    def _populate_parameters(self, parameters: Parameters) -> Parameters:
-        populated_parameters = torch.full(
-            (self.num_parameters,),
-            0,
-            device=self._device,
-            dtype=torch.int64,
+        return preprocess_parameters(
+            parameters, self._parameter_mask, self._parameter_population_matrix
         )
-        populated_parameters[self._parameter_population_indices] = parameters
-        return parameters
 
     def _assemble_stretches_if_necessary(
         self, stretches: Stretches, test_cases: TestCases

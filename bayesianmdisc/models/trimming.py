@@ -30,7 +30,7 @@ def trim_model(
     project_directory: ProjectDirectory,
 ) -> None:
     model.reset_parameter_deactivations()
-    parameter_names = model.get_parameter_names()
+    parameter_names = model.parameter_names
 
     if metric == "rmse":
         metric_name = metric

@@ -37,7 +37,7 @@ def get_expected_parameter_names() -> tuple[str, ...]:
 def test_get_parameter_names() -> None:
     sut = OrthotropicCANN(device)
 
-    actual = sut.get_parameter_names()
+    actual = sut.parameter_names
 
     expected = get_expected_parameter_names()
     assert expected == actual
