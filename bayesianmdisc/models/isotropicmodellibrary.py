@@ -169,7 +169,7 @@ class IsotropicModelLibrary:
     def get_model_state(self) -> ParameterPopulationMatrix:
         return self._parameter_population_matrix
 
-    def init_reduced_model(
+    def init_model_state(
         self, parameter_population_matrix: ParameterPopulationMatrix
     ) -> None:
         population_matrix = parameter_population_matrix

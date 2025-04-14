@@ -133,13 +133,16 @@ def update_parameter_population_matrix(
     for column in range(num_columns):
         if not parameter_mask[column]:
             corrected_column = column - num_deleted_columns
-            population_matrix = torch.concat(
-                (
-                    population_matrix[:, :corrected_column],
-                    population_matrix[:, corrected_column:],
-                ),
-                dim=1,
-            )
+            if corrected_column == 0:
+                population_matrix = population_matrix[:, 1:]
+            else:
+                population_matrix = torch.concat(
+                    (
+                        population_matrix[:, :corrected_column],
+                        population_matrix[:, corrected_column + 1 :],
+                    ),
+                    dim=1,
+                )
             num_deleted_columns += 1
     return population_matrix
 
@@ -167,11 +170,23 @@ def preprocess_parameters(
     parameter_mask: ParameterMask,
     parameter_population_matrix: ParameterPopulationMatrix,
 ) -> Parameters:
-    masked_parameters = parameter_mask * parameters
-    return torch.matmul(parameter_population_matrix, masked_parameters)
+    parameter_mask = _cast_to_float(parameter_mask)
+    parameter_population_matrix = _cast_to_float(parameter_population_matrix)
+    masked_parameters = _mask_parameters(parameters, parameter_mask)
+    return _populate_parameters(masked_parameters, parameter_population_matrix)
 
 
-def populate_parameters(
+def _cast_to_float(tensor: Tensor) -> Tensor:
+    return tensor.to(torch.get_default_dtype())
+
+
+def _mask_parameters(
+    parameters: Parameters, parameter_mask: ParameterMask
+) -> Parameters:
+    return parameter_mask * parameters
+
+
+def _populate_parameters(
     parameters: Parameters, parameter_population_matrix: ParameterPopulationMatrix
 ) -> Parameters:
     return torch.matmul(parameter_population_matrix, parameters)
