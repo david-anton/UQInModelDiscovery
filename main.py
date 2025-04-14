@@ -399,7 +399,7 @@ if retrain_normalizing_flow:
                 prior_moments, prior_samples_np = determine_prior_moments(prior_samples)
 
                 plot_histograms(
-                    parameter_names=model.get_parameter_names(),
+                    parameter_names=model.parameter_names,
                     true_parameters=tuple(None for _ in range(num_parameters)),
                     moments=prior_moments,
                     samples=prior_samples_np,
