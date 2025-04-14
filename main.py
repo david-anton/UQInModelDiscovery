@@ -64,7 +64,7 @@ from bayesianmdisc.statistics.utility import (
 
 data_set = "treloar"
 use_gp_prior = True
-retrain_normalizing_flow = False
+retrain_normalizing_flow = True
 
 # Settings
 settings = Settings()
@@ -87,7 +87,7 @@ elif data_set == "linka":
     input_directory = "heart_data_linka"
     data_reader = LinkaHeartDataReader(input_directory, project_directory, device)
 
-output_directory = f"{current_date}_{input_directory}_splitted_data"
+output_directory = f"{current_date}_{input_directory}_splitteddata_multistep"
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
@@ -96,13 +96,13 @@ if data_set == "linka":
 elif data_set == "treloar":
     model = IsotropicModelLibrary(device)
 
-num_calibration_steps = 2
+num_calibration_steps = 3
 relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
 num_flows = 16
 relative_width_flow_layers = 4
 trim_metric = "rmse"
-trim_relative_thresshold = 0.1
+trim_relative_thressholds = [0.1, 0.05, 0.05]
 num_samples_posterior = 4096
 
 
@@ -234,7 +234,9 @@ def sample_from_posterior(
     return determine_statistical_moments(samples_list)
 
 
-def plot_stresses(model: ModelProtocol, is_model_trimmed: bool) -> None:
+def plot_stresses(
+    model: ModelProtocol, is_model_trimmed: bool, output_directory: str
+) -> None:
     if is_model_trimmed:
         subdirectory_name = "trimmed_model"
     else:
@@ -282,7 +284,9 @@ noise_stddevs_posterior = splitted_data.noise_stddevs_posterior
 
 if retrain_normalizing_flow:
     for step in range(num_calibration_steps):
-        output_directory = os.path.join(output_directory, f"calibration_step_{step}")
+        output_directory_step = os.path.join(
+            output_directory, f"calibration_step_{step}"
+        )
         num_parameters = model.get_number_of_active_parameters()
 
         def determine_prior() -> PriorProtocol:
@@ -352,7 +356,7 @@ if retrain_normalizing_flow:
                     return moments, samples_np
 
                 output_subdirectory = os.path.join(
-                    output_directory, output_subdirectory_name_prior
+                    output_directory_step, output_subdirectory_name_prior
                 )
                 min_inputs = torch.amin(inputs, dim=0)
                 max_inputs = torch.amax(inputs, dim=0)
@@ -444,7 +448,7 @@ if retrain_normalizing_flow:
             final_learning_rate=1e-4,
             num_iterations=100_000,
             deactivate_parameters=False,
-            output_subdirectory=output_directory,
+            output_subdirectory=output_directory_step,
             project_directory=project_directory,
         )
 
@@ -452,7 +456,7 @@ if retrain_normalizing_flow:
         posterior_moments, posterior_samples = sample_from_posterior(normalizing_flow)
 
         output_subdirectory_posterior = os.path.join(
-            output_directory, output_subdirectory_name_posterior
+            output_directory_step, output_subdirectory_name_posterior
         )
         plot_histograms(
             parameter_names=model.get_active_parameter_names(),
@@ -463,8 +467,11 @@ if retrain_normalizing_flow:
             output_subdirectory=output_subdirectory_posterior,
             project_directory=project_directory,
         )
-        plot_stresses(model, is_model_trimmed=False)
+        plot_stresses(
+            model, is_model_trimmed=False, output_directory=output_directory_step
+        )
 
+        trim_relative_thresshold = trim_relative_thressholds[step]
         trim_model(
             model=model,
             metric=trim_metric,
@@ -475,26 +482,29 @@ if retrain_normalizing_flow:
             inputs=inputs,
             test_cases=test_cases,
             outputs=outputs,
-            output_subdirectory=output_directory,
+            output_subdirectory=output_directory_step,
             project_directory=project_directory,
         )
-        save_model_state(model, output_directory, project_directory)
-        plot_stresses(model, is_model_trimmed=True)
+        plot_stresses(
+            model, is_model_trimmed=True, output_directory=output_directory_step
+        )
 
         model.reduce_to_activated_parameters()
-        save_model_state(model, output_directory, project_directory)
+        save_model_state(model, output_directory_step, project_directory)
 
 else:
     for step in range(num_calibration_steps):
-        output_directory = os.path.join(output_directory, f"calibration_step_{step}")
-        load_model_state(model, output_directory, project_directory, device)
-        num_parameters = model.get_number_of_active_parameters()
+        output_directory_step = os.path.join(
+            output_directory, f"calibration_step_{step}"
+        )
+        load_model_state(model, output_directory_step, project_directory, device)
+        num_parameters = model.num_parameters
 
         load_normalizing_flow_config = LoadNormalizingFlowConfig(
             num_parameters=num_parameters,
             num_flows=num_flows,
             relative_width_flow_layers=relative_width_flow_layers,
-            output_subdirectory=output_directory,
+            output_subdirectory=output_directory_step,
             project_directory=project_directory,
         )
         normalizing_flow = load_normalizing_flow(load_normalizing_flow_config, device)
@@ -512,8 +522,11 @@ else:
             output_subdirectory=output_subdirectory_posterior,
             project_directory=project_directory,
         )
-        plot_stresses(model, is_model_trimmed=False)
+        plot_stresses(
+            model, is_model_trimmed=False, output_directory=output_directory_step
+        )
 
+        trim_relative_thresshold = trim_relative_thressholds[step]
         trim_model(
             model=model,
             metric=trim_metric,
@@ -524,7 +537,9 @@ else:
             inputs=inputs,
             test_cases=test_cases,
             outputs=outputs,
-            output_subdirectory=output_directory,
+            output_subdirectory=output_directory_step,
             project_directory=project_directory,
         )
-        plot_stresses(model, is_model_trimmed=True)
+        plot_stresses(
+            model, is_model_trimmed=True, output_directory=output_directory_step
+        )
