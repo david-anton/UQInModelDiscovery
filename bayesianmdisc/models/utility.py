@@ -32,11 +32,11 @@ def load_model_state(
     population_indices = data_reader.read(
         file_name_parameter_population_indices,
         output_directory,
-        header=False,
+        header=None,
         read_from_output_dir=True,
     )
     model.init_model_state(
-        parameter_population_indices=torch.from_numpy(population_indices)
+        parameter_population_matrix=torch.from_numpy(population_indices)
         .type(torch.get_default_dtype())
         .to(device)
     )

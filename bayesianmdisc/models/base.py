@@ -69,7 +69,7 @@ class ModelProtocol(Protocol):
     def get_model_state(self) -> ParameterPopulationMatrix: ...
 
     def init_model_state(
-        self, parameter_population_indices: ParameterPopulationMatrix
+        self, parameter_population_matrix: ParameterPopulationMatrix
     ) -> None: ...
 
 
