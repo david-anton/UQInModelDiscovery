@@ -87,7 +87,7 @@ elif data_set == "linka":
     input_directory = "heart_data_linka"
     data_reader = LinkaHeartDataReader(input_directory, project_directory, device)
 
-output_directory = f"{current_date}_{input_directory}_splitteddata_multistep"
+output_directory = f"{current_date}_{input_directory}"
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
@@ -102,7 +102,7 @@ min_noise_stddev = 1e-3
 num_flows = 16
 relative_width_flow_layers = 4
 trim_metric = "rmse"
-trim_relative_thressholds = [0.1, 0.05, 0.05]
+relative_selection_thressholds = [0.2, 0.1]
 num_samples_posterior = 4096
 
 
@@ -471,25 +471,28 @@ if retrain_normalizing_flow:
             model, is_model_trimmed=False, output_directory=output_directory_step
         )
 
-        trim_relative_thresshold = trim_relative_thressholds[step]
-        trim_model(
-            model=model,
-            metric=trim_metric,
-            relative_thresshold=trim_relative_thresshold,
-            parameter_samples=torch.from_numpy(posterior_samples)
-            .type(torch.get_default_dtype())
-            .to(device),
-            inputs=inputs,
-            test_cases=test_cases,
-            outputs=outputs,
-            output_subdirectory=output_directory_step,
-            project_directory=project_directory,
-        )
-        plot_stresses(
-            model, is_model_trimmed=True, output_directory=output_directory_step
-        )
+        is_last_step = step == num_calibration_steps - 1
+        if not is_last_step:
+            relative_selection_thresshold = relative_selection_thressholds[step]
+            trim_model(
+                model=model,
+                metric=trim_metric,
+                relative_deterioration_thresshold=relative_selection_thresshold,
+                parameter_samples=torch.from_numpy(posterior_samples)
+                .type(torch.get_default_dtype())
+                .to(device),
+                inputs=inputs,
+                test_cases=test_cases,
+                outputs=outputs,
+                output_subdirectory=output_directory_step,
+                project_directory=project_directory,
+            )
+            plot_stresses(
+                model, is_model_trimmed=True, output_directory=output_directory_step
+            )
 
-        model.reduce_to_activated_parameters()
+            model.reduce_to_activated_parameters()
+
         save_model_state(model, output_directory_step, project_directory)
 
 else:
@@ -497,7 +500,17 @@ else:
         output_directory_step = os.path.join(
             output_directory, f"calibration_step_{step}"
         )
-        load_model_state(model, output_directory_step, project_directory, device)
+        is_first_step = step == 0
+        if is_first_step:
+            input_directory_step = output_directory_step
+        else:
+            input_step = step - 1
+            input_directory_step = os.path.join(
+                output_directory, f"calibration_step_{input_step}"
+            )
+
+        if not is_first_step:
+            load_model_state(model, input_directory_step, project_directory, device)
         num_parameters = model.num_parameters
 
         load_normalizing_flow_config = LoadNormalizingFlowConfig(
@@ -511,10 +524,10 @@ else:
         posterior_moments, posterior_samples = sample_from_posterior(normalizing_flow)
 
         output_subdirectory_posterior = os.path.join(
-            output_directory, output_subdirectory_name_posterior
+            output_directory_step, output_subdirectory_name_posterior
         )
         plot_histograms(
-            parameter_names=model.get_active_parameter_names(),
+            parameter_names=model.parameter_names,
             true_parameters=tuple(None for _ in range(num_parameters)),
             moments=posterior_moments,
             samples=posterior_samples,
@@ -526,20 +539,22 @@ else:
             model, is_model_trimmed=False, output_directory=output_directory_step
         )
 
-        trim_relative_thresshold = trim_relative_thressholds[step]
-        trim_model(
-            model=model,
-            metric=trim_metric,
-            relative_thresshold=trim_relative_thresshold,
-            parameter_samples=torch.from_numpy(posterior_samples)
-            .type(torch.get_default_dtype())
-            .to(device),
-            inputs=inputs,
-            test_cases=test_cases,
-            outputs=outputs,
-            output_subdirectory=output_directory_step,
-            project_directory=project_directory,
-        )
-        plot_stresses(
-            model, is_model_trimmed=True, output_directory=output_directory_step
-        )
+        is_last_step = step == num_calibration_steps - 1
+        if not is_last_step:
+            relative_selection_thresshold = relative_selection_thressholds[step]
+            trim_model(
+                model=model,
+                metric=trim_metric,
+                relative_deterioration_thresshold=relative_selection_thresshold,
+                parameter_samples=torch.from_numpy(posterior_samples)
+                .type(torch.get_default_dtype())
+                .to(device),
+                inputs=inputs,
+                test_cases=test_cases,
+                outputs=outputs,
+                output_subdirectory=output_directory_step,
+                project_directory=project_directory,
+            )
+            plot_stresses(
+                model, is_model_trimmed=True, output_directory=output_directory_step
+            )
