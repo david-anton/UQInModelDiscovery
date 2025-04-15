@@ -42,6 +42,11 @@ class GPPriorError(Error):
         super().__init__(message)
 
 
+class CombinedPriorError(Error):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
 class ModelError(Error):
     def __init__(self, message: str) -> None:
         super().__init__(message)

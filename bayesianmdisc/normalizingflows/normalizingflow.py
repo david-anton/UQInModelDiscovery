@@ -1,12 +1,11 @@
 from dataclasses import dataclass
 from time import perf_counter
-from typing import Iterator, TypeAlias
+from typing import Iterator, TypeAlias, Protocol
 
 import normflows as nf
 import torch
 
 from bayesianmdisc.bayes.likelihood import LikelihoodProtocol
-from bayesianmdisc.bayes.prior import PriorProtocol
 from bayesianmdisc.customtypes import (
     Device,
     NFBaseDistribution,
@@ -44,6 +43,19 @@ deactivation_threshold = 1e-12
 num_deactivation_condition_samples = 4096
 
 file_name_model = "normalizing_flow_parameters"
+
+
+class VariationalInferencePriorProtocol(Protocol):
+    dim: int
+
+    def log_prob(self, parameters: Tensor) -> Tensor:
+        pass
+
+    def log_prob_with_grad(self, parameters: Tensor) -> Tensor:
+        pass
+
+
+PriorProtocol: TypeAlias = VariationalInferencePriorProtocol
 
 
 @dataclass
