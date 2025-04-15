@@ -29,14 +29,14 @@ def load_model_state(
     device: Device,
 ) -> None:
     data_reader = CSVDataReader(project_directory)
-    population_indices = data_reader.read(
+    population_matrix = data_reader.read(
         file_name_parameter_population_indices,
         output_directory,
         header=None,
         read_from_output_dir=True,
     )
     model.init_model_state(
-        parameter_population_matrix=torch.from_numpy(population_indices)
+        parameter_population_matrix=torch.from_numpy(population_matrix)
         .type(torch.get_default_dtype())
         .to(device)
     )

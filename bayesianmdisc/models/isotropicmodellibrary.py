@@ -177,7 +177,7 @@ class IsotropicModelLibrary:
         initial_parameter_mask = determine_initial_parameter_mask(population_matrix)
 
         def init_reuced_models_num_parameters() -> None:
-            self.num_parameters = len(initial_parameter_mask)
+            self.num_parameters = population_matrix.shape[1]
 
         def init_reduced_models_parameter_names() -> None:
             self.parameter_names = filter_active_parameter_names(
