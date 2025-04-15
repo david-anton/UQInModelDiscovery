@@ -36,6 +36,7 @@ from bayesianmdisc.models.base import (
     determine_initial_parameter_mask,
     filter_active_parameter_names,
     filter_active_parameter_indices,
+    validate_stress_output_dimension,
     init_parameter_mask,
     init_parameter_population_matrix,
     mask_parameters,
@@ -55,7 +56,7 @@ MRExponents: TypeAlias = list[list[int]]
 
 class IsotropicModelLibrary:
 
-    def __init__(self, device: Device):
+    def __init__(self, output_dim: int, device: Device):
         self._device = device
         self._degree_mr_terms = 3
         self._mr_exponents = self._determine_mr_exponents()
@@ -72,6 +73,7 @@ class IsotropicModelLibrary:
         self._test_case_identifier_ps = test_case_identifier_pure_shear
         self._allowed_test_cases = self._determine_allowed_test_cases()
         self._allowed_input_dimensions = [1, 2, 3]
+        self._allowed_output_dimensions = [1, 2]
         (
             self._num_mr_parameters,
             self._num_ogden_parameters,
@@ -83,7 +85,8 @@ class IsotropicModelLibrary:
             + self._num_ln_feature_parameters
         )
         self._initial_parameter_names = self._init_parameter_names()
-        self.output_dim = 1
+        validate_stress_output_dimension(output_dim, self._allowed_output_dimensions)
+        self.output_dim = output_dim
         self.num_parameters = self._num_initial_parameters
         self.parameter_names = self._initial_parameter_names
         self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
@@ -110,7 +113,7 @@ class IsotropicModelLibrary:
         """The deformation input is expected to be either:
         (1) a tensor containing the stretches in all three dimensions (of shape [n, 3]) or
         (2) a tensor containing the stretches in the first and second dimension (of shape [n, 2]) or
-        (2) a tensor containing only the stretch in the first dimension
+        (3) a tensor containing only the stretch in the first dimension
             which correpsonds to the stretch factor (of shape [n, 1]).
         In case (2), the stretch in the third dimension follows directly from the assumption of
         incompressibility, regardless of the test case.
@@ -309,7 +312,7 @@ class IsotropicModelLibrary:
         if stretch_dim == 1:
             return self._assemble_stretches_from_factors(stretches, test_cases)
         if stretch_dim == 2:
-            return self._assemble_stretches_for_biaxial_tension(stretches, test_cases)
+            return self._assemble_stretches_from_incompressibility_assumption(stretches)
         else:
             return stretches
 
@@ -352,41 +355,33 @@ class IsotropicModelLibrary:
 
         return torch.vstack(all_stretches)
 
-    def _assemble_stretches_for_biaxial_tension(
-        self, stretches: Stretches, test_cases: TestCases
+    def _assemble_stretches_from_incompressibility_assumption(
+        self, stretches: Stretches
     ) -> Stretches:
-        indices_bt = test_cases == self._test_case_identifier_bt
-        stretches_bt = stretches[indices_bt]
-
         one = torch.tensor(1.0, device=self._device)
 
-        def calculate_stretches_bt(stretches: Stretches) -> Stretches:
+        def calculate_stretches(stretches: Stretches) -> Stretches:
             stretch_1 = stretches[0]
             stretch_2 = stretches[1]
             stretch_3 = one / (stretch_1 * stretch_2)
             return torch.concat((stretch_1, stretch_2, stretch_3), dim=1)
 
-        all_stretches = []
-        if not torch.numel(stretches_bt) == 0:
-            all_stretches += [calculate_stretches_bt(stretches_bt)]
-
-        return torch.vstack(all_stretches)
+        return calculate_stretches(stretches)
 
     def _calculate_stress(
         self, stretches: Stretches, parameters: Parameters
     ) -> PiolaStress:
-        deformation_gradient = self._assemble_deformation_gradient(stretches)
-        strain_energy_derivatives = grad(self._calculate_strain_energy, argnums=0)(
-            deformation_gradient, parameters
-        )
+        F = self._assemble_deformation_gradient(stretches)
+        dW_dF = grad(self._calculate_strain_energy, argnums=0)(F, parameters)
+        constraint = self._calculate_incompressibility_constraint(F, dW_dF)
 
-        incompressibility_constraint = self._calculate_incompressibility_constraint(
-            deformation_gradient, strain_energy_derivatives
-        )
-        first_piola_stress_tensor = (
-            strain_energy_derivatives + incompressibility_constraint
-        )
-        return first_piola_stress_tensor[0, 0]
+        P = dW_dF + constraint
+        P11 = P[0, 0]
+        P22 = P[1, 1]
+        if self.output_dim == 1:
+            return P11
+        else:
+            return torch.concat((P11, P22))
 
     def _assemble_deformation_gradient(
         self, stretches: Stretches

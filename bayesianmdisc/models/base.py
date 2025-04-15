@@ -97,6 +97,16 @@ def validate_deformation_input_dimension(
         )
 
 
+def validate_stress_output_dimension(
+    output_dimension: int, allowed_dimensions: list[int]
+) -> None:
+    if not output_dimension in allowed_dimensions:
+        raise ModelError(
+            f"""The dimension of stress outputs is {output_dimension} 
+            which is not allowed."""
+        )
+
+
 def validate_test_cases(
     test_cases: TestCases, allowed_test_cases: AllowedTestCases
 ) -> None:
