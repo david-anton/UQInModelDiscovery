@@ -27,7 +27,7 @@ file_name_parameters = "relevant_parameters.txt"
 def trim_model(
     model: ModelProtocol,
     metric: str,
-    relative_deterioration_thresshold: float,
+    relative_thresshold: float,
     parameter_samples: Tensor,
     inputs: DeformationInputs,
     test_cases: TestCases,
@@ -99,7 +99,7 @@ def trim_model(
         return abs(initial_accuracy - accuracy) / initial_accuracy
 
     def trim_condition(deterioration: float) -> bool:
-        return deterioration < relative_deterioration_thresshold
+        return deterioration < relative_thresshold
 
     def print_info(parameter_name: str, accuracy: float, deterioration: float) -> None:
         accuracy = round(accuracy, 6)
