@@ -27,7 +27,8 @@ SplittedParameters: TypeAlias = tuple[Parameters, ...]
 ParameterNames: TypeAlias = tuple[str, ...]
 TrueParameters: TypeAlias = tuple[float, ...]
 ParameterMask: TypeAlias = Tensor
-ParameterIndices: TypeAlias = list[int]
+ParameterIndex: TypeAlias = int
+ParameterIndices: TypeAlias = list[ParameterIndex]
 ParameterPopulationMatrix = Tensor
 
 
@@ -59,6 +60,8 @@ class ModelProtocol(Protocol):
     def activate_parameters(self, parameter_indices: ParameterIndices) -> None: ...
 
     def reset_parameter_deactivations(self) -> None: ...
+
+    def get_active_parameter_indices(self) -> ParameterIndices: ...
 
     def get_active_parameter_names(self) -> ParameterNames: ...
 
@@ -158,10 +161,14 @@ def count_active_parameters(parameter_mask: ParameterMask) -> int:
     return int(torch.sum(parameter_mask))
 
 
+def filter_active_parameter_indices(parameter_mask: ParameterMask) -> ParameterIndices:
+    return parameter_mask.nonzero().detach().cpu().ravel().tolist()
+
+
 def filter_active_parameter_names(
     parameter_mask: ParameterMask, parameter_names: ParameterNames
 ) -> ParameterNames:
-    parameter_mask_list = parameter_mask.detach().cpu().tolist()
+    parameter_mask_list = parameter_mask.detach().cpu().ravel().tolist()
     return tuple(compress(parameter_names, parameter_mask_list))
 
 

@@ -24,6 +24,7 @@ from bayesianmdisc.models.base import (
     filter_active_parameter_names,
     init_parameter_mask,
     init_parameter_population_matrix,
+    filter_active_parameter_indices,
     mask_parameters,
     preprocess_parameters,
     update_parameter_population_matrix,
@@ -235,6 +236,9 @@ class OrthotropicCANN:
 
     def reset_parameter_deactivations(self) -> None:
         self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
+
+    def get_active_parameter_indices(self) -> ParameterIndices:
+        return filter_active_parameter_indices(self._parameter_mask)
 
     def get_active_parameter_names(self) -> ParameterNames:
         return filter_active_parameter_names(self._parameter_mask, self.parameter_names)

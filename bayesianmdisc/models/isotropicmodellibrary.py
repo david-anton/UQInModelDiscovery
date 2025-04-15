@@ -35,6 +35,7 @@ from bayesianmdisc.models.base import (
     count_active_parameters,
     determine_initial_parameter_mask,
     filter_active_parameter_names,
+    filter_active_parameter_indices,
     init_parameter_mask,
     init_parameter_population_matrix,
     mask_parameters,
@@ -135,6 +136,9 @@ class IsotropicModelLibrary:
 
     def reset_parameter_deactivations(self) -> None:
         self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
+
+    def get_active_parameter_indices(self) -> ParameterIndices:
+        return filter_active_parameter_indices(self._parameter_mask)
 
     def get_active_parameter_names(self) -> ParameterNames:
         return filter_active_parameter_names(self._parameter_mask, self.parameter_names)
