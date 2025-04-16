@@ -59,9 +59,14 @@ from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_
 from bayesianmdisc.statistics.utility import (
     MomentsMultivariateNormal,
     determine_moments_of_multivariate_normal_distribution,
+    logarithmic_sum_of_exponentials,
 )
 
-data_set = "kawabata"
+data_set_treloar = "treloar"
+data_set_kawabata = "kawabata"
+data_set_linka = "heart_data_linka"
+
+data_set = data_set_treloar
 use_gp_prior = True
 retrain_normalizing_flow = True
 
@@ -74,40 +79,42 @@ set_seed(0)
 
 # Input/output
 current_date = date.today().strftime("%Y%m%d")
-if data_set == "treloar":
+if data_set == data_set_treloar:
     input_directory = data_set
     data_reader: DataReaderProtocol = TreloarDataReader(
         input_directory, project_directory, device
     )
-elif data_set == "kawabata":
+elif data_set == data_set_kawabata:
     input_directory = data_set
     data_reader = KawabataDataReader(input_directory, project_directory, device)
-elif data_set == "linka":
+elif data_set == data_set_linka:
     input_directory = "heart_data_linka"
     data_reader = LinkaHeartDataReader(input_directory, project_directory, device)
 
-output_directory = f"{current_date}_{input_directory}_alpha_06"
-output_subdirectory_name_prior = "prior"
-output_subdirectory_name_posterior = "posterior"
 
-if data_set == "treloar":
+if data_set == data_set_treloar:
     model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)
-elif data_set == "kawabata":
+elif data_set == data_set_kawabata:
     model = IsotropicModelLibrary(output_dim=2, device=device)
-elif data_set == "linka":
+elif data_set == data_set_linka:
     model = OrthotropicCANN(device)
 
 
 relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
-alpha = 0.6
+alpha = 0.4
 num_calibration_steps = 3
 list_num_wasserstein_iterations = [20_000, 10_000, 10_000]
-list_relative_selection_thressholds = [0.2, 0.1]
+list_relative_selection_thressholds = [0.5, 0.2]
 num_flows = 16
 relative_width_flow_layers = 4
 trim_metric = "rmse"
 num_samples_posterior = 4096
+
+
+output_directory = f"{current_date}_{input_directory}_alpha_{alpha}"
+output_subdirectory_name_prior = "prior"
+output_subdirectory_name_posterior = "posterior"
 
 
 def validate_data(
@@ -283,9 +290,9 @@ def split_data(
         )
 
     validate_data(inputs, test_cases, outputs, noise_stddevs)
-    if data_set == "treloar":
+    if data_set == data_set_treloar:
         return split_treloar_data(inputs, test_cases, outputs, noise_stddevs)
-    elif data_set == "kawabata":
+    elif data_set == data_set_kawabata:
         return split_kawabata_data(inputs, test_cases, outputs, noise_stddevs)
     else:
         raise DataSetError(f"No implementation for the requested data set {data_set}")
@@ -318,12 +325,19 @@ class CombinedPrior:
         return self._log_prob(parameters)
 
     def _log_prob(self, parameters: Tensor) -> Tensor:
-        log_prob_gp_prior = self._gp_prior.log_prob(parameters)
-        log_prob_sparsity_prior = self._sparsity_prior.log_prob(parameters)
-        return (
-            self._alpha * log_prob_gp_prior
-            + self._inverse_alpha * log_prob_sparsity_prior
+        log_prob_gp = self._gp_prior.log_prob(parameters)
+        log_prob_sparsity = self._sparsity_prior.log_prob(parameters)
+
+        weighted_log_prob_gp = torch.log(self._alpha) + log_prob_gp
+        weighted_log_prob_sparsity = torch.log(self._inverse_alpha) + log_prob_sparsity
+        log_probs = torch.concat(
+            (
+                torch.unsqueeze(weighted_log_prob_gp, dim=0),
+                torch.unsqueeze(weighted_log_prob_sparsity, dim=0),
+            ),
+            dim=0,
         )
+        return logarithmic_sum_of_exponentials(log_probs)
 
     def _validate_alpha(self, alpha: float) -> None:
         is_greater_or_equal_lower_limit = alpha >= self._lower_limit_alpha
@@ -371,6 +385,8 @@ def plot_stresses(
             subdirectory_name = "untrimmed_model"
         return os.path.join(output_directory, subdirectory_name)
 
+    output_subdirectory = join_output_subdirectory()
+
     def plot_treloar() -> None:
         plot_stresses_treloar(
             model=cast(IsotropicModelLibrary, model),
@@ -382,6 +398,30 @@ def plot_stresses(
             project_directory=project_directory,
             device=device,
         )
+
+        def _plot_kawabata() -> None:
+            input_directory = data_set_kawabata
+            data_reader = KawabataDataReader(input_directory, project_directory, device)
+            output_subdirectory_kawabata = os.path.join(output_subdirectory, "kawabata")
+
+            inputs, test_cases, outputs = data_reader.read()
+            isotropic_model = cast(IsotropicModelLibrary, model)
+            isotropic_model.set_output_dimension(2)
+
+            plot_stresses_kawabata(
+                model=isotropic_model,
+                parameter_samples=posterior_samples,
+                inputs=inputs.detach().cpu().numpy(),
+                outputs=outputs.detach().cpu().numpy(),
+                test_cases=test_cases.detach().cpu().numpy(),
+                output_subdirectory=output_subdirectory_kawabata,
+                project_directory=project_directory,
+                device=device,
+            )
+
+            isotropic_model.set_output_dimension(1)
+
+        _plot_kawabata()
 
     def plot_kawabata() -> None:
         plot_stresses_kawabata(
@@ -407,13 +447,11 @@ def plot_stresses(
             device=device,
         )
 
-    output_subdirectory = join_output_subdirectory()
-
-    if data_set == "treloar":
+    if data_set == data_set_treloar:
         plot_treloar()
-    elif data_set == "kawabata":
+    elif data_set == data_set_kawabata:
         plot_kawabata()
-    elif data_set == "linka":
+    elif data_set == data_set_linka:
         plot_linka()
 
 

@@ -821,7 +821,7 @@ def plot_stresses_kawabata(
             handles=legend_handles,
             fontsize=config.font_size,
             bbox_to_anchor=(1, 1),
-            loc="lower right",
+            loc="upper left",
         )
 
         # text box metrics
@@ -851,8 +851,8 @@ def plot_stresses_kawabata(
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axes.text(
-            0.03,
-            0.97,
+            0.80,
+            0.05,
             text,
             transform=axes.transAxes,
             fontsize=config.font_size,
