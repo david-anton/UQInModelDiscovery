@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -759,10 +759,11 @@ def plot_stresses_kawabata(
                 model_stretches,
                 model_test_cases,
                 device,
+                stress_dim,
             )
             model_stretches_plot = model_stretches_2.reshape((-1,))
-            means_plot = means[:, stress_dim]
-            stddevs_plot = stddevs[:, stress_dim]
+            means_plot = means.reshape((-1,))
+            stddevs_plot = stddevs.reshape((-1,))
 
             axes.plot(
                 model_stretches_plot,
@@ -831,6 +832,7 @@ def plot_stresses_kawabata(
             test_case_set,
             output_set,
             device,
+            stress_dim,
         )
         rmse = calculate_root_mean_squared_error(
             model,
@@ -839,6 +841,7 @@ def plot_stresses_kawabata(
             test_case_set,
             output_set,
             device,
+            stress_dim,
         )
         text = "\n".join(
             (
@@ -876,6 +879,7 @@ def calculate_model_mean_and_stddev(
     inputs: NPArray,
     test_cases: NPArray,
     device: Device,
+    output_dim: Optional[int] = None,
 ) -> tuple[NPArray, NPArray]:
     parameters_torch = (
         torch.from_numpy(parameter_samples).type(torch.get_default_dtype()).to(device)
@@ -891,6 +895,11 @@ def calculate_model_mean_and_stddev(
 
     means = np.mean(predictions_np, axis=0)
     standard_deviations = np.std(predictions_np, axis=0)
+
+    if output_dim is not None:
+        means = means[:, output_dim].reshape((-1, 1))
+        standard_deviations = standard_deviations[:, output_dim].reshape((-1, 1))
+
     return means, standard_deviations
 
 
@@ -901,10 +910,14 @@ def calculate_coefficient_of_determinant(
     test_cases: NPArray,
     outputs: NPArray,
     device: Device,
+    output_dim: Optional[int] = None,
 ) -> float:
     mean_model_outputs, _ = calculate_model_mean_and_stddev(
-        model, parameter_samples, inputs, test_cases, device
+        model, parameter_samples, inputs, test_cases, device, output_dim
     )
+    if output_dim is not None:
+        outputs = outputs[:, output_dim].reshape((-1, 1))
+
     return coefficient_of_determination(mean_model_outputs, outputs)
 
 
@@ -915,8 +928,12 @@ def calculate_root_mean_squared_error(
     test_cases: NPArray,
     outputs: NPArray,
     device: Device,
+    output_dim: Optional[int] = None,
 ) -> float:
     mean_model_outputs, _ = calculate_model_mean_and_stddev(
-        model, parameter_samples, inputs, test_cases, device
+        model, parameter_samples, inputs, test_cases, device, output_dim
     )
+    if output_dim is not None:
+        outputs = outputs[:, output_dim].reshape((-1, 1))
+
     return root_mean_squared_error(mean_model_outputs, outputs)

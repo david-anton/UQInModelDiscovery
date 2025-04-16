@@ -205,6 +205,10 @@ class IsotropicModelLibrary:
         init_reduced_models_parameter_mask()
         init_reduced_models_population_matrix()
 
+    def set_output_dimension(self, output_dim: int) -> None:
+        validate_stress_output_dimension(output_dim, self._allowed_output_dimensions)
+        self.output_dim = output_dim
+
     def _determine_mr_exponents(self) -> MRExponents:
         exponents = []
         for n in range(1, self._degree_mr_terms + 1):
@@ -381,7 +385,7 @@ class IsotropicModelLibrary:
         P11 = P[0, 0]
         P22 = P[1, 1]
         if self.output_dim == 1:
-            return P11
+            return unsqueeze_if_necessary(P11)
         else:
             return torch.concat(
                 (unsqueeze_if_necessary(P11), unsqueeze_if_necessary(P22))
