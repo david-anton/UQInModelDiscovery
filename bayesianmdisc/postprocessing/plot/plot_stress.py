@@ -817,13 +817,13 @@ def plot_stresses_kawabata(
         )
         data_legend_handles, _ = axes.get_legend_handles_labels()
         legend_handles = [data_point, model_mean, model_stddevs] + data_legend_handles
-
         axes.legend(
             handles=legend_handles,
             fontsize=config.font_size,
             bbox_to_anchor=(1, 1),
-            loc="upper left",
+            loc="lower right",
         )
+
         # text box metrics
         r_squared = calculate_coefficient_of_determinant(
             model,
