@@ -12,7 +12,7 @@ from bayesianmdisc.data import (
 from bayesianmdisc.errors import ModelTrimmingError
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import ModelProtocol
-from bayesianmdisc.models.base import ParameterIndices, ParameterIndex
+from bayesianmdisc.models.base import ParameterIndex, ParameterIndices
 from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
     root_mean_squared_error,

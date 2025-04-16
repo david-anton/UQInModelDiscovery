@@ -10,7 +10,7 @@ from bayesianmdisc.bayes.prior import (
     PriorProtocol,
     create_independent_multivariate_gamma_distributed_prior,
 )
-from bayesianmdisc.customtypes import NPArray, Tensor, Device
+from bayesianmdisc.customtypes import Device, NPArray, Tensor
 from bayesianmdisc.data import (
     DataReaderProtocol,
     DeformationInputs,
@@ -19,12 +19,10 @@ from bayesianmdisc.data import (
     StressOutputs,
     TestCases,
     TreloarDataReader,
-    test_case_identifier_biaxial_tension,
     test_case_identifier_equibiaxial_tension,
-    test_case_identifier_pure_shear,
     test_case_identifier_uniaxial_tension,
 )
-from bayesianmdisc.errors import DataError, DataSetError, CombinedPriorError
+from bayesianmdisc.errors import CombinedPriorError, DataError, DataSetError
 from bayesianmdisc.gppriors import infer_gp_induced_prior
 from bayesianmdisc.gps import (
     GP,
@@ -53,6 +51,7 @@ from bayesianmdisc.normalizingflows import (
 )
 from bayesianmdisc.postprocessing.plot import (
     plot_histograms,
+    plot_stresses_kawabata,
     plot_stresses_linka,
     plot_stresses_treloar,
 )
@@ -62,7 +61,7 @@ from bayesianmdisc.statistics.utility import (
     determine_moments_of_multivariate_normal_distribution,
 )
 
-data_set = "treloar"
+data_set = "kawabata"
 use_gp_prior = True
 retrain_normalizing_flow = True
 
@@ -220,9 +219,74 @@ def split_data(
             noise_stddevs_posterior=noise_stddevs_posterior,
         )
 
+    def split_kawabata_data(
+        inputs: DeformationInputs,
+        test_cases: TestCases,
+        outputs: StressOutputs,
+        noise_stddevs: Tensor,
+    ) -> SplittedData:
+        # Number of data points
+        num_points = len(inputs)
+
+        # Indices
+        indices_prior = [
+            2,
+            5,
+            10,
+            14,
+            17,
+            22,
+            25,
+            30,
+            34,
+            38,
+            42,
+            46,
+            50,
+            54,
+            57,
+            61,
+            64,
+            68,
+            70,
+        ]
+        indices_posterior = [i for i in range(num_points) if i not in indices_prior]
+
+        # Data splitting
+        inputs_prior = inputs[indices_prior, :]
+        inputs_posterior = inputs[indices_posterior, :]
+        test_cases_prior = test_cases[indices_prior]
+        test_cases_posterior = test_cases[indices_posterior]
+        outputs_prior = outputs[indices_prior, :]
+        outputs_posterior = outputs[indices_posterior, :]
+        noise_stddevs_prior = noise_stddevs[indices_prior]
+        noise_stddevs_posterior = noise_stddevs[indices_posterior]
+
+        validate_data(
+            inputs_prior, test_cases_prior, outputs_prior, noise_stddevs_prior
+        )
+        validate_data(
+            inputs_posterior,
+            test_cases_posterior,
+            outputs_posterior,
+            noise_stddevs_posterior,
+        )
+        return SplittedData(
+            inputs_prior=inputs_prior,
+            inputs_posterior=inputs_posterior,
+            test_cases_prior=test_cases_prior,
+            test_cases_posterior=test_cases_posterior,
+            outputs_prior=outputs_prior,
+            outputs_posterior=outputs_posterior,
+            noise_stddevs_prior=noise_stddevs_prior,
+            noise_stddevs_posterior=noise_stddevs_posterior,
+        )
+
     validate_data(inputs, test_cases, outputs, noise_stddevs)
     if data_set == "treloar":
         return split_treloar_data(inputs, test_cases, outputs, noise_stddevs)
+    elif data_set == "kawabata":
+        return split_kawabata_data(inputs, test_cases, outputs, noise_stddevs)
     else:
         raise DataSetError(f"No implementation for the requested data set {data_set}")
 
@@ -300,13 +364,14 @@ def sample_from_posterior(
 def plot_stresses(
     model: ModelProtocol, is_model_trimmed: bool, output_directory: str
 ) -> None:
-    if is_model_trimmed:
-        subdirectory_name = "trimmed_model"
-    else:
-        subdirectory_name = "untrimmed_model"
-    output_subdirectory = os.path.join(output_directory, subdirectory_name)
+    def join_output_subdirectory() -> str:
+        if is_model_trimmed:
+            subdirectory_name = "trimmed_model"
+        else:
+            subdirectory_name = "untrimmed_model"
+        return os.path.join(output_directory, subdirectory_name)
 
-    if data_set == "treloar":
+    def plot_treloar() -> None:
         plot_stresses_treloar(
             model=cast(IsotropicModelLibrary, model),
             parameter_samples=posterior_samples,
@@ -317,7 +382,20 @@ def plot_stresses(
             project_directory=project_directory,
             device=device,
         )
-    elif data_set == "linka":
+
+    def plot_kawabata() -> None:
+        plot_stresses_kawabata(
+            model=cast(IsotropicModelLibrary, model),
+            parameter_samples=posterior_samples,
+            inputs=inputs.detach().cpu().numpy(),
+            outputs=outputs.detach().cpu().numpy(),
+            test_cases=test_cases.detach().cpu().numpy(),
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+            device=device,
+        )
+
+    def plot_linka() -> None:
         plot_stresses_linka(
             model=cast(OrthotropicCANN, model),
             parameter_samples=posterior_samples,
@@ -329,11 +407,19 @@ def plot_stresses(
             device=device,
         )
 
+    output_subdirectory = join_output_subdirectory()
+
+    if data_set == "treloar":
+        plot_treloar()
+    elif data_set == "kawabata":
+        plot_kawabata()
+    elif data_set == "linka":
+        plot_linka()
+
 
 inputs, test_cases, outputs = data_reader.read()
 noise_stddevs = determine_heteroscedastic_noise()
 validate_data(inputs, test_cases, outputs, noise_stddevs)
-
 
 splitted_data = split_data(inputs, test_cases, outputs, noise_stddevs)
 inputs_prior = splitted_data.inputs_prior

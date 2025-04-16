@@ -1,7 +1,7 @@
 import pandas as pd
 import torch
 
-from bayesianmdisc.customtypes import Device
+from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.readerswriters import CSVDataReader, PandasDataWriter
 from bayesianmdisc.models import ModelProtocol
@@ -40,3 +40,10 @@ def load_model_state(
         .type(torch.get_default_dtype())
         .to(device)
     )
+
+
+def unsqueeze_if_necessary(tensor: Tensor) -> Tensor:
+    if tensor.dim() == 0:
+        return torch.unsqueeze(tensor, dim=0)
+    else:
+        return tensor

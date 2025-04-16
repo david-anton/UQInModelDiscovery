@@ -21,12 +21,12 @@ from bayesianmdisc.models.base import (
     Stretches,
     count_active_parameters,
     determine_initial_parameter_mask,
+    filter_active_parameter_indices,
     filter_active_parameter_names,
     init_parameter_mask,
     init_parameter_population_matrix,
-    filter_active_parameter_indices,
+    mask_and_populate_parameters,
     mask_parameters,
-    preprocess_parameters,
     update_parameter_population_matrix,
     validate_deformation_input_dimension,
     validate_input_numbers,
@@ -353,7 +353,7 @@ class OrthotropicCANN:
         validate_parameters(parameters, self.num_parameters)
 
     def _preprocess_parameters(self, parameters: Parameters) -> Parameters:
-        return preprocess_parameters(
+        return mask_and_populate_parameters(
             parameters, self._parameter_mask, self._parameter_population_matrix
         )
 

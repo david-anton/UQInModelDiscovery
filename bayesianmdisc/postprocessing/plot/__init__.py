@@ -4,7 +4,11 @@ from .plot_history import (
     plot_loss_history,
     plot_statistical_loss_history,
 )
-from .plot_stress import plot_stresses_linka, plot_stresses_treloar
+from .plot_stress import (
+    plot_stresses_kawabata,
+    plot_stresses_linka,
+    plot_stresses_treloar,
+)
 
 __all__ = [
     "plot_histograms",
@@ -13,4 +17,5 @@ __all__ = [
     "plot_statistical_loss_history",
     "plot_stresses_linka",
     "plot_stresses_treloar",
+    "plot_stresses_kawabata",
 ]

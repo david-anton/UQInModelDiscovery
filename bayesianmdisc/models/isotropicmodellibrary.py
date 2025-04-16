@@ -34,20 +34,21 @@ from bayesianmdisc.models.base import (
     Stretches,
     count_active_parameters,
     determine_initial_parameter_mask,
-    filter_active_parameter_names,
     filter_active_parameter_indices,
-    validate_stress_output_dimension,
+    filter_active_parameter_names,
     init_parameter_mask,
     init_parameter_population_matrix,
+    mask_and_populate_parameters,
     mask_parameters,
-    preprocess_parameters,
     update_parameter_population_matrix,
     validate_deformation_input_dimension,
     validate_input_numbers,
     validate_model_state,
     validate_parameters,
+    validate_stress_output_dimension,
     validate_test_cases,
 )
+from bayesianmdisc.models.utility import unsqueeze_if_necessary
 
 StretchesTuple: TypeAlias = tuple[Stretch, Stretch, Stretch]
 OgdenExponents: TypeAlias = list[float]
@@ -236,6 +237,7 @@ class IsotropicModelLibrary:
             [
                 self._test_case_identifier_ut,
                 self._test_case_identifier_ebt,
+                self._test_case_identifier_bt,
                 self._test_case_identifier_ps,
             ],
             device=self._device,
@@ -301,7 +303,7 @@ class IsotropicModelLibrary:
         validate_parameters(parameters, self.num_parameters)
 
     def _preprocess_parameters(self, parameters: Parameters) -> Parameters:
-        return preprocess_parameters(
+        return mask_and_populate_parameters(
             parameters, self._parameter_mask, self._parameter_population_matrix
         )
 
@@ -361,8 +363,8 @@ class IsotropicModelLibrary:
         one = torch.tensor(1.0, device=self._device)
 
         def calculate_stretches(stretches: Stretches) -> Stretches:
-            stretch_1 = stretches[0]
-            stretch_2 = stretches[1]
+            stretch_1 = stretches[:, 0].reshape((-1, 1))
+            stretch_2 = stretches[:, 1].reshape((-1, 1))
             stretch_3 = one / (stretch_1 * stretch_2)
             return torch.concat((stretch_1, stretch_2, stretch_3), dim=1)
 
@@ -381,7 +383,9 @@ class IsotropicModelLibrary:
         if self.output_dim == 1:
             return P11
         else:
-            return torch.concat((P11, P22))
+            return torch.concat(
+                (unsqueeze_if_necessary(P11), unsqueeze_if_necessary(P22))
+            )
 
     def _assemble_deformation_gradient(
         self, stretches: Stretches

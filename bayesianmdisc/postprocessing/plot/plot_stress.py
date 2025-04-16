@@ -3,6 +3,8 @@ from typing import Any, Dict
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 from torch import vmap
 
 from bayesianmdisc.customtypes import Device, NPArray
@@ -635,6 +637,9 @@ class StressPlotterConfigKawabata:
         # standard deviation
         self.model_stddev_alpha = 0.2
 
+        # legend
+        self.legend_color = "gray"
+
         # scientific notation
         self.scientific_notation_size = self.font_size
 
@@ -657,6 +662,10 @@ def plot_stresses_kawabata(
     set_sizes = [1, 6, 6, 8, 8, 8, 8, 8, 7, 7, 6, 3]
     num_sets = len(set_sizes)
     num_model_inputs_per_set = 128
+
+    stretches_2 = inputs[:, 1]
+    min_stretch_2 = np.amin(stretches_2)
+    max_stretch_2 = np.amax(stretches_2)
 
     def split_inputs_and_outputs(
         inputs: NPArray, test_cases: NPArray, outputs: NPArray
@@ -716,28 +725,30 @@ def plot_stresses_kawabata(
             test_case = test_case_set[0]
             data_stresses = output_set[:, stress_dim]
 
-            data_stretch_1 = data_stretches[0, 0]
-            data_stretches_2 = data_stretches[:, 1]
-            min_stretch_2 = np.amin(data_stretches_2)
-            max_stretch_2 = np.amax(data_stretches_2)
+            data_set_stretch_1 = data_stretches[0, 0]
+            data_set_stretches_2 = data_stretches[:, 1]
+            min_data_set_stretch_2 = np.amin(data_set_stretches_2)
+            max_data_set_stretch_2 = np.amax(data_set_stretches_2)
 
             color = colors[set_index]
 
             # data points
             axes.plot(
-                data_stretches_2,
+                data_set_stretches_2,
                 data_stresses,
                 marker=config.data_marker,
                 color=color,
                 markersize=config.data_marker_size,
                 linestyle="None",
-                label=config.data_label + f"{data_stretch_1:.2f}",
+                label=config.data_label + f"{data_set_stretch_1:.2f}",
             )
 
             # model
-            model_stretches_1 = np.full((num_model_inputs_per_set, 1), data_stretch_1)
+            model_stretches_1 = np.full(
+                (num_model_inputs_per_set, 1), data_set_stretch_1
+            )
             model_stretches_2 = np.linspace(
-                min_stretch_2, max_stretch_2, num_model_inputs_per_set
+                min_data_set_stretch_2, max_data_set_stretch_2, num_model_inputs_per_set
             ).reshape((-1, 1))
             model_stretches = np.hstack((model_stretches_1, model_stretches_2))
             model_test_cases = np.full((num_model_inputs_per_set,), test_case)
@@ -749,7 +760,7 @@ def plot_stresses_kawabata(
                 model_test_cases,
                 device,
             )
-            model_stretches_plot = model_stretches_2
+            model_stretches_plot = model_stretches_2.reshape((-1,))
             means_plot = means[:, stress_dim]
             stddevs_plot = stddevs[:, stress_dim]
 
@@ -766,69 +777,90 @@ def plot_stresses_kawabata(
                 alpha=config.model_stddev_alpha,
             )
 
-            # axis ticks
-            x_ticks = np.linspace(min_stretch_2, max_stretch_2, num=6)
-            x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
-            axes.set_xticks(x_ticks)
-            axes.set_xticklabels(x_tick_labels)
+        # axis ticks
+        x_ticks = np.linspace(min_stretch_2, max_stretch_2, num=6)
+        x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
+        axes.set_xticks(x_ticks)
+        axes.set_xticklabels(x_tick_labels)
 
-            # axis labels
-            if stress_dim == 0:
-                y_label = r"$P_{11}" + "[kPa]"
-            else:
-                y_label = r"$P_{22}" + "[kPa]"
+        # axis labels
+        if stress_dim == 0:
+            y_label = r"$P_{11}$" + " [kPa]"
+        else:
+            y_label = r"$P_{22}$" + " [kPa]"
 
-            axes.set_xlabel(r"$\lambda_{2}$" + "[-]", **config.font)
-            axes.set_ylabel(ylabel=y_label, **config.font)
-            axes.tick_params(
-                axis="both", which="minor", labelsize=config.minor_tick_label_size
-            )
-            axes.tick_params(
-                axis="both", which="major", labelsize=config.major_tick_label_size
-            )
+        axes.set_xlabel(r"$\lambda_{2}$" + " [-]", **config.font)
+        axes.set_ylabel(ylabel=y_label, **config.font)
+        axes.tick_params(
+            axis="both", which="minor", labelsize=config.minor_tick_label_size
+        )
+        axes.tick_params(
+            axis="both", which="major", labelsize=config.major_tick_label_size
+        )
 
-            # legend
-            axes.legend(fontsize=config.font_size, loc="outside upper right")
+        # legend
+        data_point = Line2D(
+            [],
+            [],
+            color=config.legend_color,
+            marker=config.data_marker,
+            markersize=config.data_marker_size,
+            linestyle="None",
+            label="data",
+        )
+        model_mean = Line2D([], [], color=config.legend_color, label="mean")
+        model_stddevs = Patch(
+            facecolor=config.legend_color,
+            alpha=config.model_stddev_alpha,
+            label="95%-credible interval",
+        )
+        data_legend_handles, _ = axes.get_legend_handles_labels()
+        legend_handles = [data_point, model_mean, model_stddevs] + data_legend_handles
 
-            # text box metrics
-            r_squared = calculate_coefficient_of_determinant(
-                model,
-                parameter_samples,
-                input_set,
-                test_case_set,
-                output_set,
-                device,
+        axes.legend(
+            handles=legend_handles,
+            fontsize=config.font_size,
+            bbox_to_anchor=(1, 1),
+            loc="upper left",
+        )
+        # text box metrics
+        r_squared = calculate_coefficient_of_determinant(
+            model,
+            parameter_samples,
+            input_set,
+            test_case_set,
+            output_set,
+            device,
+        )
+        rmse = calculate_root_mean_squared_error(
+            model,
+            parameter_samples,
+            input_set,
+            test_case_set,
+            output_set,
+            device,
+        )
+        text = "\n".join(
+            (
+                r"$R^{2}=%.4f$" % (r_squared,),
+                r"$RMSE=%.4f$" % (rmse,),
             )
-            rmse = calculate_root_mean_squared_error(
-                model,
-                parameter_samples,
-                input_set,
-                test_case_set,
-                output_set,
-                device,
-            )
-            text = "\n".join(
-                (
-                    r"$R^{2}=%.4f$" % (r_squared,),
-                    r"$RMSE=%.4f$" % (rmse,),
-                )
-            )
-            text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
-            axes.text(
-                0.03,
-                0.97,
-                text,
-                transform=axes.transAxes,
-                fontsize=config.font_size,
-                verticalalignment="top",
-                bbox=text_properties,
-            )
+        )
+        text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+        axes.text(
+            0.03,
+            0.97,
+            text,
+            transform=axes.transAxes,
+            fontsize=config.font_size,
+            verticalalignment="top",
+            bbox=text_properties,
+        )
 
-            output_path = project_directory.create_output_file_path(
-                file_name=file_name, subdir_name=output_subdirectory
-            )
-
-            figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
+        output_path = project_directory.create_output_file_path(
+            file_name=file_name, subdir_name=output_subdirectory
+        )
+        figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
 
     input_sets, output_sets, test_case_sets = split_inputs_and_outputs(
         inputs, outputs, test_cases

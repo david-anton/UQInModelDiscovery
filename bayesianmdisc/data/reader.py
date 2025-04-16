@@ -146,8 +146,8 @@ class KawabataDataReader:
 
     def _calculate_stretches(self, biaxial_stretches: NPArray) -> NPArray:
         one = np.array(1.0)
-        stretches_1 = biaxial_stretches[0]
-        stretches_2 = biaxial_stretches[1]
+        stretches_1 = biaxial_stretches[:, 0].reshape((-1, 1))
+        stretches_2 = biaxial_stretches[:, 1].reshape((-1, 1))
         stretches_3 = one / (stretches_1 * stretches_2)
         return np.hstack((stretches_1, stretches_2, stretches_3))
 
