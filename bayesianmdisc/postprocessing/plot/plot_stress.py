@@ -828,18 +828,18 @@ def plot_stresses_kawabata(
         r_squared = calculate_coefficient_of_determinant(
             model,
             parameter_samples,
-            input_set,
-            test_case_set,
-            output_set,
+            inputs,
+            test_cases,
+            outputs,
             device,
             stress_dim,
         )
         rmse = calculate_root_mean_squared_error(
             model,
             parameter_samples,
-            input_set,
-            test_case_set,
-            output_set,
+            inputs,
+            test_cases,
+            outputs,
             device,
             stress_dim,
         )
@@ -851,8 +851,8 @@ def plot_stresses_kawabata(
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axes.text(
-            0.80,
-            0.05,
+            0.70,
+            0.15,
             text,
             transform=axes.transAxes,
             fontsize=config.font_size,

@@ -103,16 +103,18 @@ elif data_set == data_set_linka:
 relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
 alpha = 0.4
-num_calibration_steps = 3
-list_num_wasserstein_iterations = [20_000, 10_000, 10_000]
-list_relative_selection_thressholds = [0.5, 0.2]
+num_calibration_steps = 2
+list_num_wasserstein_iterations = [20_000, 10_000]
+list_relative_selection_thressholds = [0.5]
 num_flows = 16
 relative_width_flow_layers = 4
 trim_metric = "rmse"
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_alpha_{alpha}"
+output_directory = (
+    f"{current_date}_{input_directory}_alpha_{alpha}_strongersparsityprior"
+)
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
@@ -480,10 +482,10 @@ if retrain_normalizing_flow:
             def init_sparsity_prior() -> PriorProtocol:
                 return create_independent_multivariate_gamma_distributed_prior(
                     concentrations=torch.tensor(
-                        [0.5 for _ in range(num_parameters)], device=device
+                        [0.1 for _ in range(num_parameters)], device=device
                     ),
                     rates=torch.tensor(
-                        [1.0 for _ in range(num_parameters)], device=device
+                        [10.0 for _ in range(num_parameters)], device=device
                     ),
                     device=device,
                 )

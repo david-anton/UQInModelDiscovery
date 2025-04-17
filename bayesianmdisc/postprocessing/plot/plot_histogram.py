@@ -225,6 +225,7 @@ def _plot_univariate_distribution_histogram(
 
     # Ticks
     x_ticks = [
+        0.0,
         mean - (config.interval_stddevs * standard_deviation),
         mean,
         mean + (config.interval_stddevs * standard_deviation),

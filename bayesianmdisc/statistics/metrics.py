@@ -21,9 +21,13 @@ def convert_to_numpy_if_necessary(values: Values) -> NPArray:
         return values
 
 
+def flatten(array: NPArray) -> NPArray:
+    return array.flatten()
+
+
 def coefficient_of_determination(y_predicted: Values, y_true: Values) -> float:
-    y_predicted_ = convert_to_numpy_if_necessary(y_predicted)
-    y_true_ = convert_to_numpy_if_necessary(y_true)
+    y_predicted_ = flatten(convert_to_numpy_if_necessary(y_predicted))
+    y_true_ = flatten(convert_to_numpy_if_necessary(y_true))
     return r2_score(y_true=y_true_, y_pred=y_predicted_)
 
 
