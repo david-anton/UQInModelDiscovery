@@ -65,3 +65,8 @@ class StressPlotterError(Error):
 class ModelTrimmingError(Error):
     def __init__(self, message: str) -> None:
         super().__init__(message)
+
+
+class StatisticalMetricError(Error):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)

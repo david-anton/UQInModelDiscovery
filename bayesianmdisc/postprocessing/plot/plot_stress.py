@@ -20,8 +20,10 @@ from bayesianmdisc.models import IsotropicModelLibrary, ModelProtocol, Orthotrop
 from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
     root_mean_squared_error,
+    coverage_test,
 )
 
+credible_interval = 0.95
 factor_stddevs = 1.96  # corresponds to 95%-credible interval
 
 
@@ -220,6 +222,14 @@ def plot_stresses_linka(
         )
 
         # text box metrics
+        coverage = calclulate_coverage(
+            model,
+            parameter_samples,
+            inputs,
+            test_cases,
+            outputs,
+            device,
+        )
         r_squared = calculate_coefficient_of_determinant(
             model, parameter_samples, inputs, test_cases, outputs, device
         )
@@ -228,8 +238,9 @@ def plot_stresses_linka(
         )
         text = "\n".join(
             (
-                r"$R^{2}=%.4f$" % (r_squared,),
-                r"$RMSE=%.4f$" % (rmse,),
+                r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
+                r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
+                r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
             )
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
@@ -499,6 +510,14 @@ def plot_stresses_treloar(
         # text box metrics
         num_data_inputs = len(inputs)
         metrics_test_cases = np.full((num_data_inputs,), test_case)
+        coverage = calclulate_coverage(
+            model,
+            parameter_samples,
+            inputs,
+            metrics_test_cases,
+            outputs,
+            device,
+        )
         r_squared = calculate_coefficient_of_determinant(
             model,
             parameter_samples,
@@ -517,8 +536,9 @@ def plot_stresses_treloar(
         )
         text = "\n".join(
             (
-                r"$R^{2}=%.4f$" % (r_squared,),
-                r"$RMSE=%.4f$" % (rmse,),
+                r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
+                r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
+                r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
             )
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
@@ -825,6 +845,15 @@ def plot_stresses_kawabata(
         )
 
         # text box metrics
+        coverage = calclulate_coverage(
+            model,
+            parameter_samples,
+            inputs,
+            test_cases,
+            outputs,
+            device,
+            output_dim=stress_dim,
+        )
         r_squared = calculate_coefficient_of_determinant(
             model,
             parameter_samples,
@@ -845,14 +874,15 @@ def plot_stresses_kawabata(
         )
         text = "\n".join(
             (
-                r"$R^{2}=%.4f$" % (r_squared,),
-                r"$RMSE=%.4f$" % (rmse,),
+                r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
+                r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
+                r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
             )
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axes.text(
             0.70,
-            0.15,
+            0.2,
             text,
             transform=axes.transAxes,
             fontsize=config.font_size,
@@ -873,14 +903,13 @@ def plot_stresses_kawabata(
     plt.clf()
 
 
-def calculate_model_mean_and_stddev(
+def calculate_model_predictions(
     model: ModelProtocol,
     parameter_samples: NPArray,
     inputs: NPArray,
     test_cases: NPArray,
     device: Device,
-    output_dim: Optional[int] = None,
-) -> tuple[NPArray, NPArray]:
+) -> NPArray:
     parameters_torch = (
         torch.from_numpy(parameter_samples).type(torch.get_default_dtype()).to(device)
     )
@@ -891,7 +920,24 @@ def calculate_model_mean_and_stddev(
 
     vmap_func = lambda parameters: model(inputs_torch, test_cases_torch, parameters)
     predictions = vmap(vmap_func)(parameters_torch)
-    predictions_np = predictions.cpu().detach().numpy()
+    return predictions.cpu().detach().numpy()
+
+
+def calculate_model_mean_and_stddev(
+    model: ModelProtocol,
+    parameter_samples: NPArray,
+    inputs: NPArray,
+    test_cases: NPArray,
+    device: Device,
+    output_dim: Optional[int] = None,
+) -> tuple[NPArray, NPArray]:
+    predictions_np = calculate_model_predictions(
+        model=model,
+        parameter_samples=parameter_samples,
+        inputs=inputs,
+        test_cases=test_cases,
+        device=device,
+    )
 
     means = np.mean(predictions_np, axis=0)
     standard_deviations = np.std(predictions_np, axis=0)
@@ -901,6 +947,30 @@ def calculate_model_mean_and_stddev(
         standard_deviations = standard_deviations[:, output_dim].reshape((-1, 1))
 
     return means, standard_deviations
+
+
+def calclulate_coverage(
+    model: ModelProtocol,
+    parameter_samples: NPArray,
+    inputs: NPArray,
+    test_cases: NPArray,
+    outputs: NPArray,
+    device: Device,
+    output_dim: Optional[int] = None,
+) -> float:
+    prediction_samples = calculate_model_predictions(
+        model=model,
+        parameter_samples=parameter_samples,
+        inputs=inputs,
+        test_cases=test_cases,
+        device=device,
+    )
+
+    if output_dim is not None:
+        prediction_samples = prediction_samples[:, :, output_dim]
+        outputs = outputs[:, output_dim]
+
+    return coverage_test(prediction_samples, outputs, credible_interval)
 
 
 def calculate_coefficient_of_determinant(
