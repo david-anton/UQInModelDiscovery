@@ -109,12 +109,12 @@ class GammaParameterPrior(nn.Module):
         super().__init__()
         self._dim = model.num_parameters
         self._device = device
-        initial_shape = torch.tensor(0.1)
-        initial_rate = torch.tensor(10.0)
-        min_shape = torch.tensor(1e-6)
-        max_shape = torch.tensor(1e4)
-        min_rate = torch.tensor(1e-6)
-        max_rate = torch.tensor(1e4)
+        initial_shape = torch.tensor(0.1, device=device)
+        initial_rate = torch.tensor(10.0, device=device)
+        min_shape = torch.tensor(1e-6, device=device)
+        max_shape = torch.tensor(1e4, device=device)
+        min_rate = torch.tensor(1e-6, device=device)
+        max_rate = torch.tensor(1e4, device=device)
         self._rhos_shapes = self._init_rhos(initial_shape, min_shape, max_shape)
         self._rhos_rates = self._init_rhos(initial_rate, min_rate, max_rate)
         self._learning_rate_shapes = 0.001
@@ -179,12 +179,12 @@ class InverseGammaParameterPrior(nn.Module):
         super().__init__()
         self._dim = model.num_parameters
         self._device = device
-        initial_shape = torch.tensor(100.0)
-        initial_rate = torch.tensor(0.01)
-        min_shape = torch.tensor(1e-6)
-        max_shape = torch.tensor(500)
-        min_rate = torch.tensor(1e-6)
-        max_rate = torch.tensor(500)
+        initial_shape = torch.tensor(100.0, device=device)
+        initial_rate = torch.tensor(0.01, device=device)
+        min_shape = torch.tensor(1e-6, device=device)
+        max_shape = torch.tensor(500, device=device)
+        min_rate = torch.tensor(1e-6, device=device)
+        max_rate = torch.tensor(500, device=device)
         self._rhos_shapes = self._init_rhos(initial_shape, min_shape, max_shape)
         self._rhos_rates = self._init_rhos(initial_rate, min_rate, max_rate)
         self._learning_rate_shapes = 0.01
@@ -249,7 +249,7 @@ class HalfNormalParameterPrior(nn.Module):
         super().__init__()
         self._dim = model.num_parameters
         self._device = device
-        self._initial_stddev = torch.tensor(0.01)
+        self._initial_stddev = torch.tensor(0.01, device=device)
         self._rhos = self._init_rhos()
         self._learning_rate_rhos = 0.001
 
@@ -297,7 +297,7 @@ class GaussianMean(nn.Module):
         self._dim = model.num_parameters
         self._is_trainable = is_trainable
         self._device = device
-        self._initial_mean = torch.tensor(0.0)
+        self._initial_mean = torch.tensor(0.0, device=device)
         self._means = self._init_means()
         self._learning_rate_means = 0.001
 
@@ -334,7 +334,7 @@ class GaussianParameterPrior(nn.Module):
             is_trainable=is_mean_trainable,
             device=self._device,
         )
-        self._initial_stddev = torch.tensor(1.0)
+        self._initial_stddev = torch.tensor(1.0, device=device)
         self._rhos = self._init_rhos()
         self._learning_rate_rhos = 0.001
 
@@ -392,12 +392,12 @@ class HierarchicalGaussianParameterPrior(nn.Module):
             is_trainable=is_mean_trainable,
             device=self._device,
         )
-        initial_shape = torch.tensor(1.0)
-        initial_rate = torch.tensor(1.0)
-        min_shape = torch.tensor(1e-6)
-        max_shape = torch.tensor(1e4)
-        min_rate = torch.tensor(1e-6)
-        max_rate = torch.tensor(1e4)
+        initial_shape = torch.tensor(1.0, device=device)
+        initial_rate = torch.tensor(1.0, device=device)
+        min_shape = torch.tensor(1e-6, device=device)
+        max_shape = torch.tensor(1e4, device=device)
+        min_rate = torch.tensor(1e-6, device=device)
+        max_rate = torch.tensor(1e4, device=device)
         self._rhos_shapes = self._init_rhos(initial_shape, min_shape, max_shape)
         self._rhos_rates = self._init_rhos(initial_rate, min_rate, max_rate)
         self._learning_rate_shapes = 0.001
