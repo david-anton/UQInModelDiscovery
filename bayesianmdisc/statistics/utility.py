@@ -1,9 +1,13 @@
 from collections import namedtuple
+from typing import TypeAlias
 
 import numpy as np
 import torch
 
 from bayesianmdisc.customtypes import NPArray, Tensor
+from bayesianmdisc.errors import StatisticsError
+
+QuantileValues: TypeAlias = tuple[NPArray, NPArray]
 
 MomentsUnivariateNormal = namedtuple(
     "MomentsUnivariateNormal", ["mean", "standard_deviation"]
@@ -37,4 +41,25 @@ def logarithmic_sum_of_exponentials(log_probs: Tensor) -> Tensor:
     max_log_prob = torch.amax(log_probs, dim=0)
     return max_log_prob + torch.log(
         torch.sum(torch.exp(log_probs - max_log_prob), dim=0)
+    )
+
+
+def determine_quantiles(samples: NPArray, credible_interval: float) -> QuantileValues:
+
+    def _validate_credible_interval(credible_interval: float) -> None:
+        is_larger_or_equal_zero = credible_interval >= 0.0
+        is_smaller_or_equal_one = credible_interval <= 1.0
+        is_valid = is_larger_or_equal_zero and is_smaller_or_equal_one
+
+        if not is_valid:
+            raise StatisticsError(
+                f"""The credible interval is expected to be positive 
+                    and smaller or equal than one, but is {credible_interval}"""
+            )
+
+    _validate_credible_interval(credible_interval)
+    min_quantile = 1.0 - credible_interval
+    max_quantile = credible_interval
+    return np.quantile(
+        samples, [min_quantile, max_quantile], method="inverted_cdf", axis=0
     )

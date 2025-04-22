@@ -19,9 +19,10 @@ from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import IsotropicModelLibrary, ModelProtocol, OrthotropicCANN
 from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
-    root_mean_squared_error,
     coverage_test,
+    root_mean_squared_error,
 )
+from bayesianmdisc.statistics.utility import determine_quantiles
 
 credible_interval = 0.95
 factor_stddevs = 1.96  # corresponds to 95%-credible interval
@@ -148,13 +149,18 @@ def plot_stresses_linka(
         )
         model_stretches = np.linspace(min_stretch, max_stretch, num_model_inputs)
 
-        means, stddevs = calculate_model_mean_and_stddev(
+        means, _ = calculate_model_mean_and_stddev(
+            model, parameter_samples, model_inputs, model_test_cases, device
+        )
+        min_quantiles, max_quantiles = calculate_model_quantiles(
             model, parameter_samples, model_inputs, model_test_cases, device
         )
         means_fiber = means[:, index_fiber]
         means_normal = means[:, index_normal]
-        stddevs_fiber = stddevs[:, index_fiber]
-        stddevs_normal = stddevs[:, index_normal]
+        min_quantiles_fiber = min_quantiles[:, index_fiber]
+        max_quantiles_fiber = max_quantiles[:, index_fiber]
+        min_quantiles_normal = min_quantiles[:, index_normal]
+        max_quantiles_normal = max_quantiles[:, index_normal]
 
         axes.plot(
             model_stretches,
@@ -164,8 +170,8 @@ def plot_stresses_linka(
         )
         axes.fill_between(
             model_stretches,
-            means_fiber - factor_stddevs * stddevs_fiber,
-            means_fiber + factor_stddevs * stddevs_fiber,
+            min_quantiles_fiber,
+            max_quantiles_fiber,
             color=config.model_color_stddev_normal_1,
             alpha=config.model_stddev_alpha,
         )
@@ -178,8 +184,8 @@ def plot_stresses_linka(
         )
         axes.fill_between(
             model_stretches,
-            means_normal - factor_stddevs * stddevs_normal,
-            means_normal + factor_stddevs * stddevs_normal,
+            min_quantiles_normal,
+            max_quantiles_normal,
             color=config.model_color_stddev_normal_2,
             alpha=config.model_stddev_alpha,
         )
@@ -450,16 +456,21 @@ def plot_stresses_treloar(
             min_stretch, max_stretch, num_model_inputs
         ).reshape((-1, 1))
         model_test_cases = np.full((num_model_inputs,), test_case)
-        means, stddevs = calculate_model_mean_and_stddev(
+        means, _ = calculate_model_mean_and_stddev(
             model,
             parameter_samples,
             model_stretches,
             model_test_cases,
             device,
         )
+        min_quantiles, max_quantiles = calculate_model_quantiles(
+            model, parameter_samples, model_stretches, model_test_cases, device
+        )
+
         model_stretches_plot = model_stretches.reshape((-1,))
         means_plot = means.reshape((-1,))
-        stddevs_plot = stddevs.reshape((-1,))
+        min_quantiles_plot = min_quantiles.reshape((-1,))
+        max_quantiles_plot = max_quantiles.reshape((-1,))
 
         axes.plot(
             model_stretches_plot,
@@ -469,8 +480,8 @@ def plot_stresses_treloar(
         )
         axes.fill_between(
             model_stretches_plot,
-            means_plot - factor_stddevs * stddevs_plot,
-            means_plot + factor_stddevs * stddevs_plot,
+            min_quantiles_plot,
+            max_quantiles_plot,
             color=model_color_stddev,
             alpha=config.model_stddev_alpha,
         )
@@ -482,8 +493,8 @@ def plot_stresses_treloar(
         )
         axes_all.fill_between(
             model_stretches_plot,
-            means_plot - factor_stddevs * stddevs_plot,
-            means_plot + factor_stddevs * stddevs_plot,
+            min_quantiles_plot,
+            max_quantiles_plot,
             color=model_color_stddev,
             alpha=config.model_stddev_alpha,
         )
@@ -591,6 +602,14 @@ def plot_stresses_treloar(
         figure_all.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
 
         # text box metrics
+        coverage = calclulate_coverage(
+            model,
+            parameter_samples,
+            inputs,
+            test_cases,
+            outputs,
+            device,
+        )
         r_squared = calculate_coefficient_of_determinant(
             model, parameter_samples, inputs, test_cases, outputs, device
         )
@@ -599,8 +618,9 @@ def plot_stresses_treloar(
         )
         text = "\n".join(
             (
-                r"$R^{2}=%.4f$" % (r_squared,),
-                r"$RMSE=%.4f$" % (rmse,),
+                r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
+                r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
+                r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
             )
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
@@ -773,7 +793,15 @@ def plot_stresses_kawabata(
             model_stretches = np.hstack((model_stretches_1, model_stretches_2))
             model_test_cases = np.full((num_model_inputs_per_set,), test_case)
 
-            means, stddevs = calculate_model_mean_and_stddev(
+            means, _ = calculate_model_mean_and_stddev(
+                model,
+                parameter_samples,
+                model_stretches,
+                model_test_cases,
+                device,
+                stress_dim,
+            )
+            min_quantiles, max_quantiles = calculate_model_quantiles(
                 model,
                 parameter_samples,
                 model_stretches,
@@ -783,7 +811,8 @@ def plot_stresses_kawabata(
             )
             model_stretches_plot = model_stretches_2.reshape((-1,))
             means_plot = means.reshape((-1,))
-            stddevs_plot = stddevs.reshape((-1,))
+            min_quantiles_plot = min_quantiles.reshape((-1,))
+            max_quantiles_plot = max_quantiles.reshape((-1,))
 
             axes.plot(
                 model_stretches_plot,
@@ -792,8 +821,8 @@ def plot_stresses_kawabata(
             )
             axes.fill_between(
                 model_stretches_plot,
-                means_plot - factor_stddevs * stddevs_plot,
-                means_plot + factor_stddevs * stddevs_plot,
+                min_quantiles_plot,
+                max_quantiles_plot,
                 color=color,
                 alpha=config.model_stddev_alpha,
             )
@@ -931,7 +960,7 @@ def calculate_model_mean_and_stddev(
     device: Device,
     output_dim: Optional[int] = None,
 ) -> tuple[NPArray, NPArray]:
-    predictions_np = calculate_model_predictions(
+    predictions = calculate_model_predictions(
         model=model,
         parameter_samples=parameter_samples,
         inputs=inputs,
@@ -939,14 +968,40 @@ def calculate_model_mean_and_stddev(
         device=device,
     )
 
-    means = np.mean(predictions_np, axis=0)
-    standard_deviations = np.std(predictions_np, axis=0)
+    means = np.mean(predictions, axis=0)
+    standard_deviations = np.std(predictions, axis=0)
 
     if output_dim is not None:
         means = means[:, output_dim].reshape((-1, 1))
         standard_deviations = standard_deviations[:, output_dim].reshape((-1, 1))
 
     return means, standard_deviations
+
+
+def calculate_model_quantiles(
+    model: ModelProtocol,
+    parameter_samples: NPArray,
+    inputs: NPArray,
+    test_cases: NPArray,
+    device: Device,
+    output_dim: Optional[int] = None,
+) -> tuple[NPArray, NPArray]:
+    prediction_samples = calculate_model_predictions(
+        model=model,
+        parameter_samples=parameter_samples,
+        inputs=inputs,
+        test_cases=test_cases,
+        device=device,
+    )
+    min_quantiles, max_quantiles = determine_quantiles(
+        prediction_samples, credible_interval
+    )
+
+    if output_dim is not None:
+        min_quantiles = min_quantiles[:, output_dim].reshape((-1, 1))
+        max_quantiles = max_quantiles[:, output_dim].reshape((-1, 1))
+
+    return min_quantiles, max_quantiles
 
 
 def calclulate_coverage(

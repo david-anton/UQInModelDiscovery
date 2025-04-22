@@ -67,6 +67,6 @@ class ModelTrimmingError(Error):
         super().__init__(message)
 
 
-class StatisticalMetricError(Error):
+class StatisticsError(Error):
     def __init__(self, message: str) -> None:
         super().__init__(message)

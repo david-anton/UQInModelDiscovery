@@ -67,7 +67,7 @@ data_set_kawabata = "kawabata"
 data_set_linka = "heart_data_linka"
 
 data_set = data_set_treloar
-use_gp_prior = True
+use_gp_prior = False  # True
 retrain_normalizing_flow = True
 
 # Settings
@@ -102,7 +102,7 @@ elif data_set == data_set_linka:
 
 relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
-alpha = 0.4
+alpha = 0.0
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
 list_relative_selection_thressholds = [0.5]
@@ -112,9 +112,7 @@ trim_metric = "rmse"
 num_samples_posterior = 4096
 
 
-output_directory = (
-    f"{current_date}_{input_directory}_alpha_{alpha}_strongersparsityprior"
-)
+output_directory = f"{current_date}_{input_directory}_alpha_{alpha}"
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
