@@ -102,7 +102,7 @@ elif data_set == data_set_linka:
 
 relative_noise_stddevs = 1e-1  # 5e-2
 min_noise_stddev = 1e-3
-alpha = 0.8
+alpha = 0.6
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
 list_relative_selection_thressholds = [0.5]
