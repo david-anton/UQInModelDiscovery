@@ -112,7 +112,7 @@ trim_metric = "rmse"
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_alpha_{alpha}"
+output_directory = f"{current_date}_{input_directory}_alpha_{alpha}_nogpprior"
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
