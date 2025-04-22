@@ -17,6 +17,6 @@ srun singularity run \
  --nv \
  --nvccli \
  bayesianmdisc.sif \
- python3 /home/davanton/development/BayesianModelDiscovery/app/${SCRIPT}
+ python3 /home/davanton/BayesianModelDiscovery/app/${SCRIPT}
 
 
