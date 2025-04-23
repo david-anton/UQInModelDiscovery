@@ -307,8 +307,9 @@ class CombinedPrior:
         device: Device,
     ) -> None:
         self._device = device
-        self._lower_limit_alpha = 0.0
-        self._upper_limit_alpha = 1.0
+        self._lower_limit_alpha = torch.tensor(0.0, device=self._device)
+        self._upper_limit_alpha = torch.tensor(1.0, device=self._device)
+        self._tolerance = torch.tensor(1e-7, device=self._device)
         self._validate_alpha(alpha)
         self._alpha = torch.tensor(alpha, device=self._device)
         self._inverse_alpha = self._determine_inverse_alpha()
@@ -325,19 +326,26 @@ class CombinedPrior:
         return self._log_prob(parameters)
 
     def _log_prob(self, parameters: Tensor) -> Tensor:
-        log_prob_gp = self._gp_prior.log_prob(parameters)
-        log_prob_sparsity = self._sparsity_prior.log_prob(parameters)
+        if self._alpha - self._upper_limit_alpha > self._tolerance:
+            return self._gp_prior.log_prob(parameters)
+        elif self._alpha < self._tolerance:
+            return self._sparsity_prior.log_prob(parameters)
+        else:
+            log_prob_gp = self._gp_prior.log_prob(parameters)
+            log_prob_sparsity = self._sparsity_prior.log_prob(parameters)
 
-        weighted_log_prob_gp = torch.log(self._alpha) + log_prob_gp
-        weighted_log_prob_sparsity = torch.log(self._inverse_alpha) + log_prob_sparsity
-        log_probs = torch.concat(
-            (
-                torch.unsqueeze(weighted_log_prob_gp, dim=0),
-                torch.unsqueeze(weighted_log_prob_sparsity, dim=0),
-            ),
-            dim=0,
-        )
-        return logarithmic_sum_of_exponentials(log_probs)
+            weighted_log_prob_gp = torch.log(self._alpha) + log_prob_gp
+            weighted_log_prob_sparsity = (
+                torch.log(self._inverse_alpha) + log_prob_sparsity
+            )
+            log_probs = torch.concat(
+                (
+                    torch.unsqueeze(weighted_log_prob_gp, dim=0),
+                    torch.unsqueeze(weighted_log_prob_sparsity, dim=0),
+                ),
+                dim=0,
+            )
+            return logarithmic_sum_of_exponentials(log_probs)
 
     def _validate_alpha(self, alpha: float) -> None:
         is_greater_or_equal_lower_limit = alpha >= self._lower_limit_alpha
