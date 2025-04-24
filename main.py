@@ -67,7 +67,7 @@ data_set_kawabata = "kawabata"
 data_set_linka = "heart_data_linka"
 
 data_set = data_set_treloar
-use_gp_prior = True
+use_gp_prior = False  # True
 retrain_normalizing_flow = True
 
 # Settings
@@ -102,7 +102,7 @@ elif data_set == data_set_linka:
 
 relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
-alpha = 0.5
+alpha = 0.0
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
 list_relative_selection_thressholds = [0.5]
@@ -470,15 +470,21 @@ inputs, test_cases, outputs = data_reader.read()
 noise_stddevs = determine_heteroscedastic_noise()
 validate_data(inputs, test_cases, outputs, noise_stddevs)
 
-splitted_data = split_data(inputs, test_cases, outputs, noise_stddevs)
-inputs_prior = splitted_data.inputs_prior
-inputs_posterior = splitted_data.inputs_posterior
-test_cases_prior = splitted_data.test_cases_prior
-test_cases_posterior = splitted_data.test_cases_posterior
-outputs_prior = splitted_data.outputs_prior
-outputs_posterior = splitted_data.outputs_posterior
-noise_stddevs_prior = splitted_data.noise_stddevs_prior
-noise_stddevs_posterior = splitted_data.noise_stddevs_posterior
+if use_gp_prior:
+    splitted_data = split_data(inputs, test_cases, outputs, noise_stddevs)
+    inputs_prior = splitted_data.inputs_prior
+    inputs_posterior = splitted_data.inputs_posterior
+    test_cases_prior = splitted_data.test_cases_prior
+    test_cases_posterior = splitted_data.test_cases_posterior
+    outputs_prior = splitted_data.outputs_prior
+    outputs_posterior = splitted_data.outputs_posterior
+    noise_stddevs_prior = splitted_data.noise_stddevs_prior
+    noise_stddevs_posterior = splitted_data.noise_stddevs_posterior
+else:
+    inputs_posterior = inputs
+    test_cases_posterior = test_cases
+    outputs_posterior = outputs
+    noise_stddevs_posterior = noise_stddevs
 
 if retrain_normalizing_flow:
     for step in range(num_calibration_steps):
