@@ -67,7 +67,7 @@ data_set_kawabata = "kawabata"
 data_set_linka = "heart_data_linka"
 
 data_set = data_set_treloar
-use_gp_prior = False  # True
+use_gp_prior = True
 retrain_normalizing_flow = True
 
 # Settings
@@ -102,7 +102,7 @@ elif data_set == data_set_linka:
 
 relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
-alpha = 0.0
+alpha = 1.0
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
 list_relative_selection_thressholds = [0.5]
@@ -112,7 +112,9 @@ trim_metric = "rmse"
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_alpha_{alpha}_noise_005_halfdata"
+output_directory = (
+    f"{current_date}_{input_directory}_alpha_{alpha}_noise_005_gammaprior"
+)
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
@@ -184,12 +186,9 @@ def split_data(
         num_points_ebt = torch.numel(mask_ebt)
 
         # Relative indices
-        # rel_indices_prior_ut = [2, 6, 10, 15, 20]
-        # rel_indices_prior_ebt = [2, 6, 11]
-        # rel_indices_prior_ps = [2, 5, 10]
-        rel_indices_prior_ut = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23]
-        rel_indices_prior_ebt = [1, 3, 5, 7, 9, 11, 13]
-        rel_indices_prior_ps = [1, 3, 5, 7, 9, 11, 13]
+        rel_indices_prior_ut = [2, 6, 10, 15, 20]
+        rel_indices_prior_ebt = [2, 6, 11]
+        rel_indices_prior_ps = [2, 5, 10]
         # Absolute indices
         indices_prior_ut = rel_indices_prior_ut
         start_index = num_points_ut
@@ -598,7 +597,7 @@ if retrain_normalizing_flow:
                 gp_prior = infer_gp_induced_prior(
                     gp=gaussian_process,
                     model=model,
-                    prior_type="inverse Gamma",
+                    prior_type="Gamma",
                     is_mean_trainable=True,
                     inputs=inputs,
                     test_cases=test_cases,
