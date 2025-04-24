@@ -102,7 +102,7 @@ elif data_set == data_set_linka:
 
 relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
-alpha = 0.2
+alpha = 1.0
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
 list_relative_selection_thressholds = [0.5]
@@ -112,7 +112,7 @@ trim_metric = "rmse"
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_alpha_{alpha}_noise_005"
+output_directory = f"{current_date}_{input_directory}_alpha_{alpha}_noise_005_halfdata"
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
@@ -184,9 +184,12 @@ def split_data(
         num_points_ebt = torch.numel(mask_ebt)
 
         # Relative indices
-        rel_indices_prior_ut = [2, 6, 10, 15, 20]
-        rel_indices_prior_ebt = [2, 6, 11]
-        rel_indices_prior_ps = [2, 5, 10]
+        # rel_indices_prior_ut = [2, 6, 10, 15, 20]
+        # rel_indices_prior_ebt = [2, 6, 11]
+        # rel_indices_prior_ps = [2, 5, 10]
+        rel_indices_prior_ut = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
+        rel_indices_prior_ebt = [2, 4, 6, 8, 10, 12, 14]
+        rel_indices_prior_ps = [2, 4, 6, 8, 10, 12, 14]
         # Absolute indices
         indices_prior_ut = rel_indices_prior_ut
         start_index = num_points_ut
