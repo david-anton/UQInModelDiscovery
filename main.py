@@ -102,7 +102,7 @@ elif data_set == data_set_linka:
 
 relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
-alpha = 0.5
+alpha = 1.0
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
 list_relative_selection_thressholds = [0.5]
@@ -187,9 +187,9 @@ def split_data(
         # rel_indices_prior_ut = [2, 6, 10, 15, 20]
         # rel_indices_prior_ebt = [2, 6, 11]
         # rel_indices_prior_ps = [2, 5, 10]
-        rel_indices_prior_ut = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
-        rel_indices_prior_ebt = [2, 4, 6, 8, 10, 12, 14]
-        rel_indices_prior_ps = [2, 4, 6, 8, 10, 12, 14]
+        rel_indices_prior_ut = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23]
+        rel_indices_prior_ebt = [1, 3, 5, 7, 9, 11, 13]
+        rel_indices_prior_ps = [1, 3, 5, 7, 9, 11, 13]
         # Absolute indices
         indices_prior_ut = rel_indices_prior_ut
         start_index = num_points_ut
