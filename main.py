@@ -105,7 +105,7 @@ min_noise_stddev = 1e-3
 alpha = 1.0
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
-list_relative_selection_thressholds = [0.9]  # [0.5]
+list_relative_selection_thressholds = [0.9]
 num_flows = 16
 relative_width_flow_layers = 4
 trim_metric = "rmse"
@@ -113,7 +113,7 @@ num_samples_posterior = 4096
 
 
 output_directory = (
-    f"{current_date}_{input_directory}_alpha_{alpha}_noise_005_threshold_09_gammaprior"
+    f"{current_date}_{input_directory}_alpha_{alpha}_noise_005_threshold_09"
 )
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
@@ -597,7 +597,7 @@ if retrain_normalizing_flow:
                 gp_prior = infer_gp_induced_prior(
                     gp=gaussian_process,
                     model=model,
-                    prior_type="Gamma",
+                    prior_type="inverse Gamma",
                     is_mean_trainable=True,
                     inputs=inputs,
                     test_cases=test_cases,
