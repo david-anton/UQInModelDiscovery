@@ -1,7 +1,7 @@
-import math
 from typing import Any, Dict, TypeAlias, Union
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import ScalarFormatter
 import numpy as np
 import scipy.stats
 
@@ -10,11 +10,14 @@ from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.statistics.utility import (
     MomentsMultivariateNormal,
     MomentsUnivariateNormal,
+    determine_quantiles,
 )
 
 TrueParameter: TypeAlias = Union[float, None]
 TrueParametersTuple: TypeAlias = tuple[TrueParameter, ...]
 
+
+credible_interval = 0.95
 
 cm_in_inches = 1 / 2.54  # centimeters in inches
 
@@ -34,19 +37,13 @@ class UnivariateNormalPlotterConfig:
         self.truth_color = "tab:orange"
         self.truth_linestyle = "solid"
 
-        # confidence interval
-        self.interval_stddevs = 1.96  # 95%-credible interval
-
         # histogram
         self.hist_bins = 128
-        self.hist_range_in_std = 3
         self.hist_color = "tab:cyan"
 
         # moments
         self.mean_color = "tab:red"
         self.mean_linestyle = "solid"
-        self.stddev_interval_color = "tab:red"
-        self.stddev_interval_linestyle = "dashed"
 
         # kde
         self.kde_color = "tab:blue"
@@ -69,6 +66,11 @@ class UnivariateNormalPlotterConfig:
         self.dpi = 300
         self.figure_size = (16 * cm_in_inches, 12 * cm_in_inches)
         self.file_format = "pdf"
+
+
+class ScalarFormatterForceFormat(ScalarFormatter):
+    def _set_format(self):
+        self.format = "%1.2f"
 
 
 def plot_histograms(
@@ -186,7 +188,10 @@ def _plot_univariate_distribution_histogram(
 ) -> None:
     title = "Posterior probability density"
     mean = moments.mean
-    standard_deviation = moments.standard_deviation
+    min_quantile_np, max_quantile_np = determine_quantiles(samples, credible_interval)
+    min_quantile = float(min_quantile_np)
+    max_quantile = float(max_quantile_np)
+
     figure, axes = plt.subplots(figsize=config.figure_size)
     # Truth
     if true_parameter is not None:
@@ -198,11 +203,9 @@ def _plot_univariate_distribution_histogram(
         )
 
     # Histogram
-    range_hist = config.hist_range_in_std * standard_deviation
     _, bin_edges, _ = axes.hist(
         samples,
         bins=config.hist_bins,
-        range=(mean - range_hist, mean + range_hist),
         density=True,
         color=config.hist_color,
         label="samples",
@@ -224,15 +227,7 @@ def _plot_univariate_distribution_histogram(
     )
 
     # Ticks
-    x_ticks = [
-        0.0,
-        mean - (config.interval_stddevs * standard_deviation),
-        mean,
-        mean + (config.interval_stddevs * standard_deviation),
-    ]
-    x_tick_labels = [
-        str(round(tick, 2)) if tick >= 1.0 else str(round(tick, 6)) for tick in x_ticks
-    ]
+    x_ticks = [min_quantile, mean, max_quantile]
     axes.axvline(
         x=mean,
         color=config.mean_color,
@@ -241,19 +236,18 @@ def _plot_univariate_distribution_histogram(
     )
 
     axes.set_xticks(x_ticks)
-    axes.set_xticklabels(x_tick_labels)
     axes.set_title(title, pad=config.title_pad, **config.font)
     axes.legend(fontsize=config.font_size, loc="best")
     axes.set_xlabel(parameter_name, **config.font)
     axes.set_ylabel("probability density", **config.font)
     axes.tick_params(axis="both", which="minor", labelsize=config.minor_tick_label_size)
     axes.tick_params(axis="both", which="major", labelsize=config.major_tick_label_size)
+    axes.xaxis.set_major_formatter(ScalarFormatterForceFormat())
     axes.ticklabel_format(
-        axis="y",
+        axis="both",
         style="scientific",
         scilimits=(0, 0),
         useOffset=False,
-        useMathText=True,
     )
     file_name = f"histogram_{parameter_name}_{algorithm_name}.{config.file_format}"
     output_path = project_directory.create_output_file_path(

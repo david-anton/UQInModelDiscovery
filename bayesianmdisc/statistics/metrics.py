@@ -3,6 +3,7 @@ from typing import TypeAlias
 import numpy as np
 from sklearn.metrics import r2_score as r2_score_sklearn
 from sklearn.metrics import root_mean_squared_error as root_mean_squared_error_sklean
+from sklearn.metrics import mean_absolute_error as mean_absolute_error_sklearn
 
 from bayesianmdisc.customtypes import NPArray, Tensor
 from bayesianmdisc.statistics.utility import determine_quantiles
@@ -35,6 +36,12 @@ def root_mean_squared_error(y_predicted: Values, y_true: Values) -> float:
     y_predicted_ = convert_to_numpy_if_necessary(y_predicted)
     y_true_ = convert_to_numpy_if_necessary(y_true)
     return root_mean_squared_error_sklean(y_true=y_true_, y_pred=y_predicted_)
+
+
+def mean_absolute_error(y_predicted: Values, y_true: Values) -> float:
+    y_predicted_ = convert_to_numpy_if_necessary(y_predicted)
+    y_true_ = convert_to_numpy_if_necessary(y_true)
+    return mean_absolute_error_sklearn(y_true=y_true_, y_pred=y_predicted_)
 
 
 def coverage_test(

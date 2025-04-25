@@ -16,6 +16,7 @@ from bayesianmdisc.models.base import ParameterIndex, ParameterIndices
 from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
     root_mean_squared_error,
+    mean_absolute_error,
 )
 
 ModelAccuracies: TypeAlias = list[float]
@@ -38,7 +39,11 @@ def trim_model(
     model.reset_parameter_deactivations()
     parameter_names = model.parameter_names
 
-    if metric == "rmse":
+    if metric == "mae":
+        metric_name = metric
+        metric_func = mean_absolute_error
+        sort_metric_descending = False
+    elif metric == "rmse":
         metric_name = metric
         metric_func = root_mean_squared_error
         sort_metric_descending = False

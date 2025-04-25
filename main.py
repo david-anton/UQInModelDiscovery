@@ -105,15 +105,15 @@ min_noise_stddev = 1e-3
 alpha = 1.0
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
-list_relative_selection_thressholds = [0.9]
+list_relative_selection_thressholds = [2.0]
 num_flows = 16
 relative_width_flow_layers = 4
-trim_metric = "rmse"
+trim_metric = "mae"
 num_samples_posterior = 4096
 
 
 output_directory = (
-    f"{current_date}_{input_directory}_alpha_{alpha}_noise_005_threshold_09"
+    f"{current_date}_{input_directory}_alpha_{alpha}_noise_005_threshold_2_mae"
 )
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
