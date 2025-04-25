@@ -100,7 +100,7 @@ elif data_set == data_set_linka:
     model = OrthotropicCANN(device)
 
 
-relative_noise_stddevs = 1e-1  # 5e-2
+relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
 alpha = 1.0
 num_calibration_steps = 2
@@ -112,9 +112,7 @@ trim_metric = "mae"
 num_samples_posterior = 4096
 
 
-output_directory = (
-    f"{current_date}_{input_directory}_alpha_{alpha}_noise_01_threshold_2_mae"
-)
+output_directory = f"{current_date}_{input_directory}_alpha_{alpha}_noise_005_threshold_2_mae_moreterms"
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 

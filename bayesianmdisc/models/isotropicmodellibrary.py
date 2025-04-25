@@ -59,13 +59,17 @@ class IsotropicModelLibrary:
 
     def __init__(self, output_dim: int, device: Device):
         self._device = device
-        self._degree_mr_terms = 3
+        self._degree_mr_terms = 4  # 3
         self._mr_exponents = self._determine_mr_exponents()
-        self._num_negative_ogden_terms = 4
-        self._num_positive_ogden_terms = 4
+        self._num_negative_ogden_terms = 16  # 4
+        self._num_positive_ogden_terms = 16  # 4
         self._num_ogden_terms = self._determine_number_of_ogden_terms()
-        self._min_ogden_exponent = torch.tensor(-2.0, device=self._device)
-        self._max_ogden_exponent = torch.tensor(2.0, device=self._device)
+        self._min_ogden_exponent = torch.tensor(
+            -4.0, device=self._device
+        )  # torch.tensor(-2.0, device=self._device)
+        self._max_ogden_exponent = torch.tensor(
+            4.0, device=self._device
+        )  # torch.tensor(2.0, device=self._device)
         self._ogden_exponents = self._determine_ogden_exponents()
         self._num_ln_feature_terms = 1
         self._test_case_identifier_ut = test_case_identifier_uniaxial_tension
