@@ -100,7 +100,7 @@ class Prior:
 
 
 class MultipliedPriors(Prior):
-    def __init__(self, priors: list[Prior]):
+    def __init__(self, priors: list[PriorProtocol]):
         self._priors = priors
         self._prior_dims = [prior.dim for prior in priors]
         self.dim = sum(self._prior_dims)
@@ -119,11 +119,13 @@ class MultipliedPriors(Prior):
         for i, prior in enumerate(self._priors[:-1]):
             dim_parameters_i = self._prior_dims[i]
             parameters_i = parameters[start_index : start_index + dim_parameters_i]
-            log_probs.append(torch.unsqueeze(prior._log_prob(parameters_i), dim=0))
+            log_probs.append(
+                torch.unsqueeze(prior.log_prob_with_grad(parameters_i), dim=0)
+            )
             start_index += dim_parameters_i
         parameters_last = parameters[start_index:]
         log_probs.append(
-            torch.unsqueeze(self._priors[-1]._log_prob(parameters_last), dim=0)
+            torch.unsqueeze(self._priors[-1].log_prob_with_grad(parameters_last), dim=0)
         )
         return torch.sum(torch.concat(log_probs), dim=0)
 
@@ -234,5 +236,5 @@ def create_independent_multivariate_studentT_distributed_prior(
     return Prior(distribution)
 
 
-def multiply_priors(priors: list[Prior]) -> MultipliedPriors:
+def multiply_priors(priors: list[PriorProtocol]) -> MultipliedPriors:
     return MultipliedPriors(priors)
