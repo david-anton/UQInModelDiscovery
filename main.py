@@ -99,17 +99,11 @@ elif data_set == data_set_kawabata:
 elif data_set == data_set_linka:
     model = OrthotropicCANN(device)
 
-# Changes:
-# - Noise standard deviation
-# - Number of model terms
-# - Number of Wasserstein iterations
-# - Width of Lipschitz network
-
-relative_noise_stddevs = 1e-1  # 5e-2
+prior_relative_noise_stddevs = 1e-1  # 5e-2
 min_noise_stddev = 1e-3
 alpha = 1.0
 num_calibration_steps = 2
-list_num_wasserstein_iterations = [40_000, 20_000]  # [20_000, 10_000]
+list_num_wasserstein_iterations = [20_000, 10_000]
 list_relative_selection_thressholds = [2.0]
 num_flows = 16
 relative_width_flow_layers = 4
@@ -118,7 +112,7 @@ num_samples_posterior = 4096
 
 
 output_directory = (
-    f"{current_date}_{input_directory}_alpha_{alpha}_noise_01_threshold_2_mae_moreterms"
+    f"{current_date}_{input_directory}_noise_01_threshold_2_mae_moreterms"
 )
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
@@ -148,7 +142,7 @@ def validate_data(
 
 
 def determine_heteroscedastic_noise() -> Tensor:
-    noise_stddevs = relative_noise_stddevs * outputs
+    noise_stddevs = prior_relative_noise_stddevs * outputs
     return torch.where(
         noise_stddevs < min_noise_stddev,
         min_noise_stddev,
@@ -305,79 +299,6 @@ def split_data(
         raise DataSetError(f"No implementation for the requested data set {data_set}")
 
 
-class CombinedPrior:
-    def __init__(
-        self,
-        alpha: float,
-        gp_prior: PriorProtocol,
-        sparsity_prior: PriorProtocol,
-        device: Device,
-    ) -> None:
-        self._device = device
-        self._lower_limit_alpha = torch.tensor(0.0, device=self._device)
-        self._upper_limit_alpha = torch.tensor(1.0, device=self._device)
-        self._tolerance = torch.tensor(1e-7, device=self._device)
-        self._validate_alpha(alpha)
-        self._alpha = torch.tensor(alpha, device=self._device)
-        self._inverse_alpha = self._determine_inverse_alpha()
-        self._validate_priors(gp_prior, sparsity_prior)
-        self._gp_prior = gp_prior
-        self._sparsity_prior = sparsity_prior
-        self.dim = gp_prior.dim
-
-    def log_prob(self, parameters: Tensor) -> Tensor:
-        with torch.no_grad():
-            return self._log_prob(parameters)
-
-    def log_prob_with_grad(self, parameters: Tensor) -> Tensor:
-        return self._log_prob(parameters)
-
-    def _log_prob(self, parameters: Tensor) -> Tensor:
-        if self._alpha - self._upper_limit_alpha > self._tolerance:
-            return self._gp_prior.log_prob(parameters)
-        elif self._alpha < self._tolerance:
-            return self._sparsity_prior.log_prob(parameters)
-        else:
-            log_prob_gp = self._gp_prior.log_prob(parameters)
-            log_prob_sparsity = self._sparsity_prior.log_prob(parameters)
-
-            weighted_log_prob_gp = torch.log(self._alpha) + log_prob_gp
-            weighted_log_prob_sparsity = (
-                torch.log(self._inverse_alpha) + log_prob_sparsity
-            )
-            log_probs = torch.concat(
-                (
-                    torch.unsqueeze(weighted_log_prob_gp, dim=0),
-                    torch.unsqueeze(weighted_log_prob_sparsity, dim=0),
-                ),
-                dim=0,
-            )
-            return logarithmic_sum_of_exponentials(log_probs)
-
-    def _validate_alpha(self, alpha: float) -> None:
-        is_greater_or_equal_lower_limit = alpha >= self._lower_limit_alpha
-        is_smaller_or_equal_upper_limit = alpha <= self._upper_limit_alpha
-        if not (is_greater_or_equal_lower_limit and is_smaller_or_equal_upper_limit):
-            raise CombinedPriorError(
-                f"""Alpha is expected to be  >= {self._lower_limit_alpha} 
-                                     and <= {self._lower_limit_alpha}, but is {alpha}"""
-            )
-
-    def _determine_inverse_alpha(self) -> Tensor:
-        return torch.tensor(1.0 - self._alpha, device=device)
-
-    def _validate_priors(
-        self, gp_prior: PriorProtocol, sparsity_prior: PriorProtocol
-    ) -> None:
-        dim_gp_prior = gp_prior.dim
-        dim_sparsity_prior = sparsity_prior.dim
-        if not dim_gp_prior == dim_sparsity_prior:
-            raise CombinedPriorError(
-                f"""The GP prior and sparsity prior are expected to have the same dimension, 
-                but have {dim_gp_prior} and {dim_sparsity_prior}"""
-            )
-
-
 def sample_from_posterior(
     normalizing_flow: NormalizingFlowProtocol,
 ) -> tuple[MomentsMultivariateNormal, NPArray]:
@@ -497,7 +418,7 @@ if retrain_normalizing_flow:
         )
         num_parameters = model.get_number_of_active_parameters()
 
-        def determine_prior() -> PriorProtocol | CombinedPrior:
+        def determine_prior() -> PriorProtocol:
             def init_sparsity_prior() -> PriorProtocol:
                 return create_independent_multivariate_gamma_distributed_prior(
                     concentrations=torch.tensor(
@@ -609,7 +530,7 @@ if retrain_normalizing_flow:
                     num_func_samples=32,
                     resample=True,
                     num_iters_wasserstein=list_num_wasserstein_iterations[step],
-                    hiden_layer_size_lipschitz_nn=512,  # 256,
+                    hiden_layer_size_lipschitz_nn=256,
                     num_iters_lipschitz=5,
                     lipschitz_func_pretraining=True,
                     output_subdirectory=output_subdirectory,
@@ -632,16 +553,14 @@ if retrain_normalizing_flow:
                 return gp_prior
 
             if use_gp_prior:
-                gp_prior = fit_gp_prior()
-                sparsity_prior = init_sparsity_prior()
-                return CombinedPrior(alpha, gp_prior, sparsity_prior, device)
+                return fit_gp_prior()
             else:
                 return init_sparsity_prior()
 
         def create_likelihood() -> Likelihood:
             return Likelihood(
                 model=model,
-                relative_noise_stddev=relative_noise_stddevs,
+                relative_noise_stddev=prior_relative_noise_stddevs,
                 min_noise_stddev=min_noise_stddev,
                 inputs=inputs_posterior,
                 test_cases=test_cases_posterior,
