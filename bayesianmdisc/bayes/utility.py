@@ -23,3 +23,11 @@ def repeat_tensor(tensor: Tensor, repeat_size: TensorSize) -> Tensor:
 def concat_zero_dimensional_tensors(tensors: tuple[Tensor, ...]) -> Tensor:
     unsqueezed_tensors = [tensor.unsqueeze(dim=0) for tensor in tensors]
     return torch.concat(unsqueezed_tensors, dim=0)
+
+
+def unsqueeze_if_necessary(tensor: Tensor) -> Tensor:
+    num_dims = tensor.dim()
+    if num_dims == 0:
+        return torch.unsqueeze(tensor, dim=0)
+    else:
+        return tensor

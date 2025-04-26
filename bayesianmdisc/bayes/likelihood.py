@@ -1,10 +1,10 @@
-from dataclasses import dataclass
-from typing import Protocol, TypeAlias
+from abc import abstractmethod, ABC
+from typing import Protocol, TypeAlias, Optional
 
 import torch
 from torch import vmap
 
-from bayesianmdisc.bayes.utility import flatten_tensor
+from bayesianmdisc.bayes.utility import flatten_tensor, unsqueeze_if_necessary
 from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.errors import LikelihoodError
 from bayesianmdisc.models import ModelProtocol
@@ -16,7 +16,7 @@ from bayesianmdisc.statistics.distributions import (
 Prob: TypeAlias = Tensor
 LogProb: TypeAlias = Tensor
 GradLogProb: TypeAlias = Tensor
-MSE: TypeAlias = Tensor
+ErrorDIstribution: TypeAlias = IndependentMultivariateNormalDistribution
 
 
 class LikelihoodProtocol(Protocol):
@@ -39,16 +39,9 @@ def calculate_error(y_predicted: Tensor, y_true: Tensor) -> Tensor:
     return y_predicted - y_true
 
 
-def calculate_mean_squared_error(y_predicted: Tensor, y_true: Tensor) -> MSE:
-    return torch.mean(torch.square(calculate_error(y_predicted, y_true)))
-
-
 class ErrorCalculator:
     def calculate(self, y_predicted: Tensor, y_true: Tensor) -> Tensor:
         return calculate_error(y_predicted, y_true)
-
-    def calculate_mse(self, y_predicted: Tensor, y_true: Tensor) -> Tensor:
-        return calculate_mean_squared_error(y_predicted, y_true)
 
 
 class ErrorDistributionCreator:
@@ -72,27 +65,18 @@ class ErrorDistributionCreator:
         return len(noise_stddevs)
 
 
-@dataclass
-class MSELossStatistics:
-    mean: float
-    stddev: float
-
-
-class Likelihood:
+class LikelihoodBase(ABC):
     def __init__(
         self,
         model: ModelProtocol,
-        relative_noise_stddev: float,
-        min_noise_stddev: float,
         inputs: Tensor,
         test_cases: Tensor,
         outputs: Tensor,
+        min_noise_stddev: float,
         device: Device,
     ) -> None:
         self._validate_data(inputs, outputs)
         self.model = model
-        self.relative_noise_stddev = relative_noise_stddev
-        self._min_noise_stddev = min_noise_stddev
         self._inputs = inputs
         self._test_cases = test_cases
         self._true_outputs = outputs
@@ -100,11 +84,8 @@ class Likelihood:
         self._flattened_true_outputs = flatten_tensor(outputs)
         self._device = device
         self._error_calculator = ErrorCalculator()
+        self._min_noise_stddev = torch.tensor(min_noise_stddev, device=self._device)
         self._error_distribution_creator = ErrorDistributionCreator(self._device)
-        self._noise_stddev = self._assemble_noise_standard_deviations()
-        self._error_distribution = self._error_distribution_creator.create(
-            self._noise_stddev
-        )
 
     def prob(self, parameters: Tensor) -> Prob:
         with torch.no_grad():
@@ -125,15 +106,6 @@ class Likelihood:
             create_graph=False,
         )[0]
 
-    def mse_loss_statistics(self, parameters: Tensor) -> MSELossStatistics:
-        mean_squared_errors = self._calculate_mse_losses(parameters)
-        mean = torch.mean(mean_squared_errors, dim=0).detach().cpu().item()
-        stddev = torch.std(mean_squared_errors, dim=0).detach().cpu().item()
-        return MSELossStatistics(
-            mean=mean,
-            stddev=stddev,
-        )
-
     def _validate_data(self, inputs: Tensor, outputs: Tensor) -> None:
         num_inputs = len(inputs)
         num_outputs = len(outputs)
@@ -143,19 +115,26 @@ class Likelihood:
                                   but is {num_inputs} and {num_outputs}."""
             )
 
-    def _assemble_noise_standard_deviations(self) -> Tensor:
-        min_noise_stddev = torch.tensor(self._min_noise_stddev, device=self._device)
-        noise_stddevs = self.relative_noise_stddev * self._flattened_true_outputs
+    def _create_error_distribution(
+        self, relative_noise_stddev: Tensor
+    ) -> ErrorDIstribution:
+        noise_stddev = self._assemble_noise_stddevs(relative_noise_stddev)
+        return self._error_distribution_creator.create(noise_stddev)
+
+    def _assemble_noise_stddevs(self, relative_noise_stddev: Tensor) -> Tensor:
+        noise_stddevs = relative_noise_stddev * self._flattened_true_outputs
         return torch.where(
-            noise_stddevs < min_noise_stddev, min_noise_stddev, noise_stddevs
+            noise_stddevs < self._min_noise_stddev,
+            self._min_noise_stddev,
+            noise_stddevs,
         )
 
     def _prob(self, parameters: Tensor) -> Prob:
         return torch.exp(self._log_prob(parameters))
 
+    @abstractmethod
     def _log_prob(self, parameters: Tensor) -> LogProb:
-        flattened_errors = self._calculate_flattened_errors(parameters)
-        return self._error_distribution.log_prob(flattened_errors)
+        raise NotImplementedError()
 
     def _calculate_flattened_errors(self, parameters: Tensor) -> Tensor:
         outputs = self.model(self._inputs, self._test_cases, parameters)
@@ -164,14 +143,91 @@ class Likelihood:
             flattened_outputs, self._flattened_true_outputs
         )
 
-    def _calculate_mse_losses(self, parameters: Tensor) -> MSE:
 
-        def vmap_mse_losses(parameters_: Tensor) -> MSE:
-            outputs = self.model(self._inputs, self._test_cases, parameters_)
-            flattened_outputs = flatten_tensor(outputs)
-            return self._error_calculator.calculate_mse(
-                flattened_outputs, self._flattened_true_outputs
-            )
+class LikelihoodFixedNoise(LikelihoodBase):
+    def __init__(
+        self,
+        model: ModelProtocol,
+        relative_noise_stddev: float,
+        min_noise_stddev: float,
+        inputs: Tensor,
+        test_cases: Tensor,
+        outputs: Tensor,
+        device: Device,
+    ) -> None:
+        super().__init__(
+            model=model,
+            inputs=inputs,
+            test_cases=test_cases,
+            outputs=outputs,
+            min_noise_stddev=min_noise_stddev,
+            device=device,
+        )
+        self._error_distribution = self._create_error_distribution(
+            torch.tensor(relative_noise_stddev, device=self._device)
+        )
 
-        mean_squared_errors = vmap(vmap_mse_losses)(parameters)
-        return mean_squared_errors
+    def _log_prob(self, parameters: Tensor) -> LogProb:
+        flattened_errors = self._calculate_flattened_errors(parameters)
+        return self._error_distribution.log_prob(flattened_errors)
+
+
+class LikelihoodEstimatedNoise(LikelihoodBase):
+    def __init__(
+        self,
+        model: ModelProtocol,
+        min_noise_stddev: float,
+        inputs: Tensor,
+        test_cases: Tensor,
+        outputs: Tensor,
+        device: Device,
+    ) -> None:
+        super().__init__(
+            model=model,
+            inputs=inputs,
+            test_cases=test_cases,
+            outputs=outputs,
+            min_noise_stddev=min_noise_stddev,
+            device=device,
+        )
+
+    def _log_prob(self, parameters: Tensor) -> LogProb:
+        relative_noise_stddev, model_parameters = self._split_parameters(parameters)
+        error_distribution = self._create_error_distribution(relative_noise_stddev)
+        flattened_errors = self._calculate_flattened_errors(model_parameters)
+        return error_distribution.log_prob(flattened_errors)
+
+    def _split_parameters(self, parameters: Tensor) -> tuple[Tensor, Tensor]:
+        relative_noise_stddev = unsqueeze_if_necessary(parameters[0])
+        model_parameters = unsqueeze_if_necessary(parameters[1:])
+        return relative_noise_stddev, model_parameters
+
+
+def create_likelihood(
+    model: ModelProtocol,
+    relative_noise_stddev: Optional[float],
+    min_noise_stddev: float,
+    inputs: Tensor,
+    test_cases: Tensor,
+    outputs: Tensor,
+    device: Device,
+) -> LikelihoodProtocol:
+    if relative_noise_stddev is None:
+        return LikelihoodEstimatedNoise(
+            model=model,
+            min_noise_stddev=min_noise_stddev,
+            inputs=inputs,
+            test_cases=test_cases,
+            outputs=outputs,
+            device=device,
+        )
+    else:
+        return LikelihoodFixedNoise(
+            model=model,
+            relative_noise_stddev=relative_noise_stddev,
+            min_noise_stddev=min_noise_stddev,
+            inputs=inputs,
+            test_cases=test_cases,
+            outputs=outputs,
+            device=device,
+        )

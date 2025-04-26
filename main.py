@@ -5,12 +5,14 @@ from typing import cast
 
 import torch
 
-from bayesianmdisc.bayes.likelihood import Likelihood
+from bayesianmdisc.bayes.likelihood import create_likelihood
 from bayesianmdisc.bayes.prior import (
     PriorProtocol,
     create_independent_multivariate_gamma_distributed_prior,
+    create_univariate_gamma_distributed_prior,
+    multiply_priors,
 )
-from bayesianmdisc.customtypes import Device, NPArray, Tensor
+from bayesianmdisc.customtypes import NPArray, Tensor
 from bayesianmdisc.data import (
     DataReaderProtocol,
     DeformationInputs,
@@ -22,7 +24,7 @@ from bayesianmdisc.data import (
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_uniaxial_tension,
 )
-from bayesianmdisc.errors import CombinedPriorError, DataError, DataSetError
+from bayesianmdisc.errors import DataError, DataSetError
 from bayesianmdisc.gppriors import infer_gp_induced_prior
 from bayesianmdisc.gps import (
     GP,
@@ -59,7 +61,6 @@ from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_
 from bayesianmdisc.statistics.utility import (
     MomentsMultivariateNormal,
     determine_moments_of_multivariate_normal_distribution,
-    logarithmic_sum_of_exponentials,
 )
 
 data_set_treloar = "treloar"
@@ -99,7 +100,8 @@ elif data_set == data_set_kawabata:
 elif data_set == data_set_linka:
     model = OrthotropicCANN(device)
 
-prior_relative_noise_stddevs = 1e-1  # 5e-2
+assumed_relative_noise_stddevs = 1e-1  # 5e-2
+estimate_noise = True
 min_noise_stddev = 1e-3
 alpha = 1.0
 num_calibration_steps = 2
@@ -142,7 +144,7 @@ def validate_data(
 
 
 def determine_heteroscedastic_noise() -> Tensor:
-    noise_stddevs = prior_relative_noise_stddevs * outputs
+    noise_stddevs = assumed_relative_noise_stddevs * outputs
     return torch.where(
         noise_stddevs < min_noise_stddev,
         min_noise_stddev,
@@ -419,40 +421,25 @@ if retrain_normalizing_flow:
         num_parameters = model.get_number_of_active_parameters()
 
         def determine_prior() -> PriorProtocol:
-            def init_sparsity_prior() -> PriorProtocol:
-                return create_independent_multivariate_gamma_distributed_prior(
-                    concentrations=torch.tensor(
-                        [0.1 for _ in range(num_parameters)], device=device
-                    ),
-                    rates=torch.tensor(
-                        [10.0 for _ in range(num_parameters)], device=device
-                    ),
-                    device=device,
-                )
+            def determine_parameter_prior() -> PriorProtocol:
+                def init_fixed_prior() -> PriorProtocol:
+                    return create_independent_multivariate_gamma_distributed_prior(
+                        concentrations=torch.tensor(
+                            [0.1 for _ in range(num_parameters)], device=device
+                        ),
+                        rates=torch.tensor(
+                            [10.0 for _ in range(num_parameters)], device=device
+                        ),
+                        device=device,
+                    )
 
-            def fit_gp_prior() -> PriorProtocol:
-                def create_gaussian_process() -> GaussianProcess:
-                    is_single_outut_gp = output_dim == 1
-                    jitter = 1e-7
+                def fit_gp_prior() -> PriorProtocol:
+                    def create_gaussian_process() -> GaussianProcess:
+                        is_single_outut_gp = output_dim == 1
+                        jitter = 1e-7
 
-                    def create_single_output_gp() -> GP:
-                        gaussian_process = create_scaled_rbf_gaussian_process(
-                            mean="zero",
-                            input_dims=input_dim,
-                            min_inputs=min_inputs,
-                            max_inputs=max_inputs,
-                            jitter=jitter,
-                            device=device,
-                        )
-                        initial_parameters = torch.tensor(
-                            [1.0] + [0.1 for _ in range(input_dim)], device=device
-                        )
-                        gaussian_process.set_parameters(initial_parameters)
-                        return gaussian_process
-
-                    def create_multi_output_gp() -> IndependentMultiOutputGP:
-                        gaussian_processes = [
-                            create_scaled_rbf_gaussian_process(
+                        def create_single_output_gp() -> GP:
+                            gaussian_process = create_scaled_rbf_gaussian_process(
                                 mean="zero",
                                 input_dims=input_dim,
                                 min_inputs=min_inputs,
@@ -460,116 +447,149 @@ if retrain_normalizing_flow:
                                 jitter=jitter,
                                 device=device,
                             )
-                            for _ in range(output_dim)
-                        ]
-                        initial_parameters = torch.tensor(
-                            [1.0] + [0.1 for _ in range(input_dim)], device=device
-                        )
-
-                        for gaussian_process in gaussian_processes:
+                            initial_parameters = torch.tensor(
+                                [1.0] + [0.1 for _ in range(input_dim)], device=device
+                            )
                             gaussian_process.set_parameters(initial_parameters)
+                            return gaussian_process
 
-                        return IndependentMultiOutputGP(
-                            gps=tuple(gaussian_processes), device=device
+                        def create_multi_output_gp() -> IndependentMultiOutputGP:
+                            gaussian_processes = [
+                                create_scaled_rbf_gaussian_process(
+                                    mean="zero",
+                                    input_dims=input_dim,
+                                    min_inputs=min_inputs,
+                                    max_inputs=max_inputs,
+                                    jitter=jitter,
+                                    device=device,
+                                )
+                                for _ in range(output_dim)
+                            ]
+                            initial_parameters = torch.tensor(
+                                [1.0] + [0.1 for _ in range(input_dim)], device=device
+                            )
+
+                            for gaussian_process in gaussian_processes:
+                                gaussian_process.set_parameters(initial_parameters)
+
+                            return IndependentMultiOutputGP(
+                                gps=tuple(gaussian_processes), device=device
+                            )
+
+                        if is_single_outut_gp:
+                            return create_single_output_gp()
+                        else:
+                            return create_multi_output_gp()
+
+                    def condition_gaussian_process(
+                        inputs: Tensor, outputs: Tensor, noise_stddevs: Tensor
+                    ) -> None:
+                        condition_gp(
+                            gaussian_process, inputs, outputs, noise_stddevs, device
                         )
 
-                    if is_single_outut_gp:
-                        return create_single_output_gp()
-                    else:
-                        return create_multi_output_gp()
+                    def determine_prior_moments(
+                        samples: Tensor,
+                    ) -> tuple[MomentsMultivariateNormal, NPArray]:
+                        samples_np = samples.detach().cpu().numpy()
+                        moments = determine_moments_of_multivariate_normal_distribution(
+                            samples_np
+                        )
+                        return moments, samples_np
 
-                def condition_gaussian_process(
-                    inputs: Tensor, outputs: Tensor, noise_stddevs: Tensor
-                ) -> None:
-                    condition_gp(
-                        gaussian_process, inputs, outputs, noise_stddevs, device
+                    output_subdirectory = os.path.join(
+                        output_directory_step, output_subdirectory_name_prior
+                    )
+                    min_inputs = torch.amin(inputs, dim=0)
+                    max_inputs = torch.amax(inputs, dim=0)
+                    input_dim = inputs.size()[1]
+                    output_dim = outputs.size()[1]
+
+                    gaussian_process = create_gaussian_process()
+
+                    optimize_gp_hyperparameters(
+                        gaussian_process=gaussian_process,
+                        inputs=inputs,
+                        outputs=outputs,
+                        initial_noise_stddevs=noise_stddevs,
+                        num_iterations=int(5e4),
+                        learning_rate=1e-3,
+                        output_subdirectory=output_subdirectory,
+                        project_directory=project_directory,
+                        device=device,
                     )
 
-                def determine_prior_moments(
-                    samples: Tensor,
-                ) -> tuple[MomentsMultivariateNormal, NPArray]:
-                    samples_np = samples.detach().cpu().numpy()
-                    moments = determine_moments_of_multivariate_normal_distribution(
-                        samples_np
+                    condition_gaussian_process(
+                        inputs_prior, outputs_prior, noise_stddevs_prior
                     )
-                    return moments, samples_np
 
-                output_subdirectory = os.path.join(
-                    output_directory_step, output_subdirectory_name_prior
-                )
-                min_inputs = torch.amin(inputs, dim=0)
-                max_inputs = torch.amax(inputs, dim=0)
-                input_dim = inputs.size()[1]
-                output_dim = outputs.size()[1]
+                    gp_prior = infer_gp_induced_prior(
+                        gp=gaussian_process,
+                        model=model,
+                        prior_type="inverse Gamma",
+                        is_mean_trainable=True,
+                        inputs=inputs,
+                        test_cases=test_cases,
+                        num_func_samples=32,
+                        resample=True,
+                        num_iters_wasserstein=list_num_wasserstein_iterations[step],
+                        hiden_layer_size_lipschitz_nn=256,
+                        num_iters_lipschitz=5,
+                        lipschitz_func_pretraining=True,
+                        output_subdirectory=output_subdirectory,
+                        project_directory=project_directory,
+                        device=device,
+                    )
 
-                gaussian_process = create_gaussian_process()
+                    prior_samples = gp_prior.sample(num_samples=4096)
+                    prior_moments, prior_samples_np = determine_prior_moments(
+                        prior_samples
+                    )
 
-                optimize_gp_hyperparameters(
-                    gaussian_process=gaussian_process,
-                    inputs=inputs,
-                    outputs=outputs,
-                    initial_noise_stddevs=noise_stddevs,
-                    num_iterations=int(5e4),
-                    learning_rate=1e-3,
-                    output_subdirectory=output_subdirectory,
-                    project_directory=project_directory,
+                    plot_histograms(
+                        parameter_names=model.parameter_names,
+                        true_parameters=tuple(None for _ in range(num_parameters)),
+                        moments=prior_moments,
+                        samples=prior_samples_np,
+                        algorithm_name="gp_prior",
+                        output_subdirectory=output_subdirectory,
+                        project_directory=project_directory,
+                    )
+                    return gp_prior
+
+                if use_gp_prior:
+                    return fit_gp_prior()
+                else:
+                    return init_fixed_prior()
+
+            def init_relative_noise_stddev_prior() -> PriorProtocol:
+                return create_univariate_gamma_distributed_prior(
+                    concentration=0.1,
+                    rate=10.0,
                     device=device,
                 )
 
-                condition_gaussian_process(
-                    inputs_prior, outputs_prior, noise_stddevs_prior
-                )
-
-                gp_prior = infer_gp_induced_prior(
-                    gp=gaussian_process,
-                    model=model,
-                    prior_type="inverse Gamma",
-                    is_mean_trainable=True,
-                    inputs=inputs,
-                    test_cases=test_cases,
-                    num_func_samples=32,
-                    resample=True,
-                    num_iters_wasserstein=list_num_wasserstein_iterations[step],
-                    hiden_layer_size_lipschitz_nn=256,
-                    num_iters_lipschitz=5,
-                    lipschitz_func_pretraining=True,
-                    output_subdirectory=output_subdirectory,
-                    project_directory=project_directory,
-                    device=device,
-                )
-
-                prior_samples = gp_prior.sample(num_samples=4096)
-                prior_moments, prior_samples_np = determine_prior_moments(prior_samples)
-
-                plot_histograms(
-                    parameter_names=model.parameter_names,
-                    true_parameters=tuple(None for _ in range(num_parameters)),
-                    moments=prior_moments,
-                    samples=prior_samples_np,
-                    algorithm_name="gp_prior",
-                    output_subdirectory=output_subdirectory,
-                    project_directory=project_directory,
-                )
-                return gp_prior
-
-            if use_gp_prior:
-                return fit_gp_prior()
+            prior_parameters = determine_parameter_prior()
+            if estimate_noise:
+                prior_relative_noise_stddev = init_relative_noise_stddev_prior()
+                return multiply_priors([prior_relative_noise_stddev, prior_parameters])
             else:
-                return init_sparsity_prior()
-
-        def create_likelihood() -> Likelihood:
-            return Likelihood(
-                model=model,
-                relative_noise_stddev=prior_relative_noise_stddevs,
-                min_noise_stddev=min_noise_stddev,
-                inputs=inputs_posterior,
-                test_cases=test_cases_posterior,
-                outputs=outputs_posterior,
-                device=device,
-            )
+                return prior_parameters
 
         prior = determine_prior()
-        likelihood = create_likelihood()
+        if estimate_noise:
+            relative_noise_stddevs = None
+        else:
+            relative_noise_stddevs = assumed_relative_noise_stddevs
+        likelihood = create_likelihood(
+            model=model,
+            relative_noise_stddev=relative_noise_stddevs,
+            min_noise_stddev=min_noise_stddev,
+            inputs=inputs_posterior,
+            test_cases=test_cases_posterior,
+            outputs=outputs_posterior,
+            device=device,
+        )
 
         fit_normalizing_flow_config = FitNormalizingFlowConfig(
             likelihood=likelihood,
@@ -626,7 +646,6 @@ if retrain_normalizing_flow:
             model.reduce_to_activated_parameters()
 
         save_model_state(model, output_directory_step, project_directory)
-
 else:
     for step in range(num_calibration_steps):
         output_directory_step = os.path.join(
