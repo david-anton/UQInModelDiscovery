@@ -99,12 +99,17 @@ elif data_set == data_set_kawabata:
 elif data_set == data_set_linka:
     model = OrthotropicCANN(device)
 
+# Changes:
+# - Noise standard deviation
+# - Number of model terms
+# - Number of Wasserstein iterations
+# - Width of Lipschitz network
 
-relative_noise_stddevs = 5e-2
+relative_noise_stddevs = 1e-1  # 5e-2
 min_noise_stddev = 1e-3
 alpha = 1.0
 num_calibration_steps = 2
-list_num_wasserstein_iterations = [20_000, 10_000]
+list_num_wasserstein_iterations = [40_000, 20_000]  # [20_000, 10_000]
 list_relative_selection_thressholds = [2.0]
 num_flows = 16
 relative_width_flow_layers = 4
@@ -112,7 +117,9 @@ trim_metric = "mae"
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_alpha_{alpha}_noise_005_threshold_2_mae_moreterms"
+output_directory = (
+    f"{current_date}_{input_directory}_alpha_{alpha}_noise_01_threshold_2_mae_moreterms"
+)
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
@@ -602,7 +609,7 @@ if retrain_normalizing_flow:
                     num_func_samples=32,
                     resample=True,
                     num_iters_wasserstein=list_num_wasserstein_iterations[step],
-                    hiden_layer_size_lipschitz_nn=256,
+                    hiden_layer_size_lipschitz_nn=512,  # 256,
                     num_iters_lipschitz=5,
                     lipschitz_func_pretraining=True,
                     output_subdirectory=output_subdirectory,
