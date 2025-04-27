@@ -8,7 +8,7 @@ from bayesianmdisc.bayes.likelihood import LikelihoodProtocol, create_likelihood
 from bayesianmdisc.bayes.prior import (
     PriorProtocol,
     create_independent_multivariate_gamma_distributed_prior,
-    create_univariate_gamma_distributed_prior,
+    create_univariate_inverse_gamma_distributed_prior,
     multiply_priors,
 )
 from bayesianmdisc.customtypes import NPArray, Tensor
@@ -106,7 +106,9 @@ trim_metric = "mae"
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_2_mae_estimatednoise"
+output_directory = (
+    f"{current_date}_{input_directory}_threshold_2_mae_estimatednoise_inversegamma"
+)
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
@@ -416,9 +418,9 @@ if retrain_normalizing_flow:
                     return init_fixed_prior()
 
             def _init_relative_noise_stddev_prior() -> PriorProtocol:
-                return create_univariate_gamma_distributed_prior(
-                    concentration=0.1,
-                    rate=10.0,
+                return create_univariate_inverse_gamma_distributed_prior(
+                    concentration=1.0,
+                    rate=0.1,
                     device=device,
                 )
 
