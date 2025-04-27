@@ -99,7 +99,7 @@ estimate_noise = True
 min_noise_stddev = 1e-3
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
-list_relative_selection_thressholds = [2.0]
+list_relative_selection_thressholds = [3.0]
 num_flows = 16
 relative_width_flow_layers = 4
 trim_metric = "mae"
@@ -107,7 +107,7 @@ num_samples_posterior = 4096
 
 
 output_directory = (
-    f"{current_date}_{input_directory}_threshold_2_mae_estimatednoise_inversegamma"
+    f"{current_date}_{input_directory}_threshold_3_mae_estimatednoise_inversegamma"
 )
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
