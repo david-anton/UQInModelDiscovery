@@ -127,12 +127,27 @@ def determine_parameter_names(model: ModelProtocol) -> tuple[str, ...]:
     return parameter_names
 
 
+def reduce_to_model_posterior(
+    posterior_moments: MomentsMultivariateNormal, posterior_samples: NPArray
+) -> tuple[MomentsMultivariateNormal, NPArray]:
+    if estimate_noise:
+        model_posterior_samples = posterior_samples[:, 1:]
+        model_posterior_moments = determine_moments_of_multivariate_normal_distribution(
+            model_posterior_samples
+        )
+    else:
+        model_posterior_moments = posterior_moments
+        model_posterior_samples = posterior_samples
+    return model_posterior_moments, model_posterior_samples
+
+
 def plot_stresses(
     model: ModelProtocol,
-    posterior_samples: NPArray,
+    model_posterior_samples: NPArray,
     is_model_trimmed: bool,
     output_directory: str,
 ) -> None:
+
     def join_output_subdirectory() -> str:
         if is_model_trimmed:
             subdirectory_name = "trimmed_model"
@@ -145,7 +160,7 @@ def plot_stresses(
     def plot_treloar() -> None:
         plot_stresses_treloar(
             model=cast(IsotropicModelLibrary, model),
-            parameter_samples=posterior_samples,
+            parameter_samples=model_posterior_samples,
             inputs=inputs.detach().cpu().numpy(),
             outputs=outputs.detach().cpu().numpy(),
             test_cases=test_cases.detach().cpu().numpy(),
@@ -165,7 +180,7 @@ def plot_stresses(
 
             plot_stresses_kawabata(
                 model=isotropic_model,
-                parameter_samples=posterior_samples,
+                parameter_samples=model_posterior_samples,
                 inputs=inputs.detach().cpu().numpy(),
                 outputs=outputs.detach().cpu().numpy(),
                 test_cases=test_cases.detach().cpu().numpy(),
@@ -181,7 +196,7 @@ def plot_stresses(
     def plot_kawabata() -> None:
         plot_stresses_kawabata(
             model=cast(IsotropicModelLibrary, model),
-            parameter_samples=posterior_samples,
+            parameter_samples=model_posterior_samples,
             inputs=inputs.detach().cpu().numpy(),
             outputs=outputs.detach().cpu().numpy(),
             test_cases=test_cases.detach().cpu().numpy(),
@@ -193,7 +208,7 @@ def plot_stresses(
     def plot_linka() -> None:
         plot_stresses_linka(
             model=cast(OrthotropicCANN, model),
-            parameter_samples=posterior_samples,
+            parameter_samples=model_posterior_samples,
             inputs=inputs.detach().cpu().numpy(),
             outputs=outputs.detach().cpu().numpy(),
             test_cases=test_cases.detach().cpu().numpy(),
@@ -434,6 +449,9 @@ if retrain_normalizing_flow:
         posterior_moments, posterior_samples = sample_from_normalizing_flow(
             normalizing_flow, num_samples_posterior
         )
+        _, model_posterior_samples = reduce_to_model_posterior(
+            posterior_moments, posterior_samples
+        )
 
         output_subdirectory_posterior = os.path.join(
             output_directory_step, output_subdirectory_name_posterior
@@ -449,7 +467,7 @@ if retrain_normalizing_flow:
         )
         plot_stresses(
             model=model,
-            posterior_samples=posterior_samples,
+            model_posterior_samples=model_posterior_samples,
             is_model_trimmed=False,
             output_directory=output_directory_step,
         )
@@ -459,7 +477,7 @@ if retrain_normalizing_flow:
                 model=model,
                 metric=trim_metric,
                 relative_thresshold=list_relative_selection_thressholds[step],
-                parameter_samples=torch.from_numpy(posterior_samples)
+                parameter_samples=torch.from_numpy(model_posterior_samples)
                 .type(torch.get_default_dtype())
                 .to(device),
                 inputs=inputs,
@@ -470,7 +488,7 @@ if retrain_normalizing_flow:
             )
             plot_stresses(
                 model=model,
-                posterior_samples=posterior_samples,
+                model_posterior_samples=model_posterior_samples,
                 is_model_trimmed=True,
                 output_directory=output_directory_step,
             )
@@ -509,6 +527,9 @@ else:
         posterior_moments, posterior_samples = sample_from_normalizing_flow(
             normalizing_flow, num_samples_posterior
         )
+        _, model_posterior_samples = reduce_to_model_posterior(
+            posterior_moments, posterior_samples
+        )
 
         output_subdirectory_posterior = os.path.join(
             output_directory_step, output_subdirectory_name_posterior
@@ -524,7 +545,7 @@ else:
         )
         plot_stresses(
             model=model,
-            posterior_samples=posterior_samples,
+            model_posterior_samples=model_posterior_samples,
             is_model_trimmed=False,
             output_directory=output_directory_step,
         )
@@ -534,7 +555,7 @@ else:
                 model=model,
                 metric=trim_metric,
                 relative_thresshold=list_relative_selection_thressholds[step],
-                parameter_samples=torch.from_numpy(posterior_samples)
+                parameter_samples=torch.from_numpy(model_posterior_samples)
                 .type(torch.get_default_dtype())
                 .to(device),
                 inputs=inputs,
@@ -545,7 +566,7 @@ else:
             )
             plot_stresses(
                 model=model,
-                posterior_samples=posterior_samples,
+                model_posterior_samples=model_posterior_samples,
                 is_model_trimmed=True,
                 output_directory=output_directory_step,
             )
