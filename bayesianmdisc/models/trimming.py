@@ -15,8 +15,8 @@ from bayesianmdisc.models import ModelProtocol
 from bayesianmdisc.models.base import ParameterIndex, ParameterIndices
 from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
-    root_mean_squared_error,
     mean_absolute_error,
+    root_mean_squared_error,
 )
 
 ModelAccuracies: TypeAlias = list[float]

@@ -1,5 +1,5 @@
-from abc import abstractmethod, ABC
-from typing import Protocol, TypeAlias, Optional
+from abc import ABC, abstractmethod
+from typing import Optional, Protocol, TypeAlias
 
 import torch
 from torch import vmap

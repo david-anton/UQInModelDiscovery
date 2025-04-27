@@ -1,9 +1,9 @@
 from typing import TypeAlias
 
 import numpy as np
+from sklearn.metrics import mean_absolute_error as mean_absolute_error_sklearn
 from sklearn.metrics import r2_score as r2_score_sklearn
 from sklearn.metrics import root_mean_squared_error as root_mean_squared_error_sklean
-from sklearn.metrics import mean_absolute_error as mean_absolute_error_sklearn
 
 from bayesianmdisc.customtypes import NPArray, Tensor
 from bayesianmdisc.statistics.utility import determine_quantiles

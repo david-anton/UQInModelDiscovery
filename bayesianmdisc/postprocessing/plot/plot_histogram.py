@@ -1,9 +1,9 @@
 from typing import Any, Dict, TypeAlias, Union
 
 import matplotlib.pyplot as plt
-from matplotlib.ticker import ScalarFormatter
 import numpy as np
 import scipy.stats
+from matplotlib.ticker import ScalarFormatter
 
 from bayesianmdisc.customtypes import NPArray
 from bayesianmdisc.io import ProjectDirectory

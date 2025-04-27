@@ -1,11 +1,10 @@
 import os
-from dataclasses import dataclass
 from datetime import date
 from typing import cast
 
 import torch
 
-from bayesianmdisc.bayes.likelihood import create_likelihood
+from bayesianmdisc.bayes.likelihood import LikelihoodProtocol, create_likelihood
 from bayesianmdisc.bayes.prior import (
     PriorProtocol,
     create_independent_multivariate_gamma_distributed_prior,
@@ -15,16 +14,16 @@ from bayesianmdisc.bayes.prior import (
 from bayesianmdisc.customtypes import NPArray, Tensor
 from bayesianmdisc.data import (
     DataReaderProtocol,
-    DeformationInputs,
     KawabataDataReader,
     LinkaHeartDataReader,
-    StressOutputs,
-    TestCases,
     TreloarDataReader,
-    test_case_identifier_equibiaxial_tension,
-    test_case_identifier_uniaxial_tension,
+    data_set_label_kawabata,
+    data_set_label_linka,
+    data_set_label_treloar,
+    determine_heteroscedastic_noise,
+    split_data,
+    validate_data,
 )
-from bayesianmdisc.errors import DataError, DataSetError
 from bayesianmdisc.gppriors import infer_gp_induced_prior
 from bayesianmdisc.gps import (
     GP,
@@ -63,11 +62,7 @@ from bayesianmdisc.statistics.utility import (
     determine_moments_of_multivariate_normal_distribution,
 )
 
-data_set_treloar = "treloar"
-data_set_kawabata = "kawabata"
-data_set_linka = "heart_data_linka"
-
-data_set = data_set_treloar
+data_set_label = data_set_label_treloar
 use_gp_prior = True
 retrain_normalizing_flow = True
 
@@ -80,30 +75,29 @@ set_seed(0)
 
 # Input/output
 current_date = date.today().strftime("%Y%m%d")
-if data_set == data_set_treloar:
-    input_directory = data_set
+if data_set_label == data_set_label_treloar:
+    input_directory = data_set_label
     data_reader: DataReaderProtocol = TreloarDataReader(
         input_directory, project_directory, device
     )
-elif data_set == data_set_kawabata:
-    input_directory = data_set
+elif data_set_label == data_set_label_kawabata:
+    input_directory = data_set_label
     data_reader = KawabataDataReader(input_directory, project_directory, device)
-elif data_set == data_set_linka:
+elif data_set_label == data_set_label_linka:
     input_directory = "heart_data_linka"
     data_reader = LinkaHeartDataReader(input_directory, project_directory, device)
 
 
-if data_set == data_set_treloar:
+if data_set_label == data_set_label_treloar:
     model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)
-elif data_set == data_set_kawabata:
+elif data_set_label == data_set_label_kawabata:
     model = IsotropicModelLibrary(output_dim=2, device=device)
-elif data_set == data_set_linka:
+elif data_set_label == data_set_label_linka:
     model = OrthotropicCANN(device)
 
-assumed_relative_noise_stddevs = 1e-1  # 5e-2
+prior_relative_noise_stddevs = 1e-1  # 5e-2
 estimate_noise = True
 min_noise_stddev = 1e-3
-alpha = 1.0
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
 list_relative_selection_thressholds = [2.0]
@@ -113,192 +107,25 @@ trim_metric = "mae"
 num_samples_posterior = 4096
 
 
-output_directory = (
-    f"{current_date}_{input_directory}_noise_01_threshold_2_mae_moreterms"
-)
+output_directory = f"{current_date}_{input_directory}_threshold_2_mae_estimatednoise"
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
 
-def validate_data(
-    inputs: DeformationInputs,
-    test_cases: TestCases,
-    outputs: StressOutputs,
-    noise_stddevs: Tensor,
-) -> None:
-    num_inputs = len(inputs)
-    num_test_cases = len(test_cases)
-    num_outputs = len(outputs)
-    num_noise_stddevs = len(noise_stddevs)
-
-    if (
-        num_inputs != num_test_cases
-        and num_inputs != num_outputs
-        and num_inputs != num_noise_stddevs
-    ):
-        raise DataError(
-            f"""The number of inputs, test cases, outputs and noise standard deviations 
-                        is expected to be the same but is {num_inputs}, {num_test_cases}, 
-                        {num_outputs} and {num_noise_stddevs}"""
-        )
+def determine_number_of_parameters(model: ModelProtocol) -> int:
+    num_noise_parameters = 1
+    num_parameters = model.num_parameters
+    if estimate_noise:
+        num_parameters += num_noise_parameters
+    return num_parameters
 
 
-def determine_heteroscedastic_noise() -> Tensor:
-    noise_stddevs = assumed_relative_noise_stddevs * outputs
-    return torch.where(
-        noise_stddevs < min_noise_stddev,
-        min_noise_stddev,
-        noise_stddevs,
-    )
-
-
-@dataclass
-class SplittedData:
-    inputs_prior: DeformationInputs
-    inputs_posterior: DeformationInputs
-    test_cases_prior: TestCases
-    test_cases_posterior: TestCases
-    outputs_prior: StressOutputs
-    outputs_posterior: StressOutputs
-    noise_stddevs_prior: Tensor
-    noise_stddevs_posterior: Tensor
-
-
-def split_data(
-    inputs: DeformationInputs,
-    test_cases: TestCases,
-    outputs: StressOutputs,
-    noise_stddevs: Tensor,
-) -> SplittedData:
-
-    def split_treloar_data(
-        inputs: DeformationInputs,
-        test_cases: TestCases,
-        outputs: StressOutputs,
-        noise_stddevs: Tensor,
-    ) -> SplittedData:
-        # Number of data points
-        num_points = len(inputs)
-        mask_ut = torch.where(test_cases == test_case_identifier_uniaxial_tension)[0]
-        num_points_ut = torch.numel(mask_ut)
-        mask_ebt = torch.where(test_cases == test_case_identifier_equibiaxial_tension)[
-            0
-        ]
-        num_points_ebt = torch.numel(mask_ebt)
-
-        # Relative indices
-        rel_indices_prior_ut = [2, 6, 10, 15, 20]
-        rel_indices_prior_ebt = [2, 6, 11]
-        rel_indices_prior_ps = [2, 5, 10]
-        # Absolute indices
-        indices_prior_ut = rel_indices_prior_ut
-        start_index = num_points_ut
-        indices_prior_ebt = [i + start_index for i in rel_indices_prior_ebt]
-        start_index = num_points_ut + num_points_ebt
-        indices_prior_ps = [i + start_index for i in rel_indices_prior_ps]
-        indices_prior = indices_prior_ut + indices_prior_ebt + indices_prior_ps
-        indices_posterior = [i for i in range(num_points) if i not in indices_prior]
-
-        # Data splitting
-        inputs_prior = inputs[indices_prior, :]
-        inputs_posterior = inputs[indices_posterior, :]
-        test_cases_prior = test_cases[indices_prior]
-        test_cases_posterior = test_cases[indices_posterior]
-        outputs_prior = outputs[indices_prior, :]
-        outputs_posterior = outputs[indices_posterior, :]
-        noise_stddevs_prior = noise_stddevs[indices_prior]
-        noise_stddevs_posterior = noise_stddevs[indices_posterior]
-
-        validate_data(
-            inputs_prior, test_cases_prior, outputs_prior, noise_stddevs_prior
-        )
-        validate_data(
-            inputs_posterior,
-            test_cases_posterior,
-            outputs_posterior,
-            noise_stddevs_posterior,
-        )
-        return SplittedData(
-            inputs_prior=inputs_prior,
-            inputs_posterior=inputs_posterior,
-            test_cases_prior=test_cases_prior,
-            test_cases_posterior=test_cases_posterior,
-            outputs_prior=outputs_prior,
-            outputs_posterior=outputs_posterior,
-            noise_stddevs_prior=noise_stddevs_prior,
-            noise_stddevs_posterior=noise_stddevs_posterior,
-        )
-
-    def split_kawabata_data(
-        inputs: DeformationInputs,
-        test_cases: TestCases,
-        outputs: StressOutputs,
-        noise_stddevs: Tensor,
-    ) -> SplittedData:
-        # Number of data points
-        num_points = len(inputs)
-
-        # Indices
-        indices_prior = [
-            2,
-            5,
-            10,
-            14,
-            17,
-            22,
-            25,
-            30,
-            34,
-            38,
-            42,
-            46,
-            50,
-            54,
-            57,
-            61,
-            64,
-            68,
-            70,
-        ]
-        indices_posterior = [i for i in range(num_points) if i not in indices_prior]
-
-        # Data splitting
-        inputs_prior = inputs[indices_prior, :]
-        inputs_posterior = inputs[indices_posterior, :]
-        test_cases_prior = test_cases[indices_prior]
-        test_cases_posterior = test_cases[indices_posterior]
-        outputs_prior = outputs[indices_prior, :]
-        outputs_posterior = outputs[indices_posterior, :]
-        noise_stddevs_prior = noise_stddevs[indices_prior]
-        noise_stddevs_posterior = noise_stddevs[indices_posterior]
-
-        validate_data(
-            inputs_prior, test_cases_prior, outputs_prior, noise_stddevs_prior
-        )
-        validate_data(
-            inputs_posterior,
-            test_cases_posterior,
-            outputs_posterior,
-            noise_stddevs_posterior,
-        )
-        return SplittedData(
-            inputs_prior=inputs_prior,
-            inputs_posterior=inputs_posterior,
-            test_cases_prior=test_cases_prior,
-            test_cases_posterior=test_cases_posterior,
-            outputs_prior=outputs_prior,
-            outputs_posterior=outputs_posterior,
-            noise_stddevs_prior=noise_stddevs_prior,
-            noise_stddevs_posterior=noise_stddevs_posterior,
-        )
-
-    validate_data(inputs, test_cases, outputs, noise_stddevs)
-    if data_set == data_set_treloar:
-        return split_treloar_data(inputs, test_cases, outputs, noise_stddevs)
-    elif data_set == data_set_kawabata:
-        return split_kawabata_data(inputs, test_cases, outputs, noise_stddevs)
-    else:
-        raise DataSetError(f"No implementation for the requested data set {data_set}")
+def determine_parameter_names(model: ModelProtocol) -> tuple[str, ...]:
+    noise_parameter_name = ("rel. noise standard deviation",)
+    parameter_names = model.parameter_names
+    if estimate_noise:
+        parameter_names = noise_parameter_name + parameter_names
+    return parameter_names
 
 
 def sample_from_posterior(
@@ -314,7 +141,10 @@ def sample_from_posterior(
 
 
 def plot_stresses(
-    model: ModelProtocol, is_model_trimmed: bool, output_directory: str
+    model: ModelProtocol,
+    posterior_samples: NPArray,
+    is_model_trimmed: bool,
+    output_directory: str,
 ) -> None:
     def join_output_subdirectory() -> str:
         if is_model_trimmed:
@@ -338,7 +168,7 @@ def plot_stresses(
         )
 
         def _plot_kawabata() -> None:
-            input_directory = data_set_kawabata
+            input_directory = data_set_label_kawabata
             data_reader = KawabataDataReader(input_directory, project_directory, device)
             output_subdirectory_kawabata = os.path.join(output_subdirectory, "kawabata")
 
@@ -385,20 +215,24 @@ def plot_stresses(
             device=device,
         )
 
-    if data_set == data_set_treloar:
+    if data_set_label == data_set_label_treloar:
         plot_treloar()
-    elif data_set == data_set_kawabata:
+    elif data_set_label == data_set_label_kawabata:
         plot_kawabata()
-    elif data_set == data_set_linka:
+    elif data_set_label == data_set_label_linka:
         plot_linka()
 
 
 inputs, test_cases, outputs = data_reader.read()
-noise_stddevs = determine_heteroscedastic_noise()
+noise_stddevs = determine_heteroscedastic_noise(
+    prior_relative_noise_stddevs, min_noise_stddev, outputs
+)
 validate_data(inputs, test_cases, outputs, noise_stddevs)
 
 if use_gp_prior:
-    splitted_data = split_data(inputs, test_cases, outputs, noise_stddevs)
+    splitted_data = split_data(
+        data_set_label, inputs, test_cases, outputs, noise_stddevs
+    )
     inputs_prior = splitted_data.inputs_prior
     inputs_posterior = splitted_data.inputs_posterior
     test_cases_prior = splitted_data.test_cases_prior
@@ -415,13 +249,30 @@ else:
 
 if retrain_normalizing_flow:
     for step in range(num_calibration_steps):
+        is_last_step = step == num_calibration_steps - 1
         output_directory_step = os.path.join(
             output_directory, f"calibration_step_{step}"
         )
-        num_parameters = model.get_number_of_active_parameters()
+        num_parameters = determine_number_of_parameters(model)
+        parameter_names = determine_parameter_names(model)
 
-        def determine_prior() -> PriorProtocol:
-            def determine_parameter_prior() -> PriorProtocol:
+        def _create_likelihood() -> LikelihoodProtocol:
+            if estimate_noise:
+                relative_noise_stddevs = None
+            else:
+                relative_noise_stddevs = prior_relative_noise_stddevs
+            return create_likelihood(
+                model=model,
+                relative_noise_stddev=relative_noise_stddevs,
+                min_noise_stddev=min_noise_stddev,
+                inputs=inputs_posterior,
+                test_cases=test_cases_posterior,
+                outputs=outputs_posterior,
+                device=device,
+            )
+
+        def _determine_prior() -> PriorProtocol:
+            def _determine_parameter_prior() -> PriorProtocol:
                 def init_fixed_prior() -> PriorProtocol:
                     return create_independent_multivariate_gamma_distributed_prior(
                         concentrations=torch.tensor(
@@ -562,34 +413,22 @@ if retrain_normalizing_flow:
                 else:
                     return init_fixed_prior()
 
-            def init_relative_noise_stddev_prior() -> PriorProtocol:
+            def _init_relative_noise_stddev_prior() -> PriorProtocol:
                 return create_univariate_gamma_distributed_prior(
                     concentration=0.1,
                     rate=10.0,
                     device=device,
                 )
 
-            prior_parameters = determine_parameter_prior()
+            prior_parameters = _determine_parameter_prior()
             if estimate_noise:
-                prior_relative_noise_stddev = init_relative_noise_stddev_prior()
+                prior_relative_noise_stddev = _init_relative_noise_stddev_prior()
                 return multiply_priors([prior_relative_noise_stddev, prior_parameters])
             else:
                 return prior_parameters
 
-        prior = determine_prior()
-        if estimate_noise:
-            relative_noise_stddevs = None
-        else:
-            relative_noise_stddevs = assumed_relative_noise_stddevs
-        likelihood = create_likelihood(
-            model=model,
-            relative_noise_stddev=relative_noise_stddevs,
-            min_noise_stddev=min_noise_stddev,
-            inputs=inputs_posterior,
-            test_cases=test_cases_posterior,
-            outputs=outputs_posterior,
-            device=device,
-        )
+        likelihood = _create_likelihood()
+        prior = _determine_prior()
 
         fit_normalizing_flow_config = FitNormalizingFlowConfig(
             likelihood=likelihood,
@@ -600,7 +439,6 @@ if retrain_normalizing_flow:
             initial_learning_rate=5e-4,
             final_learning_rate=1e-4,
             num_iterations=100_000,
-            deactivate_parameters=False,
             output_subdirectory=output_directory_step,
             project_directory=project_directory,
         )
@@ -612,7 +450,7 @@ if retrain_normalizing_flow:
             output_directory_step, output_subdirectory_name_posterior
         )
         plot_histograms(
-            parameter_names=model.get_active_parameter_names(),
+            parameter_names=parameter_names,
             true_parameters=tuple(None for _ in range(num_parameters)),
             moments=posterior_moments,
             samples=posterior_samples,
@@ -621,10 +459,12 @@ if retrain_normalizing_flow:
             project_directory=project_directory,
         )
         plot_stresses(
-            model, is_model_trimmed=False, output_directory=output_directory_step
+            model=model,
+            posterior_samples=posterior_samples,
+            is_model_trimmed=False,
+            output_directory=output_directory_step,
         )
 
-        is_last_step = step == num_calibration_steps - 1
         if not is_last_step:
             trim_model(
                 model=model,
@@ -640,18 +480,21 @@ if retrain_normalizing_flow:
                 project_directory=project_directory,
             )
             plot_stresses(
-                model, is_model_trimmed=True, output_directory=output_directory_step
+                model=model,
+                posterior_samples=posterior_samples,
+                is_model_trimmed=True,
+                output_directory=output_directory_step,
             )
-
             model.reduce_to_activated_parameters()
 
         save_model_state(model, output_directory_step, project_directory)
 else:
     for step in range(num_calibration_steps):
+        is_first_step = step == 0
+        is_last_step = step == num_calibration_steps - 1
         output_directory_step = os.path.join(
             output_directory, f"calibration_step_{step}"
         )
-        is_first_step = step == 0
         if is_first_step:
             input_directory_step = output_directory_step
         else:
@@ -662,7 +505,9 @@ else:
 
         if not is_first_step:
             load_model_state(model, input_directory_step, project_directory, device)
-        num_parameters = model.num_parameters
+
+        num_parameters = determine_number_of_parameters(model)
+        parameter_names = determine_parameter_names(model)
 
         load_normalizing_flow_config = LoadNormalizingFlowConfig(
             num_parameters=num_parameters,
@@ -678,7 +523,7 @@ else:
             output_directory_step, output_subdirectory_name_posterior
         )
         plot_histograms(
-            parameter_names=model.parameter_names,
+            parameter_names=parameter_names,
             true_parameters=tuple(None for _ in range(num_parameters)),
             moments=posterior_moments,
             samples=posterior_samples,
@@ -687,10 +532,12 @@ else:
             project_directory=project_directory,
         )
         plot_stresses(
-            model, is_model_trimmed=False, output_directory=output_directory_step
+            model=model,
+            posterior_samples=posterior_samples,
+            is_model_trimmed=False,
+            output_directory=output_directory_step,
         )
 
-        is_last_step = step == num_calibration_steps - 1
         if not is_last_step:
             trim_model(
                 model=model,
@@ -706,5 +553,8 @@ else:
                 project_directory=project_directory,
             )
             plot_stresses(
-                model, is_model_trimmed=True, output_directory=output_directory_step
+                model=model,
+                posterior_samples=posterior_samples,
+                is_model_trimmed=True,
+                output_directory=output_directory_step,
             )
