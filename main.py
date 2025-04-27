@@ -45,10 +45,9 @@ from bayesianmdisc.models import (
 from bayesianmdisc.normalizingflows import (
     FitNormalizingFlowConfig,
     LoadNormalizingFlowConfig,
-    NormalizingFlowProtocol,
-    determine_statistical_moments,
     fit_normalizing_flow,
     load_normalizing_flow,
+    sample_from_normalizing_flow,
 )
 from bayesianmdisc.postprocessing.plot import (
     plot_histograms,
@@ -126,18 +125,6 @@ def determine_parameter_names(model: ModelProtocol) -> tuple[str, ...]:
     if estimate_noise:
         parameter_names = noise_parameter_name + parameter_names
     return parameter_names
-
-
-def sample_from_posterior(
-    normalizing_flow: NormalizingFlowProtocol,
-) -> tuple[MomentsMultivariateNormal, NPArray]:
-
-    def draw_samples() -> list[Tensor]:
-        samples, _ = normalizing_flow.sample(num_samples_posterior)
-        return list(samples)
-
-    samples_list = draw_samples()
-    return determine_statistical_moments(samples_list)
 
 
 def plot_stresses(
@@ -444,7 +431,9 @@ if retrain_normalizing_flow:
         )
 
         normalizing_flow = fit_normalizing_flow(fit_normalizing_flow_config, device)
-        posterior_moments, posterior_samples = sample_from_posterior(normalizing_flow)
+        posterior_moments, posterior_samples = sample_from_normalizing_flow(
+            normalizing_flow, num_samples_posterior
+        )
 
         output_subdirectory_posterior = os.path.join(
             output_directory_step, output_subdirectory_name_posterior
@@ -517,7 +506,9 @@ else:
             project_directory=project_directory,
         )
         normalizing_flow = load_normalizing_flow(load_normalizing_flow_config, device)
-        posterior_moments, posterior_samples = sample_from_posterior(normalizing_flow)
+        posterior_moments, posterior_samples = sample_from_normalizing_flow(
+            normalizing_flow, num_samples_posterior
+        )
 
         output_subdirectory_posterior = os.path.join(
             output_directory_step, output_subdirectory_name_posterior
