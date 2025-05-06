@@ -95,8 +95,8 @@ elif data_set_label == data_set_label_linka:
     model = OrthotropicCANN(device)
 
 prior_relative_noise_stddevs = 5e-2  # 1e-1
-estimate_noise = True
 min_noise_stddev = 1e-3
+estimate_noise = True
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
 list_relative_selection_thressholds = [2.0]
