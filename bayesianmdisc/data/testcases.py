@@ -10,3 +10,4 @@ test_case_identifier_uniaxial_tension = 0
 test_case_identifier_equibiaxial_tension = 1
 test_case_identifier_biaxial_tension = 2
 test_case_identifier_pure_shear = 3
+test_case_identifier_simple_shear = 4

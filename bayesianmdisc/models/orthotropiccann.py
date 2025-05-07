@@ -3,7 +3,11 @@ from torch import vmap
 
 from bayesianmdisc.customtypes import Device
 from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
-from bayesianmdisc.data.testcases import TestCase, test_case_identifier_biaxial_tension
+from bayesianmdisc.data.testcases import (
+    TestCase,
+    test_case_identifier_biaxial_tension,
+    test_case_identifier_simple_shear,
+)
 from bayesianmdisc.models.base import (
     AllowedTestCases,
     CauchyStress,
@@ -182,20 +186,351 @@ from bayesianmdisc.models.base import (
 #     return deformation_gradient.reshape((3, 3))
 
 
+# class OrthotropicCANN:
+
+#     def __init__(self, device: Device):
+#         self._device = device
+#         self._num_invariants = 4
+#         self._num_invariant_power_terms = 2
+#         self._num_activation_functions = 2
+#         self._test_case_identifier_bt = test_case_identifier_biaxial_tension
+#         self._allowed_test_cases = self._determine_allowed_test_cases()
+#         self._allowed_input_dimensions = [2]
+#         self._num_initial_parameters = self._determine_number_of_parameters()
+#         self._initial_parameter_names = self._init_parameter_names()
+#         self.output_dim = 2
+#         self.num_parameters = self._num_initial_parameters
+#         self.parameter_names = self._initial_parameter_names
+#         self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
+#         self._parameter_population_matrix = init_parameter_population_matrix(
+#             self.num_parameters, self._device
+#         )
+
+#     def __call__(
+#         self,
+#         inputs: DeformationInputs,
+#         test_cases: TestCases,
+#         parameters: Parameters,
+#         validate_args=True,
+#     ) -> StressOutputs:
+#         return self.forward(inputs, test_cases, parameters, validate_args)
+
+#     def forward(
+#         self,
+#         inputs: DeformationInputs,
+#         test_cases: TestCases,
+#         parameters: Parameters,
+#         validate_args=True,
+#     ) -> StressOutputs:
+#         if validate_args:
+#             self._validate_inputs(inputs, test_cases, parameters)
+
+#         parameters = self._preprocess_parameters(parameters)
+
+#         def vmap_func(inputs_: Stretches, test_case_: TestCase) -> CauchyStresses:
+#             return self._calculate_stresses(inputs_, test_case_, parameters)
+
+#         return vmap(vmap_func)(inputs, test_cases)
+
+#     def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None:
+#         mask_parameters(parameter_indices, self._parameter_mask, False)
+
+#     def activate_parameters(self, parameter_indices: ParameterIndices) -> None:
+#         mask_parameters(parameter_indices, self._parameter_mask, True)
+
+#     def reset_parameter_deactivations(self) -> None:
+#         self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
+
+#     def get_active_parameter_indices(self) -> ParameterIndices:
+#         return filter_active_parameter_indices(self._parameter_mask)
+
+#     def get_active_parameter_names(self) -> ParameterNames:
+#         return filter_active_parameter_names(self._parameter_mask, self.parameter_names)
+
+#     def get_number_of_active_parameters(self) -> int:
+#         return count_active_parameters(self._parameter_mask)
+
+#     def reduce_to_activated_parameters(self) -> None:
+#         old_parameter_mask = self._parameter_mask
+
+#         def reduce_num_parameters() -> None:
+#             self.num_parameters = self.get_number_of_active_parameters()
+
+#         def reduce_parameter_names() -> None:
+#             self.parameter_names = self.get_active_parameter_names()
+
+#         def reduce_parameter_mask() -> None:
+#             self._parameter_mask = init_parameter_mask(
+#                 self.num_parameters, self._device
+#             )
+
+#         def reduce_parameter_population_matrix() -> None:
+#             self._parameter_population_matrix = update_parameter_population_matrix(
+#                 self._parameter_population_matrix, old_parameter_mask
+#             )
+
+#         reduce_num_parameters()
+#         reduce_parameter_names()
+#         reduce_parameter_mask()
+#         reduce_parameter_population_matrix()
+
+#     def get_model_state(self) -> ParameterPopulationMatrix:
+#         return self._parameter_population_matrix
+
+#     def init_model_state(
+#         self, parameter_population_matrix: ParameterPopulationMatrix
+#     ) -> None:
+#         population_matrix = parameter_population_matrix
+#         validate_model_state(population_matrix, self._num_initial_parameters)
+#         initial_parameter_mask = determine_initial_parameter_mask(population_matrix)
+
+#         def init_reuced_models_num_parameters() -> None:
+#             self.num_parameters = population_matrix.shape[1]
+
+#         def init_reduced_models_parameter_names() -> None:
+#             self.parameter_names = filter_active_parameter_names(
+#                 initial_parameter_mask, self._initial_parameter_names
+#             )
+
+#         def init_reduced_models_parameter_mask() -> None:
+#             self._parameter_mask = init_parameter_mask(
+#                 self.num_parameters, self._device
+#             )
+
+#         def init_reduced_models_population_matrix() -> None:
+#             self._parameter_population_matrix = population_matrix
+
+#         init_reuced_models_num_parameters()
+#         init_reduced_models_parameter_names()
+#         init_reduced_models_parameter_mask()
+#         init_reduced_models_population_matrix()
+
+#     def _determine_allowed_test_cases(self) -> AllowedTestCases:
+#         return torch.tensor([self._test_case_identifier_bt], device=self._device)
+
+#     def _determine_number_of_parameters(self) -> int:
+#         num_invariants = self._num_invariants
+#         num_power_terms = self._num_invariant_power_terms
+#         num_activation_functions = self._num_activation_functions
+
+#         num_parameters_first_layer = (
+#             num_invariants * num_power_terms * (num_activation_functions - 1)
+#         )
+#         num_parameters_second_layer = (
+#             num_invariants * num_power_terms * num_activation_functions
+#         )
+#         return num_parameters_first_layer + num_parameters_second_layer
+
+#     def _init_parameter_names(self) -> ParameterNames:
+#         parameter_names = []
+#         first_layer_indices = 1
+#         second_layer_indices = 1
+#         invariant_names = ["I_1", "I_2", "I_4f", "I_4n"]
+#         power_names = ["p1", "p2"]
+#         activation_function_names = ["i", "exp"]
+
+#         for invariant in invariant_names:
+#             # first layer
+#             for power in power_names:
+#                 for activation_function in activation_function_names[1:]:
+#                     parameter_names += [
+#                         f"W_1_{2 *first_layer_indices} (l1, {invariant}, {power}, {activation_function})"
+#                     ]
+#                     first_layer_indices += 1
+
+#             # second layer
+#             for power in power_names:
+#                 for activation_function in activation_function_names:
+#                     parameter_names += [
+#                         f"W_2_{second_layer_indices} (l2, {invariant}, {power}, {activation_function})"
+#                     ]
+#                     second_layer_indices += 1
+
+#         return tuple(parameter_names)
+
+#     def _validate_inputs(
+#         self, inputs: DeformationInputs, test_cases: TestCases, parameters: Parameters
+#     ) -> None:
+#         validate_input_numbers(inputs, test_cases)
+#         validate_deformation_input_dimension(inputs, self._allowed_input_dimensions)
+#         validate_test_cases(test_cases, self._allowed_test_cases)
+#         validate_parameters(parameters, self.num_parameters)
+
+#     def _preprocess_parameters(self, parameters: Parameters) -> Parameters:
+#         return mask_and_populate_parameters(
+#             parameters, self._parameter_mask, self._parameter_population_matrix
+#         )
+
+#     def _calculate_stresses(
+#         self, stretches: Stretches, test_case: TestCase, parameters: Parameters
+#     ) -> CauchyStresses:
+
+#         def calculate_fiber_stress(
+#             dPsi_dI_1: StrainEnergyDerivative,
+#             dPsi_dI_2: StrainEnergyDerivative,
+#             dPsi_dI_4f: StrainEnergyDerivative,
+#             stretches: Stretches,
+#         ) -> CauchyStress:
+#             stretch_fiber, stretch_normal = self._split_stretches(stretches)
+#             stretch_sheet = self._calculat_stretch_sheet(stretches)
+#             two = torch.tensor(2.0, device=self._device)
+#             squared_stretch_fiber = stretch_fiber**2
+#             squared_stretch_sheet = stretch_sheet**2
+#             squared_stretch_normal = stretch_normal**2
+#             return (
+#                 two * dPsi_dI_1 * (squared_stretch_fiber - squared_stretch_sheet)
+#                 + two
+#                 * dPsi_dI_2
+#                 * (squared_stretch_fiber - squared_stretch_sheet)
+#                 * squared_stretch_normal
+#                 + two * dPsi_dI_4f * squared_stretch_fiber
+#             )
+
+#         def calculate_normal_stress(
+#             dPsi_dI_1: StrainEnergyDerivative,
+#             dPsi_dI_2: StrainEnergyDerivative,
+#             dPsi_dI_4n: StrainEnergyDerivative,
+#             stretches: Stretches,
+#         ) -> CauchyStress:
+#             stretch_fiber, stretch_normal = self._split_stretches(stretches)
+#             stretch_sheet = self._calculat_stretch_sheet(stretches)
+#             two = torch.tensor(2.0, device=self._device)
+#             squared_stretch_fiber = stretch_fiber**2
+#             squared_stretch_sheet = stretch_sheet**2
+#             squared_stretch_normal = stretch_normal**2
+#             return (
+#                 two * dPsi_dI_1 * (squared_stretch_normal - squared_stretch_sheet)
+#                 + two
+#                 * dPsi_dI_2
+#                 * (squared_stretch_normal - squared_stretch_sheet)
+#                 * squared_stretch_fiber
+#                 + two * dPsi_dI_4n * squared_stretch_normal
+#             )
+
+#         # It has already been validated that all test cases are biaxial tension tests.
+#         # It is therefore no longer necessary to differentiate between the inputs.
+
+#         dPsi_dI_1, dPsi_dI_2, dPsi_dI_4f, dPsi_dI_4n = (
+#             self._calculate_strain_energy_derivatives(stretches, parameters)
+#         )
+
+#         stress_fiber = calculate_fiber_stress(
+#             dPsi_dI_1, dPsi_dI_2, dPsi_dI_4f, stretches
+#         )
+#         stress_normal = calculate_normal_stress(
+#             dPsi_dI_1, dPsi_dI_2, dPsi_dI_4n, stretches
+#         )
+#         return self._concatenate_stresses(stress_fiber, stress_normal)
+
+#     def _calculate_strain_energy_derivatives(
+#         self, stretches: Stretches, parameters: Parameters
+#     ) -> StrainEnergyDerivativesTuple:
+
+#         def calculate_strain_energy_derivative(
+#             corrected_invariant: Invariant, parameters: Parameters
+#         ) -> StrainEnergyDerivative:
+#             two = torch.tensor(2.0, device=self._device)
+#             param_1 = parameters[0]
+#             param_2 = parameters[1]
+#             param_3 = parameters[2]
+#             param_4 = parameters[3]
+#             param_5 = parameters[4]
+#             param_6 = parameters[5]
+
+#             sub_term_1 = param_3
+#             sub_term_2 = param_1 * param_4 * torch.exp(param_1 * corrected_invariant)
+#             sub_term_3 = (
+#                 two
+#                 * corrected_invariant
+#                 * (
+#                     param_5
+#                     + param_2 * param_6 * torch.exp(param_2 * corrected_invariant**2)
+#                 )
+#             )
+#             return sub_term_1 + sub_term_2 + sub_term_3
+
+#         I_1_cor, I_2_cor, I_4f_cor, I_4n_cor = self._calculate_invariants(stretches)
+#         (
+#             parameters_I_1_cor,
+#             parameters_I_2_cor,
+#             parameters_I_4f_cor,
+#             parameters_I_4n_cor,
+#         ) = self._split_parameters(parameters)
+
+#         dPsi_dI_1 = calculate_strain_energy_derivative(I_1_cor, parameters_I_1_cor)
+#         dPsi_dI_2 = calculate_strain_energy_derivative(I_2_cor, parameters_I_2_cor)
+#         dPsi_dI_4f = calculate_strain_energy_derivative(I_4f_cor, parameters_I_4f_cor)
+#         dPsi_dI_4n = calculate_strain_energy_derivative(I_4n_cor, parameters_I_4n_cor)
+#         return dPsi_dI_1, dPsi_dI_2, dPsi_dI_4f, dPsi_dI_4n
+
+#     def _calculate_invariants(self, stretches: Stretches) -> Invariants:
+#         # Stretches
+#         stretch_fiber, stretch_normal = self._split_stretches(stretches)
+#         # Constants
+#         one = torch.tensor(1.0, device=self._device)
+#         three = torch.tensor(3.0, device=self._device)
+
+#         # Isotropic invariants
+#         I_1 = (
+#             stretch_fiber**2
+#             + stretch_normal**2
+#             + (one / (stretch_fiber * stretch_normal) ** 2)
+#         )
+#         I_2 = (
+#             (stretch_fiber**2) * (stretch_normal**2)
+#             + one / stretch_fiber**2
+#             + one / stretch_normal**2
+#         )
+#         I_1_cor = I_1 - three
+#         I_2_cor = I_2 - three
+
+#         # Anisotropic invariants
+#         I_4f = stretch_fiber**2
+#         I_4n = stretch_normal**2
+#         I_4f_cor = I_4f - one
+#         I_4n_cor = I_4n - one
+
+#         return I_1_cor, I_2_cor, I_4f_cor, I_4n_cor
+
+#     def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
+#         return torch.chunk(parameters, self._num_invariants)
+
+#     def _calculat_stretch_sheet(self, stretches: Stretches) -> Stretch:
+#         stretch_fiber, stretch_normal = self._split_stretches(stretches)
+#         one = torch.tensor(1.0, device=self._device)
+#         return one / (stretch_fiber * stretch_normal)
+
+#     def _split_stretches(self, stretches: Stretches) -> tuple[Stretch, Stretch]:
+#         stretch_fiber = stretches[0]
+#         stretch_normal = stretches[1]
+#         return stretch_fiber, stretch_normal
+
+#     def _concatenate_stresses(
+#         self, stress_fiber: CauchyStress, stress_normal: CauchyStress
+#     ) -> CauchyStresses:
+#         return torch.concat(
+#             (
+#                 torch.unsqueeze(stress_fiber, dim=0),
+#                 torch.unsqueeze(stress_normal, dim=0),
+#             )
+#         )
+
+
 class OrthotropicCANN:
 
     def __init__(self, device: Device):
         self._device = device
-        self._num_invariants = 4
+        self._num_invariants = 9
         self._num_invariant_power_terms = 2
         self._num_activation_functions = 2
         self._test_case_identifier_bt = test_case_identifier_biaxial_tension
+        self._test_case_identifier_ss = test_case_identifier_simple_shear
         self._allowed_test_cases = self._determine_allowed_test_cases()
-        self._allowed_input_dimensions = [2]
-        self._num_initial_parameters = self._determine_number_of_parameters()
+        self._allowed_input_dimensions = [9]
+        self._initial_num_parameters = self._determine_number_of_parameters()
         self._initial_parameter_names = self._init_parameter_names()
-        self.output_dim = 2
-        self.num_parameters = self._num_initial_parameters
+        self.output_dim = 9
+        self.num_parameters = self._initial_num_parameters
         self.parameter_names = self._initial_parameter_names
         self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
         self._parameter_population_matrix = init_parameter_population_matrix(
@@ -277,7 +612,7 @@ class OrthotropicCANN:
         self, parameter_population_matrix: ParameterPopulationMatrix
     ) -> None:
         population_matrix = parameter_population_matrix
-        validate_model_state(population_matrix, self._num_initial_parameters)
+        validate_model_state(population_matrix, self._initial_num_parameters)
         initial_parameter_mask = determine_initial_parameter_mask(population_matrix)
 
         def init_reuced_models_num_parameters() -> None:
@@ -302,7 +637,10 @@ class OrthotropicCANN:
         init_reduced_models_population_matrix()
 
     def _determine_allowed_test_cases(self) -> AllowedTestCases:
-        return torch.tensor([self._test_case_identifier_bt], device=self._device)
+        return torch.tensor(
+            [self._test_case_identifier_bt, self._test_case_identifier_ss],
+            device=self._device,
+        )
 
     def _determine_number_of_parameters(self) -> int:
         num_invariants = self._num_invariants
@@ -321,9 +659,19 @@ class OrthotropicCANN:
         parameter_names = []
         first_layer_indices = 1
         second_layer_indices = 1
-        invariant_names = ["I_1", "I_2", "I_4f", "I_4n"]
+        invariant_names = [
+            "I_1",
+            "I_2",
+            "I_3",
+            "I_4f",
+            "I_4s",
+            "I_4n",
+            "I_8fs",
+            "I_8fn",
+            "I_8sn",
+        ]
         power_names = ["p1", "p2"]
-        activation_function_names = ["i", "exp"]
+        activation_function_names = ["I", "exp"]
 
         for invariant in invariant_names:
             # first layer

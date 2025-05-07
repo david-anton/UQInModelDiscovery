@@ -80,7 +80,7 @@ class IsotropicModelLibrary:
             self._num_ogden_parameters,
             self._num_ln_feature_parameters,
         ) = self._determine_number_of_parameters()
-        self._num_initial_parameters = (
+        self._initial_num_parameters = (
             self._num_mr_parameters
             + self._num_ogden_parameters
             + self._num_ln_feature_parameters
@@ -88,7 +88,7 @@ class IsotropicModelLibrary:
         self._initial_parameter_names = self._init_parameter_names()
         validate_stress_output_dimension(output_dim, self._allowed_output_dimensions)
         self.output_dim = output_dim
-        self.num_parameters = self._num_initial_parameters
+        self.num_parameters = self._initial_num_parameters
         self.parameter_names = self._initial_parameter_names
         self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
         self._parameter_population_matrix = init_parameter_population_matrix(
@@ -181,7 +181,7 @@ class IsotropicModelLibrary:
         self, parameter_population_matrix: ParameterPopulationMatrix
     ) -> None:
         population_matrix = parameter_population_matrix
-        validate_model_state(population_matrix, self._num_initial_parameters)
+        validate_model_state(population_matrix, self._initial_num_parameters)
         initial_parameter_mask = determine_initial_parameter_mask(population_matrix)
 
         def init_reuced_models_num_parameters() -> None:
