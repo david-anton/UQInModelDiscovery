@@ -12,7 +12,7 @@ from bayesianmdisc.data import (
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_uniaxial_tension,
 )
-from bayesianmdisc.errors import DataError, DataSetError
+from bayesianmdisc.errors import DataError
 
 
 @dataclass
@@ -162,7 +162,7 @@ def split_data(
     elif data_set_label == data_set_label_kawabata:
         return split_kawabata_data(inputs, test_cases, outputs, noise_stddevs)
     else:
-        raise DataSetError(
+        raise DataError(
             f"No implementation for the requested data set {data_set_label}"
         )
 
