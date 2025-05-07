@@ -13,6 +13,7 @@ from bayesianmdisc.data.testcases import (
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_pure_shear,
     test_case_identifier_uniaxial_tension,
+    test_case_identifier_simple_shear,
 )
 from bayesianmdisc.errors import StressPlotterError
 from bayesianmdisc.io import ProjectDirectory
@@ -26,255 +27,6 @@ from bayesianmdisc.statistics.utility import determine_quantiles
 
 credible_interval = 0.95
 factor_stddevs = 1.96  # corresponds to 95%-credible interval
-
-
-class StressPlotterConfigLinka:
-    def __init__(self) -> None:
-        # label size
-        self.label_size = 10
-        # font size in legend
-        self.font_size = 12
-        self.font: Dict[str, Any] = {"size": self.font_size}
-
-        # major ticks
-        self.major_tick_label_size = 12
-        self.major_ticks_size = self.font_size
-        self.major_ticks_width = 2
-
-        # minor ticks
-        self.minor_tick_label_size = 12
-        self.minor_ticks_size = 12
-        self.minor_ticks_width = 1
-
-        ### stresses
-        # data
-        self.data_label_normal_1 = "data fiber"
-        self.data_label_normal_2 = "data normal"
-        self.data_marker_normal_1 = "x"
-        self.data_marker_normal_2 = "x"
-        self.data_color_normal_1 = "tab:blue"
-        self.data_color_normal_2 = "tab:purple"
-        self.data_marker_size = 5
-        # model
-        self.model_label_normal_1 = "model fiber"
-        self.model_label_normal_2 = "model normal"
-        # mean
-        self.model_color_mean_normal_1 = "tab:blue"
-        self.model_color_mean_normal_2 = "tab:purple"
-        # standard deviation
-        self.model_stddev_alpha = 0.2
-        self.model_color_stddev_normal_1 = "tab:blue"
-        self.model_color_stddev_normal_2 = "tab:purple"
-
-        # scientific notation
-        self.scientific_notation_size = self.font_size
-
-        # save options
-        self.dpi = 300
-
-
-def plot_stresses_linka(
-    model: OrthotropicCANN,
-    parameter_samples: NPArray,
-    inputs: NPArray,
-    outputs: NPArray,
-    test_cases: NPArray,
-    output_subdirectory: str,
-    project_directory: ProjectDirectory,
-    device: Device,
-) -> None:
-    config = StressPlotterConfigLinka()
-    num_data_sets = 5
-    num_points_per_data_set = 11
-    min_stretch = 1.0
-    max_stretch = 1.1
-    data_stretches = np.linspace(min_stretch, max_stretch, num_points_per_data_set)
-    stretch_ratios = [(1.0, 1.0), (1.0, 0.75), (0.75, 1.0), (1.0, 0.5), (0.5, 1.0)]
-    index_fiber = 0
-    index_normal = 1
-    num_model_inputs = 256
-
-    def split_inputs_and_outputs(
-        inputs: NPArray, test_cases: NPArray, outputs: NPArray
-    ) -> tuple[list[NPArray], list[NPArray], list[NPArray]]:
-        input_sets = np.split(inputs, num_data_sets, axis=0)
-        output_sets = np.split(outputs, num_data_sets, axis=0)
-        test_cases_sets = np.split(test_cases, num_data_sets, axis=0)
-        return input_sets, test_cases_sets, output_sets
-
-    def plot_one_input_output_set(
-        inputs: NPArray,
-        test_cases: NPArray,
-        outputs: NPArray,
-        stretch_ratio: tuple[float, float],
-    ) -> None:
-        ratio_fiber = stretch_ratio[index_fiber]
-        ratio_normal = stretch_ratio[index_normal]
-        file_name = (
-            f"stresses_stretch_ratio_fiber_normal_{ratio_fiber}_{ratio_normal}.png"
-        )
-
-        figure, axes = plt.subplots()
-
-        # data points
-        data_stresses_fiber = outputs[:, index_fiber]
-        data_stresses_normal = outputs[:, index_normal]
-        axes.plot(
-            data_stretches,
-            data_stresses_fiber,
-            marker=config.data_marker_normal_1,
-            color=config.data_color_normal_1,
-            markersize=config.data_marker_size,
-            linestyle="None",
-            label=config.data_label_normal_1,
-        )
-        axes.plot(
-            data_stretches,
-            data_stresses_normal,
-            marker=config.data_marker_normal_2,
-            color=config.data_color_normal_2,
-            markersize=config.data_marker_size,
-            linestyle="None",
-            label=config.data_label_normal_2,
-        )
-
-        # model
-        min_model_stretches = np.min(inputs, axis=0)
-        max_model_stretches = np.max(inputs, axis=0)
-        model_inputs = np.linspace(
-            min_model_stretches, max_model_stretches, num_model_inputs
-        )
-        model_test_cases = np.full(
-            (num_model_inputs,), test_case_identifier_biaxial_tension
-        )
-        model_stretches = np.linspace(min_stretch, max_stretch, num_model_inputs)
-
-        means, _ = calculate_model_mean_and_stddev(
-            model, parameter_samples, model_inputs, model_test_cases, device
-        )
-        min_quantiles, max_quantiles = calculate_model_quantiles(
-            model, parameter_samples, model_inputs, model_test_cases, device
-        )
-        means_fiber = means[:, index_fiber]
-        means_normal = means[:, index_normal]
-        min_quantiles_fiber = min_quantiles[:, index_fiber]
-        max_quantiles_fiber = max_quantiles[:, index_fiber]
-        min_quantiles_normal = min_quantiles[:, index_normal]
-        max_quantiles_normal = max_quantiles[:, index_normal]
-
-        axes.plot(
-            model_stretches,
-            means_fiber,
-            color=config.model_color_mean_normal_1,
-            label=config.model_label_normal_1,
-        )
-        axes.fill_between(
-            model_stretches,
-            min_quantiles_fiber,
-            max_quantiles_fiber,
-            color=config.model_color_stddev_normal_1,
-            alpha=config.model_stddev_alpha,
-        )
-
-        axes.plot(
-            model_stretches,
-            means_normal,
-            color=config.model_color_mean_normal_2,
-            label=config.model_label_normal_2,
-        )
-        axes.fill_between(
-            model_stretches,
-            min_quantiles_normal,
-            max_quantiles_normal,
-            color=config.model_color_stddev_normal_2,
-            alpha=config.model_stddev_alpha,
-        )
-
-        # axis ticks
-        x_ticks = np.linspace(min_stretch, max_stretch, num=6)
-        x_tick_labels = [str(tick) for tick in x_ticks]
-        axes.set_xticks(x_ticks)
-        axes.set_xticklabels(x_tick_labels)
-
-        # axis labels
-        axes.set_xlabel("stretch [-]", **config.font)
-        axes.set_ylabel("stress [kPa]", **config.font)
-        axes.tick_params(
-            axis="both", which="minor", labelsize=config.minor_tick_label_size
-        )
-        axes.tick_params(
-            axis="both", which="major", labelsize=config.major_tick_label_size
-        )
-
-        # legend
-        axes.legend(fontsize=config.font_size, loc="upper left")
-
-        # text box ratios
-        text = "\n".join(
-            (
-                r"$\lambda_{f}=%.2f$" % (ratio_fiber,),
-                r"$\lambda_{n}=%.2f$" % (ratio_normal,),
-            )
-        )
-        text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
-        axes.text(
-            0.45,
-            0.95,
-            text,
-            transform=axes.transAxes,
-            fontsize=config.font_size,
-            verticalalignment="top",
-            bbox=text_properties,
-        )
-
-        # text box metrics
-        coverage = calclulate_coverage(
-            model,
-            parameter_samples,
-            inputs,
-            test_cases,
-            outputs,
-            device,
-        )
-        r_squared = calculate_coefficient_of_determinant(
-            model, parameter_samples, inputs, test_cases, outputs, device
-        )
-        rmse = calculate_root_mean_squared_error(
-            model, parameter_samples, inputs, test_cases, outputs, device
-        )
-        text = "\n".join(
-            (
-                r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
-                r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
-                r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
-            )
-        )
-        text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
-        axes.text(
-            0.05,
-            0.65,
-            text,
-            transform=axes.transAxes,
-            fontsize=config.font_size,
-            verticalalignment="top",
-            bbox=text_properties,
-        )
-
-        output_path = project_directory.create_output_file_path(
-            file_name=file_name, subdir_name=output_subdirectory
-        )
-
-        figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
-        plt.clf()
-
-    input_sets, test_cases_sets, output_sets = split_inputs_and_outputs(
-        inputs, test_cases, outputs
-    )
-
-    for input_set, test_case_set, output_set, stretch_ratio in zip(
-        input_sets, test_cases_sets, output_sets, stretch_ratios
-    ):
-        plot_one_input_output_set(input_set, test_case_set, output_set, stretch_ratio)
 
 
 class StressPlotterConfigTreloar:
@@ -713,12 +465,12 @@ def plot_stresses_kawabata(
 
         def validate_data() -> None:
             num_inputs = len(inputs)
-            num_outputs = len(outputs)
             num_test_cases = len(test_cases)
+            num_outputs = len(outputs)
             valid_data = (
                 num_inputs == num_data_points
-                and num_outputs == num_data_points
                 and num_test_cases == num_data_points
+                and num_outputs == num_data_points
             )
 
             if not valid_data:
@@ -890,7 +642,7 @@ def plot_stresses_kawabata(
             test_cases,
             outputs,
             device,
-            stress_dim,
+            output_dim=stress_dim,
         )
         rmse = calculate_root_mean_squared_error(
             model,
@@ -899,7 +651,7 @@ def plot_stresses_kawabata(
             test_cases,
             outputs,
             device,
-            stress_dim,
+            output_dim=stress_dim,
         )
         text = "\n".join(
             (
@@ -930,6 +682,480 @@ def plot_stresses_kawabata(
     plot_one_input_output_set(input_sets, output_sets, test_case_sets, stress_dim=0)
     plot_one_input_output_set(input_sets, output_sets, test_case_sets, stress_dim=1)
     plt.clf()
+
+
+class StressPlotterConfigLinka:
+    def __init__(self) -> None:
+        # label size
+        self.label_size = 10
+        # font size in legend
+        self.font_size = 12
+        self.font: Dict[str, Any] = {"size": self.font_size}
+
+        # major ticks
+        self.major_tick_label_size = 12
+        self.major_ticks_size = self.font_size
+        self.major_ticks_width = 2
+
+        # minor ticks
+        self.minor_tick_label_size = 12
+        self.minor_ticks_size = 12
+        self.minor_ticks_width = 1
+
+        ### stresses
+        # data normal
+        self.data_label_normal_1 = "data fiber"
+        self.data_label_normal_2 = "data normal"
+        self.data_marker_normal_1 = "x"
+        self.data_marker_normal_2 = "x"
+        self.data_color_normal_1 = "tab:blue"
+        self.data_color_normal_2 = "tab:purple"
+        self.data_label_shear = "data"
+        self.data_marker_shear = "x"
+        self.data_color_shear = "tab:blue"
+        self.data_marker_size = 5
+        # model
+        self.model_label_normal_1 = "model fiber"
+        self.model_label_normal_2 = "model normal"
+        self.model_label_shear = "model"
+        # mean
+        self.model_color_mean_normal_1 = "tab:blue"
+        self.model_color_mean_normal_2 = "tab:purple"
+        self.model_color_mean_shear = "tab:blue"
+        # standard deviation
+        self.model_stddev_alpha = 0.2
+        self.model_color_stddev_normal_1 = "tab:blue"
+        self.model_color_stddev_normal_2 = "tab:purple"
+        self.model_color_stddev_shear = "tab:blue"
+
+        # scientific notation
+        self.scientific_notation_size = self.font_size
+
+        # save options
+        self.dpi = 300
+
+
+def plot_stresses_linka(
+    model: OrthotropicCANN,
+    parameter_samples: NPArray,
+    inputs: NPArray,
+    outputs: NPArray,
+    test_cases: NPArray,
+    output_subdirectory: str,
+    project_directory: ProjectDirectory,
+    device: Device,
+) -> None:
+    config = StressPlotterConfigLinka()
+    num_data_sets = 11
+    num_data_sets_simple_shear = 6
+    num_data_sets_biaxial_tension = 5
+    num_points_per_data_set = 11
+    num_data_points = num_data_sets * num_points_per_data_set
+    min_principal_stretch = 1.0
+    max_principal_stretch = 1.1
+    min_shear_strain = 0.0
+    max_shear_strain = 0.5
+    data_principal_stretches = np.linspace(
+        min_principal_stretch, max_principal_stretch, num_points_per_data_set
+    )
+    data_shear_strains = np.linspace(
+        min_shear_strain, max_shear_strain, num_points_per_data_set
+    )
+
+    stretch_ratios = [(1.0, 1.0), (1.0, 0.75), (0.75, 1.0), (1.0, 0.5), (0.5, 1.0)]
+    stretch_ratio_index_fiber = 0
+    stretch_ratio_index_normal = 1
+    stress_labels = ["ff", "fs", "fn", "sf", "ss", "sn", "nf", "ns", "nn"]
+    deformation_labels = [None, "sf", "nf", "fs", None, "ns", "fn", "sn", None]
+    index_principal_stress_f = 0
+    index_shear_stress_fs = 1
+    index_shear_stress_fn = 2
+    index_shear_stress_sf = 3
+    index_shear_stress_sn = 5
+    index_shear_stress_nf = 6
+    index_shear_stress_ns = 7
+    index_principal_stress_n = 8
+    shear_indices = [
+        index_shear_stress_fs,
+        index_shear_stress_fn,
+        index_shear_stress_sf,
+        index_shear_stress_sn,
+        index_shear_stress_nf,
+        index_shear_stress_ns,
+    ]
+    num_model_inputs = 256
+
+    def split_inputs_and_outputs(
+        inputs: NPArray, test_cases: NPArray, outputs: NPArray
+    ) -> tuple[
+        list[NPArray],
+        list[NPArray],
+        list[NPArray],
+        list[NPArray],
+        list[NPArray],
+        list[NPArray],
+    ]:
+
+        def validate_data() -> None:
+            num_inputs = len(inputs)
+            num_test_cases = len(test_cases)
+            num_outputs = len(outputs)
+            valid_data = (
+                num_inputs == num_data_points
+                and num_test_cases == num_data_points
+                and num_outputs == num_data_points
+            )
+
+            if not valid_data:
+                raise StressPlotterError(
+                    f"""The input and/or output do not comprise the expected number of data points 
+                    (input comprises {num_inputs} points, test cases {num_test_cases} points and 
+                    output {num_outputs} but {num_data_points} data points are expected)."""
+                )
+
+        def split_data_sets() -> tuple[
+            list[NPArray],
+            list[NPArray],
+            list[NPArray],
+            list[NPArray],
+            list[NPArray],
+            list[NPArray],
+        ]:
+            input_sets = np.split(inputs, num_data_sets, axis=0)
+            test_case_sets = np.split(test_cases, num_data_sets, axis=0)
+            output_sets = np.split(outputs, num_data_sets, axis=0)
+            input_sets_ss = input_sets[0:num_data_sets_simple_shear]
+            test_case_sets_ss = test_case_sets[0:num_data_sets_simple_shear]
+            output_sets_ss = output_sets[0:num_data_sets_simple_shear]
+            input_sets_bt = input_sets[num_data_sets_simple_shear:]
+            test_case_sets_bt = test_case_sets[num_data_sets_simple_shear:]
+            output_sets_bt = output_sets[num_data_sets_simple_shear:]
+            return (
+                input_sets_ss,
+                test_case_sets_ss,
+                output_sets_ss,
+                input_sets_bt,
+                test_case_sets_bt,
+                output_sets_bt,
+            )
+
+        validate_data()
+        return split_data_sets()
+
+    def plot_one_simple_shear_set(
+        inputs: NPArray, test_cases: NPArray, outputs: NPArray, index: int
+    ) -> None:
+        label_shear_stress = stress_labels[index]
+        label_deformation = deformation_labels[index]
+        file_name = f"shearstress_{label_shear_stress}.png"
+
+        figure, axes = plt.subplots()
+
+        # data points
+        data_stresses = outputs[:, index]
+        axes.plot(
+            data_shear_strains,
+            data_stresses,
+            marker=config.data_marker_shear,
+            color=config.data_color_shear,
+            markersize=config.data_marker_size,
+            linestyle="None",
+            label=config.data_label_shear,
+        )
+
+        # model
+        min_model_inputs = np.min(inputs, axis=0)
+        max_model_inputs = np.max(inputs, axis=0)
+        model_inputs = np.linspace(min_model_inputs, max_model_inputs, num_model_inputs)
+        model_test_cases = np.full(
+            (num_model_inputs,), test_case_identifier_simple_shear
+        )
+        model_strains = np.linspace(
+            min_shear_strain, max_shear_strain, num_model_inputs
+        )
+
+        means_, _ = calculate_model_mean_and_stddev(
+            model, parameter_samples, model_inputs, model_test_cases, device
+        )
+        min_quantiles, max_quantiles = calculate_model_quantiles(
+            model, parameter_samples, model_inputs, model_test_cases, device
+        )
+        means = means_[:, index]
+        min_quantiles = min_quantiles[:, index]
+        max_quantiles = max_quantiles[:, index]
+
+        axes.plot(
+            model_strains,
+            means,
+            color=config.model_color_mean_shear,
+            label=config.model_label_shear,
+        )
+        axes.fill_between(
+            model_strains,
+            min_quantiles,
+            max_quantiles,
+            color=config.model_color_stddev_shear,
+            alpha=config.model_stddev_alpha,
+        )
+
+        # axis ticks
+        x_ticks = np.linspace(min_shear_strain, max_shear_strain, num=6)
+        x_tick_labels = [str(tick) for tick in x_ticks]
+        axes.set_xticks(x_ticks)
+        axes.set_xticklabels(x_tick_labels)
+
+        # axis labels
+        axes.set_xlabel(
+            r"$\gamma_{0}$".format(label_deformation) + " [-]", **config.font
+        )
+        axes.set_ylabel(
+            r"$\sigma_{0}$".format(label_shear_stress) + " [kPa]", **config.font
+        )
+        axes.tick_params(
+            axis="both", which="minor", labelsize=config.minor_tick_label_size
+        )
+        axes.tick_params(
+            axis="both", which="major", labelsize=config.major_tick_label_size
+        )
+
+        # legend
+        axes.legend(fontsize=config.font_size, loc="upper left")
+
+        # text box metrics
+        coverage = calclulate_coverage(
+            model,
+            parameter_samples,
+            inputs,
+            test_cases,
+            outputs,
+            device,
+            output_dim=index,
+        )
+        r_squared = calculate_coefficient_of_determinant(
+            model,
+            parameter_samples,
+            inputs,
+            test_cases,
+            outputs,
+            device,
+            output_dim=index,
+        )
+        rmse = calculate_root_mean_squared_error(
+            model,
+            parameter_samples,
+            inputs,
+            test_cases,
+            outputs,
+            device,
+            output_dim=index,
+        )
+        text = "\n".join(
+            (
+                r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
+                r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
+                r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
+            )
+        )
+        text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+        axes.text(
+            0.05,
+            0.65,
+            text,
+            transform=axes.transAxes,
+            fontsize=config.font_size,
+            verticalalignment="top",
+            bbox=text_properties,
+        )
+
+        output_path = project_directory.create_output_file_path(
+            file_name=file_name, subdir_name=output_subdirectory
+        )
+        figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
+        plt.clf()
+
+    def plot_one_biaxial_tension_set(
+        inputs: NPArray,
+        test_cases: NPArray,
+        outputs: NPArray,
+        stretch_ratio: tuple[float, float],
+    ) -> None:
+        ratio_fiber = stretch_ratio[stretch_ratio_index_fiber]
+        ratio_normal = stretch_ratio[stretch_ratio_index_normal]
+        file_name = (
+            f"principalstresses_stretchratio_f_n_{ratio_fiber}_{ratio_normal}.png"
+        )
+
+        figure, axes = plt.subplots()
+
+        # data points
+        data_stresses_fiber = outputs[:, index_principal_stress_f]
+        data_stresses_normal = outputs[:, index_principal_stress_n]
+        axes.plot(
+            data_principal_stretches,
+            data_stresses_fiber,
+            marker=config.data_marker_normal_1,
+            color=config.data_color_normal_1,
+            markersize=config.data_marker_size,
+            linestyle="None",
+            label=config.data_label_normal_1,
+        )
+        axes.plot(
+            data_principal_stretches,
+            data_stresses_normal,
+            marker=config.data_marker_normal_2,
+            color=config.data_color_normal_2,
+            markersize=config.data_marker_size,
+            linestyle="None",
+            label=config.data_label_normal_2,
+        )
+
+        # model
+        min_model_inputs = np.min(inputs, axis=0)
+        max_model_inputs = np.max(inputs, axis=0)
+        model_inputs = np.linspace(min_model_inputs, max_model_inputs, num_model_inputs)
+        model_test_cases = np.full(
+            (num_model_inputs,), test_case_identifier_biaxial_tension
+        )
+        model_stretches = np.linspace(
+            min_principal_stretch, max_principal_stretch, num_model_inputs
+        )
+
+        means, _ = calculate_model_mean_and_stddev(
+            model, parameter_samples, model_inputs, model_test_cases, device
+        )
+        min_quantiles, max_quantiles = calculate_model_quantiles(
+            model, parameter_samples, model_inputs, model_test_cases, device
+        )
+        means_fiber = means[:, index_principal_stress_f]
+        means_normal = means[:, index_principal_stress_n]
+        min_quantiles_fiber = min_quantiles[:, index_principal_stress_f]
+        max_quantiles_fiber = max_quantiles[:, index_principal_stress_f]
+        min_quantiles_normal = min_quantiles[:, index_principal_stress_n]
+        max_quantiles_normal = max_quantiles[:, index_principal_stress_n]
+
+        axes.plot(
+            model_stretches,
+            means_fiber,
+            color=config.model_color_mean_normal_1,
+            label=config.model_label_normal_1,
+        )
+        axes.fill_between(
+            model_stretches,
+            min_quantiles_fiber,
+            max_quantiles_fiber,
+            color=config.model_color_stddev_normal_1,
+            alpha=config.model_stddev_alpha,
+        )
+        axes.plot(
+            model_stretches,
+            means_normal,
+            color=config.model_color_mean_normal_2,
+            label=config.model_label_normal_2,
+        )
+        axes.fill_between(
+            model_stretches,
+            min_quantiles_normal,
+            max_quantiles_normal,
+            color=config.model_color_stddev_normal_2,
+            alpha=config.model_stddev_alpha,
+        )
+
+        # axis ticks
+        x_ticks = np.linspace(min_principal_stretch, max_principal_stretch, num=6)
+        x_tick_labels = [str(tick) for tick in x_ticks]
+        axes.set_xticks(x_ticks)
+        axes.set_xticklabels(x_tick_labels)
+
+        # axis labels
+        axes.set_xlabel("stretch [-]", **config.font)
+        axes.set_ylabel("stress [kPa]", **config.font)
+        axes.tick_params(
+            axis="both", which="minor", labelsize=config.minor_tick_label_size
+        )
+        axes.tick_params(
+            axis="both", which="major", labelsize=config.major_tick_label_size
+        )
+
+        # legend
+        axes.legend(fontsize=config.font_size, loc="upper left")
+
+        # text box ratios
+        text = "\n".join(
+            (
+                r"$\lambda_{f}=%.2f$" % (ratio_fiber,),
+                r"$\lambda_{n}=%.2f$" % (ratio_normal,),
+            )
+        )
+        text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+        axes.text(
+            0.45,
+            0.95,
+            text,
+            transform=axes.transAxes,
+            fontsize=config.font_size,
+            verticalalignment="top",
+            bbox=text_properties,
+        )
+
+        # text box metrics
+        coverage = calclulate_coverage(
+            model,
+            parameter_samples,
+            inputs,
+            test_cases,
+            outputs,
+            device,
+        )
+        r_squared = calculate_coefficient_of_determinant(
+            model, parameter_samples, inputs, test_cases, outputs, device
+        )
+        rmse = calculate_root_mean_squared_error(
+            model, parameter_samples, inputs, test_cases, outputs, device
+        )
+        text = "\n".join(
+            (
+                r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
+                r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
+                r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
+            )
+        )
+        text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+        axes.text(
+            0.05,
+            0.65,
+            text,
+            transform=axes.transAxes,
+            fontsize=config.font_size,
+            verticalalignment="top",
+            bbox=text_properties,
+        )
+
+        output_path = project_directory.create_output_file_path(
+            file_name=file_name, subdir_name=output_subdirectory
+        )
+        figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
+        plt.clf()
+
+    (
+        input_sets_ss,
+        test_case_sets_ss,
+        output_sets_ss,
+        input_sets_bt,
+        test_case_sets_bt,
+        output_sets_bt,
+    ) = split_inputs_and_outputs(inputs, test_cases, outputs)
+
+    for input_set, test_case_set, output_set, index in zip(
+        input_sets_ss, test_case_sets_ss, output_sets_ss, shear_indices
+    ):
+        plot_one_simple_shear_set(input_set, test_case_set, output_set, index)
+
+    for input_set, test_case_set, output_set, stretch_ratio in zip(
+        input_sets_bt, test_case_sets_bt, output_sets_bt, stretch_ratios
+    ):
+        plot_one_biaxial_tension_set(
+            input_set, test_case_set, output_set, stretch_ratio
+        )
 
 
 def calculate_model_predictions(
