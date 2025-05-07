@@ -19,7 +19,6 @@ from bayesianmdisc.data.testcases import (
 )
 from bayesianmdisc.models.base import (
     DeformationGradient,
-    IncompressibilityConstraint,
     Invariants,
     ParameterIndices,
     ParameterNames,
@@ -29,9 +28,9 @@ from bayesianmdisc.models.base import (
     PiolaStresses,
     SplittedParameters,
     StrainEnergy,
-    StrainEnergyDerivatives,
     Stretch,
     Stretches,
+    calculate_pressure_from_incompressibility_constraint,
     count_active_parameters,
     determine_initial_parameter_mask,
     filter_active_parameter_indices,
@@ -75,6 +74,7 @@ class IsotropicModelLibrary:
         self._allowed_test_cases = self._determine_allowed_test_cases()
         self._allowed_input_dimensions = [1, 2, 3]
         self._allowed_output_dimensions = [1, 2]
+        self._zero_principal_stress_index = 2
         (
             self._num_mr_parameters,
             self._num_ogden_parameters,
@@ -378,10 +378,14 @@ class IsotropicModelLibrary:
         self, stretches: Stretches, parameters: Parameters
     ) -> PiolaStress:
         F = self._assemble_deformation_gradient(stretches)
+        F_inverse_transpose = F.inverse().transpose(0, 1)
         dW_dF = grad(self._calculate_strain_energy, argnums=0)(F, parameters)
-        constraint = self._calculate_incompressibility_constraint(F, dW_dF)
+        p = calculate_pressure_from_incompressibility_constraint(
+            F, dW_dF, self._zero_principal_stress_index
+        )
 
-        P = dW_dF + constraint
+        P = dW_dF - p * F_inverse_transpose
+
         P11 = P[0, 0]
         P22 = P[1, 1]
         if self.output_dim == 1:
@@ -510,16 +514,6 @@ class IsotropicModelLibrary:
         self, deformation_gradient: DeformationGradient
     ) -> Stretches:
         return torch.diag(deformation_gradient)
-
-    def _calculate_incompressibility_constraint(
-        self,
-        deformation_gradient: DeformationGradient,
-        strain_energy_derivatives: StrainEnergyDerivatives,
-    ) -> IncompressibilityConstraint:
-        F_33 = deformation_gradient[2, 2]
-        dW_dF33 = strain_energy_derivatives[2, 2]
-        pressure = dW_dF33 * F_33
-        return -pressure * deformation_gradient.inverse().transpose(0, 1)
 
     def _unsqueeze_zero_dimension(self, tensor: Tensor) -> Tensor:
         return torch.unsqueeze(tensor, dim=0)

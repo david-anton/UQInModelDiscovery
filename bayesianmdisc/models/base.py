@@ -11,21 +11,19 @@ from bayesianmdisc.errors import ModelError
 Stretch: TypeAlias = Tensor
 Stretches: TypeAlias = Tensor
 DeformationGradient: TypeAlias = Tensor
+FlattenedDeformationGradient: TypeAlias = Tensor
 Invariant: TypeAlias = Tensor
 Invariants: TypeAlias = tuple[Invariant, ...]
-CauchyStress: TypeAlias = Tensor
 CauchyStresses: TypeAlias = Tensor
+FlattenedCauchyStresses: TypeAlias = Tensor
 PiolaStress: TypeAlias = Tensor
 PiolaStresses: TypeAlias = Tensor
 StrainEnergy: TypeAlias = Tensor
 StrainEnergyDerivatives: TypeAlias = Tensor
-StrainEnergyDerivative: TypeAlias = Tensor
-StrainEnergyDerivativesTuple: TypeAlias = tuple[StrainEnergyDerivative, ...]
-IncompressibilityConstraint: TypeAlias = Tensor
+Pressure: TypeAlias = Tensor
 Parameters: TypeAlias = Tensor
 SplittedParameters: TypeAlias = tuple[Parameters, ...]
 ParameterNames: TypeAlias = tuple[str, ...]
-TrueParameters: TypeAlias = tuple[float, ...]
 ParameterMask: TypeAlias = Tensor
 ParameterIndex: TypeAlias = int
 ParameterIndices: TypeAlias = list[ParameterIndex]
@@ -150,6 +148,19 @@ def validate_model_state(
 
     validate_dimensions()
     validate_number_of_columns()
+
+
+# Mechanics
+def calculate_pressure_from_incompressibility_constraint(
+    deformation_gradient: DeformationGradient,
+    strain_energy_derivatives: StrainEnergyDerivatives,
+    zero_principal_stress_index: int,
+) -> Pressure:
+    dW_dF = strain_energy_derivatives
+    F_transpose = deformation_gradient.transpose(0, 1)
+    matmul_result = torch.matmul(dW_dF, F_transpose)
+    index = zero_principal_stress_index
+    return matmul_result[index, index]
 
 
 # Masking and population of parameters

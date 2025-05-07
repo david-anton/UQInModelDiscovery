@@ -18,9 +18,9 @@ from bayesianmdisc.data.testcases import (
     test_case_identifier_pure_shear,
     test_case_identifier_uniaxial_tension,
 )
+from bayesianmdisc.errors import DataError
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.readerswriters import CSVDataReader
-from bayesianmdisc.errors import DataError
 
 Data: TypeAlias = tuple[DeformationInputs, TestCases, StressOutputs]
 Component: TypeAlias = tuple[int, int]
