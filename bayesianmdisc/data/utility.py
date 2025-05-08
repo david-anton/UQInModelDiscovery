@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import itertools
 
 import torch
 
@@ -9,6 +10,7 @@ from bayesianmdisc.data import (
     TestCases,
     data_set_label_kawabata,
     data_set_label_treloar,
+    data_set_label_linka,
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_uniaxial_tension,
 )
@@ -156,11 +158,62 @@ def split_data(
             noise_stddevs_posterior=noise_stddevs_posterior,
         )
 
+    def split_linka_data(
+        inputs: DeformationInputs,
+        test_cases: TestCases,
+        outputs: StressOutputs,
+        noise_stddevs: Tensor,
+    ) -> SplittedData:
+        # Number of data points
+        num_points = len(inputs)
+
+        # Indices
+        num_data_sets = 11
+        num_points_per_dataset = 11
+        indices_prior_lists = [
+            [1 + i * num_points_per_dataset, 9 + i * num_points_per_dataset]
+            for i in range(num_data_sets)
+        ]
+        indices_prior = list(itertools.chain.from_iterable(indices_prior_lists))
+        indices_posterior = [i for i in range(num_points) if i not in indices_prior]
+
+        # Data splitting
+        inputs_prior = inputs[indices_prior, :]
+        inputs_posterior = inputs[indices_posterior, :]
+        test_cases_prior = test_cases[indices_prior]
+        test_cases_posterior = test_cases[indices_posterior]
+        outputs_prior = outputs[indices_prior, :]
+        outputs_posterior = outputs[indices_posterior, :]
+        noise_stddevs_prior = noise_stddevs[indices_prior]
+        noise_stddevs_posterior = noise_stddevs[indices_posterior]
+
+        validate_data(
+            inputs_prior, test_cases_prior, outputs_prior, noise_stddevs_prior
+        )
+        validate_data(
+            inputs_posterior,
+            test_cases_posterior,
+            outputs_posterior,
+            noise_stddevs_posterior,
+        )
+        return SplittedData(
+            inputs_prior=inputs_prior,
+            inputs_posterior=inputs_posterior,
+            test_cases_prior=test_cases_prior,
+            test_cases_posterior=test_cases_posterior,
+            outputs_prior=outputs_prior,
+            outputs_posterior=outputs_posterior,
+            noise_stddevs_prior=noise_stddevs_prior,
+            noise_stddevs_posterior=noise_stddevs_posterior,
+        )
+
     validate_data(inputs, test_cases, outputs, noise_stddevs)
     if data_set_label == data_set_label_treloar:
         return split_treloar_data(inputs, test_cases, outputs, noise_stddevs)
     elif data_set_label == data_set_label_kawabata:
         return split_kawabata_data(inputs, test_cases, outputs, noise_stddevs)
+    elif data_set_label == data_set_label_linka:
+        return split_linka_data(inputs, test_cases, outputs, noise_stddevs)
     else:
         raise DataError(
             f"No implementation for the requested data set {data_set_label}"
