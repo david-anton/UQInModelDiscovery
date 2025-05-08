@@ -113,9 +113,13 @@ output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
 
+def determine_number_of_model_parameters(model: ModelProtocol) -> int:
+    return model.num_parameters
+
+
 def determine_number_of_parameters(model: ModelProtocol) -> int:
     num_noise_parameters = 1
-    num_parameters = model.num_parameters
+    num_parameters = determine_number_of_model_parameters(model)
     if estimate_noise:
         num_parameters += num_noise_parameters
     return num_parameters
@@ -258,6 +262,7 @@ if retrain_normalizing_flow:
             output_directory, f"calibration_step_{step}"
         )
         num_parameters = determine_number_of_parameters(model)
+        num_model_parameters = determine_number_of_model_parameters(model)
         parameter_names = determine_parameter_names(model)
 
         def _create_likelihood() -> LikelihoodProtocol:
@@ -280,10 +285,10 @@ if retrain_normalizing_flow:
                 def init_fixed_prior() -> PriorProtocol:
                     return create_independent_multivariate_gamma_distributed_prior(
                         concentrations=torch.tensor(
-                            [0.1 for _ in range(num_parameters)], device=device
+                            [0.1 for _ in range(num_model_parameters)], device=device
                         ),
                         rates=torch.tensor(
-                            [0.1 for _ in range(num_parameters)], device=device
+                            [0.1 for _ in range(num_model_parameters)], device=device
                         ),
                         device=device,
                     )
