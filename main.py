@@ -60,7 +60,7 @@ from bayesianmdisc.statistics.utility import (
 )
 
 data_set_label = data_set_label_treloar
-use_gp_prior = False
+use_gp_prior = True
 retrain_normalizing_flow = True
 
 # Settings
@@ -99,7 +99,9 @@ trim_metric = "mae"
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_2_mae"
+output_directory = (
+    f"{current_date}_{input_directory}_threshold_2_mae_estimatederror_linearmean"
+)
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
