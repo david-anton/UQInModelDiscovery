@@ -21,7 +21,6 @@ from bayesianmdisc.data import (
     data_set_label_linka,
     data_set_label_treloar,
     determine_heteroscedastic_noise,
-    split_data,
     validate_data,
 )
 from bayesianmdisc.gppriors import infer_gp_induced_prior
@@ -29,7 +28,6 @@ from bayesianmdisc.gps import (
     GP,
     GaussianProcess,
     IndependentMultiOutputGP,
-    condition_gp,
     create_scaled_rbf_gaussian_process,
     optimize_gp_hyperparameters,
 )
@@ -61,8 +59,8 @@ from bayesianmdisc.statistics.utility import (
     determine_moments_of_multivariate_normal_distribution,
 )
 
-data_set_label = data_set_label_linka
-use_gp_prior = False  # True
+data_set_label = data_set_label_treloar
+use_gp_prior = True
 retrain_normalizing_flow = True
 
 # Settings
@@ -79,24 +77,19 @@ if data_set_label == data_set_label_treloar:
     data_reader: DataReaderProtocol = TreloarDataReader(
         input_directory, project_directory, device
     )
+    model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)
 elif data_set_label == data_set_label_kawabata:
     input_directory = data_set_label
     data_reader = KawabataDataReader(input_directory, project_directory, device)
+    model = IsotropicModelLibrary(output_dim=2, device=device)
 elif data_set_label == data_set_label_linka:
     input_directory = "heart_data_linka"
     data_reader = LinkaHeartDataReader(input_directory, project_directory, device)
-
-
-if data_set_label == data_set_label_treloar:
-    model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)
-elif data_set_label == data_set_label_kawabata:
-    model = IsotropicModelLibrary(output_dim=2, device=device)
-elif data_set_label == data_set_label_linka:
     model = OrthotropicCANN(device)
 
 prior_relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
-estimate_noise = False  # True
+estimate_noise = True
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
 list_relative_selection_thressholds = [2.0]
@@ -106,7 +99,9 @@ trim_metric = "mae"
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_2_mae"
+output_directory = (
+    f"{current_date}_{input_directory}_threshold_2_mae_estimatederror_linearmean"
+)
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
@@ -235,23 +230,6 @@ noise_stddevs = determine_heteroscedastic_noise(
 )
 validate_data(inputs, test_cases, outputs, noise_stddevs)
 
-if use_gp_prior:
-    splitted_data = split_data(
-        data_set_label, inputs, test_cases, outputs, noise_stddevs
-    )
-    inputs_prior = splitted_data.inputs_prior
-    inputs_posterior = splitted_data.inputs_posterior
-    test_cases_prior = splitted_data.test_cases_prior
-    test_cases_posterior = splitted_data.test_cases_posterior
-    outputs_prior = splitted_data.outputs_prior
-    outputs_posterior = splitted_data.outputs_posterior
-    noise_stddevs_prior = splitted_data.noise_stddevs_prior
-    noise_stddevs_posterior = splitted_data.noise_stddevs_posterior
-else:
-    inputs_posterior = inputs
-    test_cases_posterior = test_cases
-    outputs_posterior = outputs
-    noise_stddevs_posterior = noise_stddevs
 
 if retrain_normalizing_flow:
     for step in range(num_calibration_steps):
@@ -272,9 +250,9 @@ if retrain_normalizing_flow:
                 model=model,
                 relative_noise_stddev=relative_noise_stddevs,
                 min_noise_stddev=min_noise_stddev,
-                inputs=inputs_posterior,
-                test_cases=test_cases_posterior,
-                outputs=outputs_posterior,
+                inputs=inputs,
+                test_cases=test_cases,
+                outputs=outputs,
                 device=device,
             )
 
@@ -298,37 +276,26 @@ if retrain_normalizing_flow:
 
                         def create_single_output_gp() -> GP:
                             gaussian_process = create_scaled_rbf_gaussian_process(
-                                mean="zero",
+                                mean="linear",
                                 input_dim=input_dim,
                                 min_inputs=min_inputs,
                                 max_inputs=max_inputs,
                                 jitter=jitter,
                                 device=device,
                             )
+                            initial_parameters_mean = [10.0 for _ in range(input_dim)]
+                            initial_parameters_kernel = [1.0] + [
+                                0.1 for _ in range(input_dim)
+                            ]
                             initial_parameters = torch.tensor(
-                                [1.0] + [0.1 for _ in range(input_dim)], device=device
+                                initial_parameters_mean + initial_parameters_kernel,
+                                device=device,
                             )
                             gaussian_process.set_parameters(initial_parameters)
                             return gaussian_process
 
                         def create_multi_output_gp() -> IndependentMultiOutputGP:
-                            gaussian_processes = [
-                                create_scaled_rbf_gaussian_process(
-                                    mean="zero",
-                                    input_dim=input_dim,
-                                    min_inputs=min_inputs,
-                                    max_inputs=max_inputs,
-                                    jitter=jitter,
-                                    device=device,
-                                )
-                                for _ in range(output_dim)
-                            ]
-                            initial_parameters = torch.tensor(
-                                [1.0] + [0.1 for _ in range(input_dim)], device=device
-                            )
-
-                            for gaussian_process in gaussian_processes:
-                                gaussian_process.set_parameters(initial_parameters)
+                            gaussian_processes = [create_single_output_gp()]
 
                             return IndependentMultiOutputGP(
                                 gps=tuple(gaussian_processes), device=device
@@ -338,13 +305,6 @@ if retrain_normalizing_flow:
                             return create_single_output_gp()
                         else:
                             return create_multi_output_gp()
-
-                    def condition_gaussian_process(
-                        inputs: Tensor, outputs: Tensor, noise_stddevs: Tensor
-                    ) -> None:
-                        condition_gp(
-                            gaussian_process, inputs, outputs, noise_stddevs, device
-                        )
 
                     def determine_prior_moments(
                         samples: Tensor,
@@ -375,10 +335,6 @@ if retrain_normalizing_flow:
                         output_subdirectory=output_subdirectory,
                         project_directory=project_directory,
                         device=device,
-                    )
-
-                    condition_gaussian_process(
-                        inputs_prior, outputs_prior, noise_stddevs_prior
                     )
 
                     gp_prior = infer_gp_induced_prior(
