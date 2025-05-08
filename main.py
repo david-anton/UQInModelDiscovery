@@ -59,7 +59,7 @@ from bayesianmdisc.statistics.utility import (
     determine_moments_of_multivariate_normal_distribution,
 )
 
-data_set_label = data_set_label_treloar
+data_set_label = data_set_label_linka  # data_set_label_treloar
 use_gp_prior = True
 retrain_normalizing_flow = True
 
