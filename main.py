@@ -293,8 +293,9 @@ if retrain_normalizing_flow:
                             return gaussian_process
 
                         def create_multi_output_gp() -> IndependentMultiOutputGP:
-                            gaussian_processes = [create_single_output_gp()]
-
+                            gaussian_processes = [
+                                create_single_output_gp() for _ in range(output_dim)
+                            ]
                             return IndependentMultiOutputGP(
                                 gps=tuple(gaussian_processes), device=device
                             )
