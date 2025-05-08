@@ -59,7 +59,7 @@ from bayesianmdisc.statistics.utility import (
     determine_moments_of_multivariate_normal_distribution,
 )
 
-data_set_label = data_set_label_linka  # data_set_label_treloar
+data_set_label = data_set_label_treloar
 use_gp_prior = False
 retrain_normalizing_flow = True
 
@@ -89,7 +89,7 @@ elif data_set_label == data_set_label_linka:
 
 prior_relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
-estimate_noise = False
+estimate_noise = True
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
 list_relative_selection_thressholds = [2.0]
