@@ -550,7 +550,7 @@ def plot_stresses_kawabata(
                 model_stretches,
                 model_test_cases,
                 device,
-                stress_dim,
+                output_dim=stress_dim,
             )
             min_quantiles, max_quantiles = calculate_model_quantiles(
                 model,
@@ -558,7 +558,7 @@ def plot_stresses_kawabata(
                 model_stretches,
                 model_test_cases,
                 device,
-                stress_dim,
+                output_dim=stress_dim,
             )
             model_stretches_plot = model_stretches_2.reshape((-1,))
             means_plot = means.reshape((-1,))
@@ -610,13 +610,17 @@ def plot_stresses_kawabata(
             label="data",
         )
         model_mean = Line2D([], [], color=config.legend_color, label="mean")
-        model_stddevs = Patch(
+        model_credible_interval = Patch(
             facecolor=config.legend_color,
             alpha=config.model_credible_interval_alpha,
             label="95%-credible interval",
         )
         data_legend_handles, _ = axes.get_legend_handles_labels()
-        legend_handles = [data_point, model_mean, model_stddevs] + data_legend_handles
+        legend_handles = [
+            data_point,
+            model_mean,
+            model_credible_interval,
+        ] + data_legend_handles
         axes.legend(
             handles=legend_handles,
             fontsize=config.font_size,
@@ -745,26 +749,39 @@ def plot_stresses_linka(
     min_shear_strain = 0.0
     max_shear_strain = 0.5
     input_labels = [
-        r"\lambda" + " [-]",
-        r"$\gamma_{0}$".format("sf") + " [-]",
-        r"$\gamma_{0}$".format("nf") + " [-]",
-        r"$\gamma_{0}$".format("fs") + " [-]",
-        r"\lambda" + " [-]",
-        r"$\gamma_{0}$".format("ns") + " [-]",
-        r"$\gamma_{0}$".format("fn") + " [-]",
-        r"$\gamma_{0}$".format("sn") + " [-]",
-        r"\lambda" + " [-]",
+        r"$\gamma_{sf}$" + " [-]",
+        r"$\gamma_{nf}$" + " [-]",
+        r"$\gamma_{fs}$" + " [-]",
+        r"$\gamma_{ns}$" + " [-]",
+        r"$\gamma_{fn}$" + " [-]",
+        r"$\gamma_{sn}$" + " [-]",
+        r"$\lambda$" + " [-]",
+        r"$\lambda$" + " [-]",
+        r"$\lambda$" + " [-]",
+        r"$\lambda$" + " [-]",
+        r"$\lambda$" + " [-]",
     ]
     stress_labels = [
-        r"$\sigma_{0}$".format("ff") + "[kPa]",
-        r"$\sigma_{0}$".format("fs") + "[kPa]",
-        r"$\sigma_{0}$".format("fn") + "[kPa]",
-        r"$\sigma_{0}$".format("sf") + "[kPa]",
-        r"$\sigma_{0}$".format("ss") + "[kPa]",
-        r"$\sigma_{0}$".format("sn") + "[kPa]",
-        r"$\sigma_{0}$".format("nf") + "[kPa]",
-        r"$\sigma_{0}$".format("ns") + "[kPa]",
-        r"$\sigma_{0}$".format("nn") + "[kPa]",
+        r"$\sigma_{ff}$" + " [kPa]",
+        r"$\sigma_{fs}$" + " [kPa]",
+        r"$\sigma_{fn}$" + " [kPa]",
+        r"$\sigma_{sf}$" + " [kPa]",
+        r"$\sigma_{ss}$" + " [kPa]",
+        r"$\sigma_{sn}$" + " [kPa]",
+        r"$\sigma_{nf}$" + " [kPa]",
+        r"$\sigma_{ns}$" + " [kPa]",
+        r"$\sigma_{nn}$" + " [kPa]",
+    ]
+    stress_file_name_labels = [
+        "fiber",
+        "fs",
+        "fn",
+        "sf",
+        "sheet",
+        "sn",
+        "nf",
+        "ns",
+        "normal",
     ]
     stretch_ratios = [
         (1.0, 1.0),
@@ -835,6 +852,7 @@ def plot_stresses_linka(
 
     def plot_one_data_set(
         inputs: NPArray,
+        test_cases: NPArray,
         outputs: NPArray,
         stress_indices: list[int],
         data_set_index: int,
@@ -842,6 +860,7 @@ def plot_stresses_linka(
 
         def plot_one_stress(stress_index: int) -> None:
             is_principal_stress = stress_index in principal_stress_indices
+            stress_file_name_label = stress_file_name_labels[stress_index]
 
             figure, axes = plt.subplots()
 
@@ -849,17 +868,18 @@ def plot_stresses_linka(
                 min_input = min_principal_stretch
                 max_input = max_principal_stretch
                 test_case_identifier = test_case_identifier_biaxial_tension
-                index_stretch_ratios = data_set_index - num_data_sets_simple_shear
-                stretch_ratio = stretch_ratios[index_stretch_ratios]
+                principal_stretch_data_set_index = (
+                    data_set_index - num_data_sets_simple_shear
+                )
+                stretch_ratio = stretch_ratios[principal_stretch_data_set_index]
                 stretch_ratio_fiber = stretch_ratio[stretch_ratio_index_fiber]
                 stretch_ratio_normal = stretch_ratio[stretch_ratio_index_normal]
-                file_name = f"principalstress_ratio_fiber_normal_{stretch_ratio_fiber}_{stretch_ratio_normal}"
-
+                file_name = f"principalstress_{stress_file_name_label}_stretchratio_{stretch_ratio_fiber}_{stretch_ratio_normal}.pdf"
             else:
                 min_input = min_shear_strain
                 max_input = max_shear_strain
                 test_case_identifier = test_case_identifier_simple_shear
-                file_name = f"shearstress_"
+                file_name = f"shearstress_{stress_file_name_label}.pdf"
 
             # data points
             data_inputs_axis = np.linspace(
@@ -901,6 +921,9 @@ def plot_stresses_linka(
                 device,
                 output_dim=stress_index,
             )
+            means = means.reshape((-1,))
+            min_quantiles = min_quantiles.reshape((-1,))
+            max_quantiles = max_quantiles.reshape((-1,))
 
             axes.plot(
                 model_inputs_axis,
@@ -922,12 +945,12 @@ def plot_stresses_linka(
                 max_input,
                 num=config.num_x_tick_labels,
             )
-            x_tick_labels = [str(tick) for tick in x_ticks]
+            x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
             axes.set_xticks(x_ticks)
             axes.set_xticklabels(x_tick_labels)
 
             # axis labels
-            input_label = input_labels[stress_index]
+            input_label = input_labels[data_set_index]
             axes.set_xlabel(input_label, **config.font)
             stress_label = stress_labels[stress_index]
             axes.set_ylabel(stress_label, **config.font)
@@ -939,20 +962,31 @@ def plot_stresses_linka(
             )
 
             # legend
-            axes.legend(fontsize=config.font_size, loc="upper left")
+            model_credible_interval = Patch(
+                facecolor=config.model_color_credible_interval,
+                alpha=config.model_credible_interval_alpha,
+                label="95%-credible interval",
+            )
+            data_legend_handles, _ = axes.get_legend_handles_labels()
+            legend_handles = data_legend_handles + [model_credible_interval]
+            axes.legend(
+                handles=legend_handles,
+                fontsize=config.font_size,
+                loc="upper left",
+            )
 
             # text box ratios
             if is_principal_stress:
                 text = "\n".join(
                     (
-                        r"$\lambda_{f}=%.2f$" % (stretch_ratio_fiber,),
-                        r"$\lambda_{n}=%.2f$" % (stretch_ratio_normal,),
+                        r"$\lambda_{f}=%.2f \, \lambda$" % (stretch_ratio_fiber,),
+                        r"$\lambda_{n}=%.2f \, \lambda$" % (stretch_ratio_normal,),
                     )
                 )
                 text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
                 axes.text(
-                    0.45,
-                    0.95,
+                    0.55,
+                    0.96,
                     text,
                     transform=axes.transAxes,
                     fontsize=config.font_size,
@@ -997,8 +1031,8 @@ def plot_stresses_linka(
             )
             text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
             axes.text(
-                0.05,
-                0.65,
+                0.03,
+                0.7,
                 text,
                 transform=axes.transAxes,
                 fontsize=config.font_size,
@@ -1015,15 +1049,20 @@ def plot_stresses_linka(
         for stress_index in stress_indices:
             plot_one_stress(stress_index)
 
-    input_sets, _, output_sets = split_inputs_and_outputs(inputs, test_cases, outputs)
+    input_sets, test_case_sets, output_sets = split_inputs_and_outputs(
+        inputs, test_cases, outputs
+    )
 
-    for input_set, output_set, stress_indices, data_set_index in zip(
+    for input_set, test_case_set, output_set, stress_indices, data_set_index in zip(
         input_sets,
+        test_case_sets,
         output_sets,
         stress_indices_list,
         range(num_data_sets),
     ):
-        plot_one_data_set(input_set, output_set, stress_indices, data_set_index)
+        plot_one_data_set(
+            input_set, test_case_set, output_set, stress_indices, data_set_index
+        )
 
 
 def calculate_model_predictions(

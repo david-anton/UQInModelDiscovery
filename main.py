@@ -106,9 +106,7 @@ trim_metric = "mae"
 num_samples_posterior = 4096
 
 
-output_directory = (
-    f"{current_date}_{input_directory}_threshold_2_mae_estimatednoise_inversegamma"
-)
+output_directory = f"{current_date}_{input_directory}_threshold_2_mae_estimatednoise"
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
