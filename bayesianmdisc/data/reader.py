@@ -265,11 +265,11 @@ class KawabataDataReader:
 class LinkaHeartDataReader:
     def __init__(
         self,
-        consider_shear_data: bool,
-        consider_extension_data: bool,
         input_directory: str,
         project_directory: ProjectDirectory,
         device: Device,
+        consider_shear_data: bool = True,
+        consider_extension_data: bool = True,
     ):
         self._validate_data_configuration(consider_shear_data, consider_extension_data)
         self._consider_shear_data = consider_shear_data
@@ -287,9 +287,9 @@ class LinkaHeartDataReader:
         self._data_frame = self._init_data_frame()
 
     def read(self) -> Data:
-        all_stretches = []
+        all_deformation_gradients = []
         all_test_cases = []
-        all_stresses = []
+        all_stresse_tensors = []
 
         if self._consider_shear_data:
             column = self._start_column_shear
@@ -297,106 +297,108 @@ class LinkaHeartDataReader:
             stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
                 column, component
             )
-            all_stretches.append(stretches_column)
+            all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
-            all_stresses.append(stresses_column)
+            all_stresse_tensors.append(stresses_column)
 
-            column = self._start_column_shear + 2
+            column = column + 2
             component = (0, 2)
             stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
                 column, component
             )
-            all_stretches.append(stretches_column)
+            all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
-            all_stresses.append(stresses_column)
+            all_stresse_tensors.append(stresses_column)
 
-            column = self._start_column_shear + 3
+            column = column + 3
             component = (1, 0)
             stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
                 column, component
             )
-            all_stretches.append(stretches_column)
+            all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
-            all_stresses.append(stresses_column)
+            all_stresse_tensors.append(stresses_column)
 
-            column = self._start_column_shear + 2
+            column = column + 2
             component = (1, 2)
             stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
                 column, component
             )
-            all_stretches.append(stretches_column)
+            all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
-            all_stresses.append(stresses_column)
+            all_stresse_tensors.append(stresses_column)
 
-            column = self._start_column_shear + 3
+            column = column + 3
             component = (2, 0)
             stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
                 column, component
             )
-            all_stretches.append(stretches_column)
+            all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
-            all_stresses.append(stresses_column)
+            all_stresse_tensors.append(stresses_column)
 
-            column = self._start_column_shear + 2
+            column = column + 2
             component = (2, 1)
             stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
                 column, component
             )
-            all_stretches.append(stretches_column)
+            all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
-            all_stresses.append(stresses_column)
+            all_stresse_tensors.append(stresses_column)
 
         if self._consider_biaxial_data:
             column = self._start_column_biaxial
             stretches_column, test_cases_colum, stresses_column = (
                 self._read_biaxial_data(column)
             )
-            all_stretches.append(stretches_column)
+            all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
-            all_stresses.append(stresses_column)
+            all_stresse_tensors.append(stresses_column)
 
             column = column + 5
             stretches_column, test_cases_colum, stresses_column = (
                 self._read_biaxial_data(column)
             )
-            all_stretches.append(stretches_column)
+            all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
-            all_stresses.append(stresses_column)
+            all_stresse_tensors.append(stresses_column)
 
             column = column + 5
             stretches_column, test_cases_colum, stresses_column = (
                 self._read_biaxial_data(column)
             )
-            all_stretches.append(stretches_column)
+            all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
-            all_stresses.append(stresses_column)
+            all_stresse_tensors.append(stresses_column)
 
             column = column + 5
             stretches_column, test_cases_colum, stresses_column = (
                 self._read_biaxial_data(column)
             )
-            all_stretches.append(stretches_column)
+            all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
-            all_stresses.append(stresses_column)
+            all_stresse_tensors.append(stresses_column)
 
             column = column + 5
             stretches_column, test_cases_colum, stresses_column = (
                 self._read_biaxial_data(column)
             )
-            all_stretches.append(stretches_column)
+            all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
-            all_stresses.append(stresses_column)
+            all_stresse_tensors.append(stresses_column)
 
-            stretches = stack_arrays(all_stretches)
-            test_cases = stack_arrays(all_test_cases)
-            test_cases = test_cases.reshape((-1,))
-            stresses = stack_arrays(all_stresses)
+        deformation_gradients = stack_arrays(all_deformation_gradients)
+        test_cases = stack_arrays(all_test_cases)
+        test_cases = test_cases.reshape((-1,))
+        stress_tensors = stack_arrays(all_stresse_tensors)
 
-        stretches_torch = convert_to_torch(stretches, self._device)
+        deformation_gradients_torch = convert_to_torch(
+            deformation_gradients, self._device
+        )
         test_cases_torch = convert_to_torch(test_cases, self._device)
-        stresses_torch = convert_to_torch(stresses, self._device)
+        stresse_tensors_torch = convert_to_torch(stress_tensors, self._device)
 
-        return stretches_torch, test_cases_torch, stresses_torch
+        return deformation_gradients_torch, test_cases_torch, stresse_tensors_torch
 
     def _validate_data_configuration(
         self, consider_shear_data: bool, consider_biaxial_data: bool
