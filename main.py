@@ -96,7 +96,7 @@ elif data_set_label == data_set_label_linka:
 
 prior_relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
-estimate_noise = True
+estimate_noise = False  # True
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
 list_relative_selection_thressholds = [2.0]
@@ -106,7 +106,7 @@ trim_metric = "mae"
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_2_mae_estimatednoise"
+output_directory = f"{current_date}_{input_directory}_threshold_2_mae"
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
