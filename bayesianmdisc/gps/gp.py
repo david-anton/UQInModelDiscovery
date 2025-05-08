@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, cast
 
 import gpytorch
 import torch
@@ -15,7 +15,7 @@ from bayesianmdisc.gps.base import (
     validate_training_data,
 )
 from bayesianmdisc.gps.kernels import Kernel, ScaledMaternKernel, ScaledRBFKernel
-from bayesianmdisc.gps.means import ZeroMean
+from bayesianmdisc.gps.means import ZeroMean, NonZeroMean, LinearMean
 from bayesianmdisc.gps.normalizers import InputNormalizer
 from bayesianmdisc.gps.utility import validate_parameters_size
 
@@ -23,7 +23,7 @@ from bayesianmdisc.gps.utility import validate_parameters_size
 class GP(gpytorch.models.ExactGP):
     def __init__(
         self,
-        mean: ZeroMean,
+        mean: ZeroMean | NonZeroMean,
         kernel: Kernel,
         input_normalizer: InputNormalizer,
         device: Device,
@@ -37,6 +37,7 @@ class GP(gpytorch.models.ExactGP):
         super().__init__(inputs, targets, likelihood)
         self._mean = mean
         self._kernel = kernel
+        self._is_zero_mean = isinstance(self._mean, ZeroMean)
         self._input_normalizer = input_normalizer
         self.num_gps = 1
         self.num_hyperparameters = mean.num_hyperparameters + kernel.num_hyperparameters
@@ -63,10 +64,22 @@ class GP(gpytorch.models.ExactGP):
 
     def set_parameters(self, parameters: Tensor) -> None:
         validate_parameters_size(parameters, self.num_hyperparameters)
-        self._kernel.set_parameters(parameters)
+        if self._is_zero_mean:
+            self._kernel.set_parameters(parameters)
+        else:
+            self._mean = cast(NonZeroMean, self._mean)
+            num_parameters_mean = self._mean.num_hyperparameters
+            self._mean.set_parameters(parameters[:num_parameters_mean])
+            self._kernel.set_parameters(parameters[num_parameters_mean:])
 
     def get_named_parameters(self) -> NamedParameters:
-        return self._kernel.get_named_parameters()
+        parameters_kernel = self._kernel.get_named_parameters()
+        if self._is_zero_mean:
+            return parameters_kernel
+        else:
+            self._mean = cast(NonZeroMean, self._mean)
+            parameters_mean = self._mean.get_named_parameters()
+            return parameters_mean | parameters_kernel
 
     # @override
     def set_train_data(
@@ -159,7 +172,7 @@ class GP(gpytorch.models.ExactGP):
 
 def create_scaled_rbf_gaussian_process(
     mean: str,
-    input_dims: int,
+    input_dim: int,
     min_inputs: Tensor,
     max_inputs: Tensor,
     device: Device,
@@ -167,8 +180,8 @@ def create_scaled_rbf_gaussian_process(
     train_x: TrainingDataTuple = (None,),
     train_y: TrainingDataTuple = (None,),
 ) -> GP:
-    mean_module = _create_mean(mean, device)
-    kernel_module = ScaledRBFKernel(input_dims, jitter, device).to(device)
+    mean_module = _create_mean(mean, input_dim, device)
+    kernel_module = ScaledRBFKernel(input_dim, jitter, device).to(device)
     input_normalizer = _create_input_normalizer(min_inputs, max_inputs, device)
     return GP(
         mean=mean_module,
@@ -183,7 +196,7 @@ def create_scaled_rbf_gaussian_process(
 def create_scaled_matern_gaussian_process(
     mean: str,
     smoothness_parameter: float,
-    input_dims: int,
+    input_dim: int,
     min_inputs: Tensor,
     max_inputs: Tensor,
     device: Device,
@@ -191,9 +204,9 @@ def create_scaled_matern_gaussian_process(
     train_x: TrainingDataTuple = (None,),
     train_y: TrainingDataTuple = (None,),
 ) -> GP:
-    mean_module = _create_mean(mean, device)
+    mean_module = _create_mean(mean, input_dim, device)
     kernel_module = ScaledMaternKernel(
-        smoothness_parameter, input_dims, jitter, device
+        smoothness_parameter, input_dim, jitter, device
     ).to(device)
     input_normalizer = _create_input_normalizer(min_inputs, max_inputs, device)
     return GP(
@@ -212,9 +225,11 @@ def _create_input_normalizer(
     return InputNormalizer(min_inputs, max_inputs, device).to(device)
 
 
-def _create_mean(mean: str, device: Device) -> ZeroMean:
+def _create_mean(mean: str, input_dim: int, device: Device) -> ZeroMean | NonZeroMean:
     if mean == "zero":
         return ZeroMean(device).to(device)
+    elif mean == "linear":
+        return LinearMean(input_dim, device).to(device)
     else:
         raise GPError(
             f"""There is no implementation for the requested 

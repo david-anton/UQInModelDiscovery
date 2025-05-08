@@ -299,7 +299,7 @@ if retrain_normalizing_flow:
                         def create_single_output_gp() -> GP:
                             gaussian_process = create_scaled_rbf_gaussian_process(
                                 mean="zero",
-                                input_dims=input_dim,
+                                input_dim=input_dim,
                                 min_inputs=min_inputs,
                                 max_inputs=max_inputs,
                                 jitter=jitter,
@@ -315,7 +315,7 @@ if retrain_normalizing_flow:
                             gaussian_processes = [
                                 create_scaled_rbf_gaussian_process(
                                     mean="zero",
-                                    input_dims=input_dim,
+                                    input_dim=input_dim,
                                     min_inputs=min_inputs,
                                     max_inputs=max_inputs,
                                     jitter=jitter,
