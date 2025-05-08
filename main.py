@@ -61,8 +61,8 @@ from bayesianmdisc.statistics.utility import (
     determine_moments_of_multivariate_normal_distribution,
 )
 
-data_set_label = data_set_label_treloar
-use_gp_prior = True
+data_set_label = data_set_label_linka
+use_gp_prior = False  # True
 retrain_normalizing_flow = True
 
 # Settings
@@ -94,7 +94,7 @@ elif data_set_label == data_set_label_kawabata:
 elif data_set_label == data_set_label_linka:
     model = OrthotropicCANN(device)
 
-prior_relative_noise_stddevs = 5e-2  # 1e-1
+prior_relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
 estimate_noise = True
 num_calibration_steps = 2
@@ -283,7 +283,7 @@ if retrain_normalizing_flow:
                             [0.1 for _ in range(num_parameters)], device=device
                         ),
                         rates=torch.tensor(
-                            [10.0 for _ in range(num_parameters)], device=device
+                            [0.1 for _ in range(num_parameters)], device=device
                         ),
                         device=device,
                     )
