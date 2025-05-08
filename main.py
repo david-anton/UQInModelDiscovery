@@ -60,7 +60,7 @@ from bayesianmdisc.statistics.utility import (
 )
 
 data_set_label = data_set_label_linka  # data_set_label_treloar
-use_gp_prior = True
+use_gp_prior = False
 retrain_normalizing_flow = True
 
 # Settings
@@ -99,7 +99,7 @@ trim_metric = "mae"
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_2_mae_linearmean"
+output_directory = f"{current_date}_{input_directory}_threshold_2_mae"
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
@@ -259,7 +259,7 @@ if retrain_normalizing_flow:
                 def init_fixed_prior() -> PriorProtocol:
                     return create_independent_multivariate_gamma_distributed_prior(
                         concentrations=torch.tensor(
-                            [0.1 for _ in range(num_model_parameters)], device=device
+                            [0.5 for _ in range(num_model_parameters)], device=device
                         ),
                         rates=torch.tensor(
                             [0.1 for _ in range(num_model_parameters)], device=device
