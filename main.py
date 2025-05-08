@@ -377,7 +377,7 @@ if retrain_normalizing_flow:
 
             def _init_relative_noise_stddev_prior() -> PriorProtocol:
                 return create_univariate_inverse_gamma_distributed_prior(
-                    concentration=1.0,
+                    concentration=2.0,
                     rate=0.1,
                     device=device,
                 )
