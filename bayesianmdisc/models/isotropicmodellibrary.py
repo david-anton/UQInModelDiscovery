@@ -403,7 +403,7 @@ class IsotropicModelLibrary:
         row_1 = torch.concat((self._unsqueeze_zero_dimension(F_11), zero, zero))
         row_2 = torch.concat((zero, self._unsqueeze_zero_dimension(F_22), zero))
         row_3 = torch.concat((zero, zero, self._unsqueeze_zero_dimension(F_33)))
-        return torch.stack((row_1, row_2, row_3))
+        return torch.stack((row_1, row_2, row_3), dim=0)
 
     def _calculate_strain_energy(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
