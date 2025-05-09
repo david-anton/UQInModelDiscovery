@@ -140,16 +140,12 @@ def reduce_to_model_posterior(
 
 def plot_stresses(
     model: ModelProtocol,
-    model_posterior_samples: NPArray,
-    is_model_trimmed: bool,
+    model_parameter_samples: NPArray,
+    subdirectory_name: str,
     output_directory: str,
 ) -> None:
 
     def join_output_subdirectory() -> str:
-        if is_model_trimmed:
-            subdirectory_name = "trimmed_model"
-        else:
-            subdirectory_name = "untrimmed_model"
         return os.path.join(output_directory, subdirectory_name)
 
     output_subdirectory = join_output_subdirectory()
@@ -157,7 +153,7 @@ def plot_stresses(
     def plot_treloar() -> None:
         plot_stresses_treloar(
             model=cast(IsotropicModelLibrary, model),
-            parameter_samples=model_posterior_samples,
+            parameter_samples=model_parameter_samples,
             inputs=inputs.detach().cpu().numpy(),
             outputs=outputs.detach().cpu().numpy(),
             test_cases=test_cases.detach().cpu().numpy(),
@@ -177,7 +173,7 @@ def plot_stresses(
 
             plot_stresses_kawabata(
                 model=isotropic_model,
-                parameter_samples=model_posterior_samples,
+                parameter_samples=model_parameter_samples,
                 inputs=inputs.detach().cpu().numpy(),
                 outputs=outputs.detach().cpu().numpy(),
                 test_cases=test_cases.detach().cpu().numpy(),
@@ -193,7 +189,7 @@ def plot_stresses(
     def plot_kawabata() -> None:
         plot_stresses_kawabata(
             model=cast(IsotropicModelLibrary, model),
-            parameter_samples=model_posterior_samples,
+            parameter_samples=model_parameter_samples,
             inputs=inputs.detach().cpu().numpy(),
             outputs=outputs.detach().cpu().numpy(),
             test_cases=test_cases.detach().cpu().numpy(),
@@ -205,7 +201,7 @@ def plot_stresses(
     def plot_linka() -> None:
         plot_stresses_linka(
             model=cast(OrthotropicCANN, model),
-            parameter_samples=model_posterior_samples,
+            parameter_samples=model_parameter_samples,
             inputs=inputs.detach().cpu().numpy(),
             outputs=outputs.detach().cpu().numpy(),
             test_cases=test_cases.detach().cpu().numpy(),
@@ -383,6 +379,13 @@ if retrain_normalizing_flow:
                 )
 
             prior_parameters = _determine_parameter_prior()
+            model_prior_samples = prior_parameters.sample(num_samples_posterior)
+            plot_stresses(
+                model=model,
+                model_parameter_samples=model_prior_samples.detach().cpu().numpy(),
+                subdirectory_name="prior_model",
+                output_directory=output_directory_step,
+            )
             if estimate_noise:
                 prior_relative_noise_stddev = _init_relative_noise_stddev_prior()
                 return multiply_priors([prior_relative_noise_stddev, prior_parameters])
@@ -427,8 +430,8 @@ if retrain_normalizing_flow:
         )
         plot_stresses(
             model=model,
-            model_posterior_samples=model_posterior_samples,
-            is_model_trimmed=False,
+            model_parameter_samples=model_posterior_samples,
+            subdirectory_name="posterior_model",
             output_directory=output_directory_step,
         )
 
@@ -448,8 +451,8 @@ if retrain_normalizing_flow:
             )
             plot_stresses(
                 model=model,
-                model_posterior_samples=model_posterior_samples,
-                is_model_trimmed=True,
+                model_parameter_samples=model_posterior_samples,
+                subdirectory_name="posterior_model_trimmed",
                 output_directory=output_directory_step,
             )
             model.reduce_to_activated_parameters()
@@ -505,8 +508,8 @@ else:
         )
         plot_stresses(
             model=model,
-            model_posterior_samples=model_posterior_samples,
-            is_model_trimmed=False,
+            model_parameter_samples=model_posterior_samples,
+            subdirectory_name="posterior_model",
             output_directory=output_directory_step,
         )
 
@@ -526,7 +529,7 @@ else:
             )
             plot_stresses(
                 model=model,
-                model_posterior_samples=model_posterior_samples,
-                is_model_trimmed=True,
+                model_parameter_samples=model_posterior_samples,
+                subdirectory_name="posterior_model_trimmed",
                 output_directory=output_directory_step,
             )
