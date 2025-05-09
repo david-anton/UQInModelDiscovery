@@ -269,22 +269,40 @@ if retrain_normalizing_flow:
                         jitter = 1e-7
 
                         def create_single_output_gp() -> GP:
+                            gp_mean = "zero"
                             gaussian_process = create_scaled_rbf_gaussian_process(
-                                mean="zero",
+                                mean=gp_mean,
                                 input_dim=input_dim,
                                 min_inputs=min_inputs,
                                 max_inputs=max_inputs,
                                 jitter=jitter,
                                 device=device,
                             )
-                            initial_parameters_mean = [10.0 for _ in range(input_dim)]
-                            initial_parameters_kernel = [1.0] + [
+                            initial_parameters_output_scale = [1.0]
+                            initial_parameters_length_scale = [
                                 0.1 for _ in range(input_dim)
                             ]
-                            initial_parameters = torch.tensor(
-                                initial_parameters_mean + initial_parameters_kernel,
-                                device=device,
+                            initial_parameters_kernel = (
+                                initial_parameters_output_scale
+                                + initial_parameters_length_scale
                             )
+
+                            if gp_mean == "linear":
+                                initial_parameters_weights = [
+                                    1.0 for _ in range(input_dim)
+                                ]
+                                initial_parameters_bias = [0.0]
+                                initial_parameters_mean = (
+                                    initial_parameters_weights + initial_parameters_bias
+                                )
+                                initial_parameters = torch.tensor(
+                                    initial_parameters_mean + initial_parameters_kernel,
+                                    device=device,
+                                )
+                            else:
+                                initial_parameters = torch.tensor(
+                                    initial_parameters_kernel, device=device
+                                )
                             gaussian_process.set_parameters(initial_parameters)
                             return gaussian_process
 
