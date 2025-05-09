@@ -24,7 +24,7 @@ class LinearMean(NonZeroMean):
     def set_parameters(self, parameters: Tensor) -> None:
         validate_parameters_size(parameters, self.num_hyperparameters)
         weights = parameters[: self._num_weights].clone().reshape((-1, 1))
-        bias = parameters[-1].clone().reshape((1, 1))
+        bias = parameters[-1].clone()
         self._mean.weights = torch.nn.Parameter(weights).to(self._device)
         self._mean.bias = torch.nn.Parameter(bias).to(self._device)
 
