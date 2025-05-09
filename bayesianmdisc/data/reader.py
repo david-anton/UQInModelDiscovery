@@ -17,6 +17,7 @@ from bayesianmdisc.data.testcases import (
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_pure_shear,
     test_case_identifier_uniaxial_tension,
+    test_case_identifier_simple_shear,
 )
 from bayesianmdisc.errors import DataError
 from bayesianmdisc.io import ProjectDirectory
@@ -284,6 +285,7 @@ class LinkaHeartDataReader:
         self._start_column_biaxial = 15
         self._np_data_type = numpy_data_type
         self._test_case_identifier_bt = test_case_identifier_biaxial_tension
+        self._test_case_identifier_ss = test_case_identifier_simple_shear
         self._data_frame = self._init_data_frame()
 
     def read(self) -> Data:
@@ -417,8 +419,9 @@ class LinkaHeartDataReader:
         return pd.read_excel(input_path, sheet_name=self._excel_sheet_name)
 
     def _read_shear_data(
-        self, start_column: int, component: Component
+        self, start_column: int, stress_component: Component
     ) -> tuple[NPArray, NPArray, NPArray]:
+        symmetric_stress_component = tuple(reversed(stress_component))
         deformation_gradients: NPArrayList = []
         stress_tensors: NPArrayList = []
         shear_strains = self._read_column(start_column)
@@ -430,19 +433,18 @@ class LinkaHeartDataReader:
             deformation_gradient[0, 0] = stretches
             deformation_gradient[1, 1] = stretches
             deformation_gradient[2, 2] = stretches
-            deformation_gradient[component] = shear_strain
+            deformation_gradient[symmetric_stress_component] = shear_strain
             deformation_gradients += [deformation_gradient]
             stress_tensor = np.zeros((3, 3), dtype=self._np_data_type)
-            stress_tensor[component] = shear_stress
-            symmetric_component = tuple(reversed(component))
-            stress_tensor[symmetric_component] = shear_stress
+            stress_tensor[stress_component] = shear_stress
+            stress_tensor[symmetric_stress_component] = shear_stress
             stress_tensors += [stress_tensor]
 
         flattened_deformation_gradients = flatten_and_stack_arrays(
             deformation_gradients
         )
         test_cases = assemble_test_case_identifiers(
-            self._test_case_identifier_bt, flattened_deformation_gradients
+            self._test_case_identifier_ss, flattened_deformation_gradients
         )
         flattened_stress_tensors = flatten_and_stack_arrays(stress_tensors)
         return flattened_deformation_gradients, test_cases, flattened_stress_tensors
