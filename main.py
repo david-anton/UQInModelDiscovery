@@ -101,9 +101,7 @@ trim_metric = "mae"
 num_samples_posterior = 4096
 
 
-output_directory = (
-    f"{current_date}_{input_directory}_threshold_2_mae_zeromean_conditioned"
-)
+output_directory = f"{current_date}_{input_directory}_threshold_2_mae_zeromean_conditioned_nfprior_trainablebase"
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
@@ -378,7 +376,7 @@ if retrain_normalizing_flow:
                     gp_prior = infer_gp_induced_prior(
                         gp=gaussian_process,
                         model=model,
-                        prior_type="inverse Gamma",
+                        prior_type="normalizing flow",
                         is_mean_trainable=True,
                         inputs=inputs,
                         test_cases=test_cases,
@@ -387,7 +385,7 @@ if retrain_normalizing_flow:
                         num_iters_wasserstein=list_num_wasserstein_iterations[step],
                         hiden_layer_size_lipschitz_nn=256,
                         num_iters_lipschitz=5,
-                        lipschitz_func_pretraining=True,
+                        lipschitz_func_pretraining=False,
                         output_subdirectory=output_subdirectory,
                         project_directory=project_directory,
                         device=device,
