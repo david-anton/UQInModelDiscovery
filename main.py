@@ -99,7 +99,7 @@ trim_metric = "mae"
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_2_mae_linearmean"
+output_directory = f"{current_date}_{input_directory}_threshold_2_mae_zeromean"
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
@@ -270,7 +270,7 @@ if retrain_normalizing_flow:
 
                         def create_single_output_gp() -> GP:
                             gaussian_process = create_scaled_rbf_gaussian_process(
-                                mean="linear",
+                                mean="zero",
                                 input_dim=input_dim,
                                 min_inputs=min_inputs,
                                 max_inputs=max_inputs,
