@@ -8,6 +8,7 @@ from bayesianmdisc.bayes.likelihood import LikelihoodProtocol, create_likelihood
 from bayesianmdisc.bayes.prior import (
     PriorProtocol,
     create_independent_multivariate_gamma_distributed_prior,
+    create_independent_multivariate_inverse_gamma_distributed_prior,
     create_univariate_inverse_gamma_distributed_prior,
     multiply_priors,
 )
@@ -30,6 +31,7 @@ from bayesianmdisc.gps import (
     IndependentMultiOutputGP,
     create_scaled_rbf_gaussian_process,
     optimize_gp_hyperparameters,
+    condition_gp,
 )
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import (
@@ -59,7 +61,7 @@ from bayesianmdisc.statistics.utility import (
     determine_moments_of_multivariate_normal_distribution,
 )
 
-data_set_label = data_set_label_linka
+data_set_label = data_set_label_treloar
 use_gp_prior = True
 retrain_normalizing_flow = True
 
@@ -99,7 +101,9 @@ trim_metric = "mae"
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_2_mae_linearmean"
+output_directory = (
+    f"{current_date}_{input_directory}_threshold_2_mae_zeromean_conditioned"
+)
 output_subdirectory_name_prior = "prior"
 output_subdirectory_name_posterior = "posterior"
 
@@ -253,14 +257,27 @@ if retrain_normalizing_flow:
         def _determine_prior() -> PriorProtocol:
             def _determine_parameter_prior() -> PriorProtocol:
                 def init_fixed_prior() -> PriorProtocol:
-                    return create_independent_multivariate_gamma_distributed_prior(
-                        concentrations=torch.tensor(
-                            [0.5 for _ in range(num_model_parameters)], device=device
-                        ),
-                        rates=torch.tensor(
-                            [0.1 for _ in range(num_model_parameters)], device=device
-                        ),
-                        device=device,
+                    if (
+                        data_set_label == data_set_label_treloar
+                        or data_set_label == data_set_label_kawabata
+                    ):
+                        concentrations = 100.0
+                        rates = 0.01
+                    else:
+                        concentrations = 0.1
+                        rates = 0.1
+                    return (
+                        create_independent_multivariate_inverse_gamma_distributed_prior(
+                            concentrations=torch.tensor(
+                                [concentrations for _ in range(num_model_parameters)],
+                                device=device,
+                            ),
+                            rates=torch.tensor(
+                                [rates for _ in range(num_model_parameters)],
+                                device=device,
+                            ),
+                            device=device,
+                        )
                     )
 
                 def fit_gp_prior() -> PriorProtocol:
@@ -269,7 +286,7 @@ if retrain_normalizing_flow:
                         jitter = 1e-7
 
                         def create_single_output_gp() -> GP:
-                            gp_mean = "linear"
+                            gp_mean = "zero"
                             gaussian_process = create_scaled_rbf_gaussian_process(
                                 mean=gp_mean,
                                 input_dim=input_dim,
@@ -347,6 +364,14 @@ if retrain_normalizing_flow:
                         learning_rate=1e-3,
                         output_subdirectory=output_subdirectory,
                         project_directory=project_directory,
+                        device=device,
+                    )
+
+                    condition_gp(
+                        gaussian_process=gaussian_process,
+                        inputs=inputs,
+                        outputs=outputs,
+                        noise_stddevs=noise_stddevs,
                         device=device,
                     )
 
