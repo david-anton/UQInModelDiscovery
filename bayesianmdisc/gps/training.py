@@ -149,7 +149,7 @@ def _set_noise_standard_deviations(
         _validate_heteroscedastic_noise_standard_deviations(
             noise_stddevs, gaussian_process
         )
-        _set_heteroscedastic_noise_dtandard_deviations(
+        _set_heteroscedastic_noise_standard_deviations(
             noise_stddevs,
             gaussian_process,
             is_noise_standard_deviation_trainable,
@@ -186,7 +186,7 @@ def _validate_heteroscedastic_noise_standard_deviations(
         )
 
 
-def _set_heteroscedastic_noise_dtandard_deviations(
+def _set_heteroscedastic_noise_standard_deviations(
     noise_standard_deviations: Tensor,
     gaussian_process: GaussianProcess,
     is_noise_trainable: bool,
