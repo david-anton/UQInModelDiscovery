@@ -4,15 +4,11 @@ from typing import cast
 
 import torch
 
-from bayesianmdisc.bayes.likelihood import LikelihoodProtocol, create_likelihood
-from bayesianmdisc.bayes.prior import (
-    PriorProtocol,
-    create_independent_multivariate_gamma_distributed_prior,
-    create_independent_multivariate_inverse_gamma_distributed_prior,
-    create_univariate_inverse_gamma_distributed_prior,
-    multiply_priors,
+from bayesianmdisc.bayes.distributions import (
+    DistributionProtocol,
+    sample_and_analyse_distribution,
 )
-from bayesianmdisc.customtypes import NPArray, Tensor
+from bayesianmdisc.customtypes import NPArray
 from bayesianmdisc.data import (
     DataReaderProtocol,
     KawabataDataReader,
@@ -24,31 +20,23 @@ from bayesianmdisc.data import (
     determine_heteroscedastic_noise,
     validate_data,
 )
-from bayesianmdisc.gppriors import infer_gp_induced_prior
 from bayesianmdisc.gps import (
     GP,
     GaussianProcess,
     IndependentMultiOutputGP,
+    condition_gp,
     create_scaled_rbf_gaussian_process,
     optimize_gp_hyperparameters,
-    condition_gp,
 )
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import (
     IsotropicModelLibrary,
     ModelProtocol,
     OrthotropicCANN,
-    load_model_state,
     save_model_state,
-    trim_model,
+    select_model,
 )
-from bayesianmdisc.normalizingflows import (
-    FitNormalizingFlowConfig,
-    LoadNormalizingFlowConfig,
-    fit_normalizing_flow,
-    load_normalizing_flow,
-    sample_from_normalizing_flow,
-)
+from bayesianmdisc.parameterextraction import extract_gp_inducing_parameter_distribution
 from bayesianmdisc.postprocessing.plot import (
     plot_histograms,
     plot_stresses_kawabata,
@@ -56,14 +44,9 @@ from bayesianmdisc.postprocessing.plot import (
     plot_stresses_treloar,
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
-from bayesianmdisc.statistics.utility import (
-    MomentsMultivariateNormal,
-    determine_moments_of_multivariate_normal_distribution,
-)
 
 data_set_label = data_set_label_treloar
-use_gp_prior = True
-retrain_normalizing_flow = True
+retrain_posterior = True
 
 # Settings
 settings = Settings()
@@ -89,57 +72,18 @@ elif data_set_label == data_set_label_linka:
     data_reader = LinkaHeartDataReader(input_directory, project_directory, device)
     model = OrthotropicCANN(device)
 
-prior_relative_noise_stddevs = 5e-2
+relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
-estimate_noise = False  # True
 num_calibration_steps = 2
-list_num_wasserstein_iterations = [20_000, 10_000]
+list_num_wasserstein_iterations = [20_000, 20_000]
+selection_metric = "mae"
 list_relative_selection_thressholds = [2.0]
-num_flows = 16
-relative_width_flow_layers = 4
-trim_metric = "mae"
 num_samples_posterior = 4096
 
 
-output_directory = (
-    f"{current_date}_{input_directory}_threshold_2_mae_zeromean_conditioned_nfprior"
-)
-output_subdirectory_name_prior = "prior"
+output_directory = f"{current_date}_{input_directory}_threshold_2_mae"
 output_subdirectory_name_posterior = "posterior"
-
-
-def determine_number_of_model_parameters(model: ModelProtocol) -> int:
-    return model.num_parameters
-
-
-def determine_number_of_parameters(model: ModelProtocol) -> int:
-    num_noise_parameters = 1
-    num_parameters = determine_number_of_model_parameters(model)
-    if estimate_noise:
-        num_parameters += num_noise_parameters
-    return num_parameters
-
-
-def determine_parameter_names(model: ModelProtocol) -> tuple[str, ...]:
-    noise_parameter_name = ("rel. noise standard deviation",)
-    parameter_names = model.parameter_names
-    if estimate_noise:
-        parameter_names = noise_parameter_name + parameter_names
-    return parameter_names
-
-
-def reduce_to_model_posterior(
-    posterior_moments: MomentsMultivariateNormal, posterior_samples: NPArray
-) -> tuple[MomentsMultivariateNormal, NPArray]:
-    if estimate_noise:
-        model_posterior_samples = posterior_samples[:, 1:]
-        model_posterior_moments = determine_moments_of_multivariate_normal_distribution(
-            model_posterior_samples
-        )
-    else:
-        model_posterior_moments = posterior_moments
-        model_posterior_samples = posterior_samples
-    return model_posterior_moments, model_posterior_samples
+output_subdirectory_name_prior = "prior"
 
 
 def plot_stresses(
@@ -224,266 +168,152 @@ def plot_stresses(
 
 inputs, test_cases, outputs = data_reader.read()
 noise_stddevs = determine_heteroscedastic_noise(
-    prior_relative_noise_stddevs, min_noise_stddev, outputs
+    relative_noise_stddevs, min_noise_stddev, outputs
 )
 validate_data(inputs, test_cases, outputs, noise_stddevs)
 
 
-if retrain_normalizing_flow:
+if retrain_posterior:
     for step in range(num_calibration_steps):
         is_last_step = step == num_calibration_steps - 1
         output_directory_step = os.path.join(
             output_directory, f"calibration_step_{step}"
         )
-        num_parameters = determine_number_of_parameters(model)
-        num_model_parameters = determine_number_of_model_parameters(model)
-        parameter_names = determine_parameter_names(model)
+        prior_output_subdirectory = os.path.join(
+            output_directory_step, output_subdirectory_name_prior
+        )
+        posterior_output_subdirectory = os.path.join(
+            output_directory_step, output_subdirectory_name_prior
+        )
+        num_parameters = model.num_parameters
+        parameter_names = model.parameter_names
 
-        def _create_likelihood() -> LikelihoodProtocol:
-            if estimate_noise:
-                relative_noise_stddevs = None
+        def create_gp() -> GaussianProcess:
+            min_inputs = torch.amin(inputs, dim=0)
+            max_inputs = torch.amax(inputs, dim=0)
+            input_dim = inputs.size()[1]
+            output_dim = outputs.size()[1]
+            is_single_outut_gp = output_dim == 1
+            jitter = 1e-7
+
+            def create_single_output_gp() -> GP:
+                gp_mean = "zero"
+                gaussian_process = create_scaled_rbf_gaussian_process(
+                    mean=gp_mean,
+                    input_dim=input_dim,
+                    min_inputs=min_inputs,
+                    max_inputs=max_inputs,
+                    jitter=jitter,
+                    device=device,
+                )
+                initial_parameters_output_scale = [1.0]
+                initial_parameters_length_scale = [0.1 for _ in range(input_dim)]
+                initial_parameters_kernel = (
+                    initial_parameters_output_scale + initial_parameters_length_scale
+                )
+
+                if gp_mean == "linear":
+                    initial_parameters_weights = [1.0 for _ in range(input_dim)]
+                    initial_parameters_bias = [0.0]
+                    initial_parameters_mean = (
+                        initial_parameters_weights + initial_parameters_bias
+                    )
+                    initial_parameters = torch.tensor(
+                        initial_parameters_mean + initial_parameters_kernel,
+                        device=device,
+                    )
+                else:
+                    initial_parameters = torch.tensor(
+                        initial_parameters_kernel, device=device
+                    )
+                gaussian_process.set_parameters(initial_parameters)
+                return gaussian_process
+
+            def create_independent_multi_output_gp() -> IndependentMultiOutputGP:
+                gaussian_processes = [
+                    create_single_output_gp() for _ in range(output_dim)
+                ]
+                return IndependentMultiOutputGP(
+                    gps=tuple(gaussian_processes), device=device
+                )
+
+            if is_single_outut_gp:
+                return create_single_output_gp()
             else:
-                relative_noise_stddevs = prior_relative_noise_stddevs
-            return create_likelihood(
-                model=model,
-                relative_noise_stddev=relative_noise_stddevs,
-                min_noise_stddev=min_noise_stddev,
+                return create_independent_multi_output_gp()
+
+        def fit_gp_prior() -> None:
+            optimize_gp_hyperparameters(
+                gaussian_process=gaussian_process,
                 inputs=inputs,
-                test_cases=test_cases,
                 outputs=outputs,
+                initial_noise_stddevs=noise_stddevs,
+                num_iterations=int(5e4),
+                learning_rate=1e-3,
+                output_subdirectory=prior_output_subdirectory,
+                project_directory=project_directory,
                 device=device,
             )
 
-        def _determine_prior() -> PriorProtocol:
-            def _determine_parameter_prior() -> PriorProtocol:
-                def init_fixed_prior() -> PriorProtocol:
-                    if (
-                        data_set_label == data_set_label_treloar
-                        or data_set_label == data_set_label_kawabata
-                    ):
-                        concentrations = 100.0
-                        rates = 0.01
-                    else:
-                        concentrations = 0.1
-                        rates = 0.1
-                    return (
-                        create_independent_multivariate_inverse_gamma_distributed_prior(
-                            concentrations=torch.tensor(
-                                [concentrations for _ in range(num_model_parameters)],
-                                device=device,
-                            ),
-                            rates=torch.tensor(
-                                [rates for _ in range(num_model_parameters)],
-                                device=device,
-                            ),
-                            device=device,
-                        )
-                    )
-
-                def fit_gp_prior() -> PriorProtocol:
-                    def create_gaussian_process() -> GaussianProcess:
-                        is_single_outut_gp = output_dim == 1
-                        jitter = 1e-7
-
-                        def create_single_output_gp() -> GP:
-                            gp_mean = "zero"
-                            gaussian_process = create_scaled_rbf_gaussian_process(
-                                mean=gp_mean,
-                                input_dim=input_dim,
-                                min_inputs=min_inputs,
-                                max_inputs=max_inputs,
-                                jitter=jitter,
-                                device=device,
-                            )
-                            initial_parameters_output_scale = [1.0]
-                            initial_parameters_length_scale = [
-                                0.1 for _ in range(input_dim)
-                            ]
-                            initial_parameters_kernel = (
-                                initial_parameters_output_scale
-                                + initial_parameters_length_scale
-                            )
-
-                            if gp_mean == "linear":
-                                initial_parameters_weights = [
-                                    1.0 for _ in range(input_dim)
-                                ]
-                                initial_parameters_bias = [0.0]
-                                initial_parameters_mean = (
-                                    initial_parameters_weights + initial_parameters_bias
-                                )
-                                initial_parameters = torch.tensor(
-                                    initial_parameters_mean + initial_parameters_kernel,
-                                    device=device,
-                                )
-                            else:
-                                initial_parameters = torch.tensor(
-                                    initial_parameters_kernel, device=device
-                                )
-                            gaussian_process.set_parameters(initial_parameters)
-                            return gaussian_process
-
-                        def create_multi_output_gp() -> IndependentMultiOutputGP:
-                            gaussian_processes = [
-                                create_single_output_gp() for _ in range(output_dim)
-                            ]
-                            return IndependentMultiOutputGP(
-                                gps=tuple(gaussian_processes), device=device
-                            )
-
-                        if is_single_outut_gp:
-                            return create_single_output_gp()
-                        else:
-                            return create_multi_output_gp()
-
-                    def determine_prior_moments(
-                        samples: Tensor,
-                    ) -> tuple[MomentsMultivariateNormal, NPArray]:
-                        samples_np = samples.detach().cpu().numpy()
-                        moments = determine_moments_of_multivariate_normal_distribution(
-                            samples_np
-                        )
-                        return moments, samples_np
-
-                    output_subdirectory = os.path.join(
-                        output_directory_step, output_subdirectory_name_prior
-                    )
-                    min_inputs = torch.amin(inputs, dim=0)
-                    max_inputs = torch.amax(inputs, dim=0)
-                    input_dim = inputs.size()[1]
-                    output_dim = outputs.size()[1]
-
-                    gaussian_process = create_gaussian_process()
-
-                    optimize_gp_hyperparameters(
-                        gaussian_process=gaussian_process,
-                        inputs=inputs,
-                        outputs=outputs,
-                        initial_noise_stddevs=noise_stddevs,
-                        num_iterations=int(5e4),
-                        learning_rate=1e-3,
-                        output_subdirectory=output_subdirectory,
-                        project_directory=project_directory,
-                        device=device,
-                    )
-
-                    condition_gp(
-                        gaussian_process=gaussian_process,
-                        inputs=inputs,
-                        outputs=outputs,
-                        noise_stddevs=noise_stddevs,
-                        device=device,
-                    )
-
-                    gp_prior = infer_gp_induced_prior(
-                        gp=gaussian_process,
-                        model=model,
-                        prior_type="normalizing flow",
-                        is_mean_trainable=True,
-                        inputs=inputs,
-                        test_cases=test_cases,
-                        num_func_samples=32,
-                        resample=True,
-                        num_iters_wasserstein=list_num_wasserstein_iterations[step],
-                        hiden_layer_size_lipschitz_nn=256,
-                        num_iters_lipschitz=5,
-                        lipschitz_func_pretraining=False,
-                        output_subdirectory=output_subdirectory,
-                        project_directory=project_directory,
-                        device=device,
-                    )
-
-                    prior_samples = gp_prior.sample(num_samples=4096)
-                    prior_moments, prior_samples_np = determine_prior_moments(
-                        prior_samples
-                    )
-
-                    plot_histograms(
-                        parameter_names=model.parameter_names,
-                        true_parameters=tuple(None for _ in range(num_parameters)),
-                        moments=prior_moments,
-                        samples=prior_samples_np,
-                        algorithm_name="gp_prior",
-                        output_subdirectory=output_subdirectory,
-                        project_directory=project_directory,
-                    )
-                    return gp_prior
-
-                if use_gp_prior:
-                    return fit_gp_prior()
-                else:
-                    return init_fixed_prior()
-
-            def _init_relative_noise_stddev_prior() -> PriorProtocol:
-                return create_univariate_inverse_gamma_distributed_prior(
-                    concentration=2.0,
-                    rate=0.1,
-                    device=device,
-                )
-
-            prior_parameters = _determine_parameter_prior()
-            model_prior_samples = prior_parameters.sample(num_samples_posterior)
-            plot_stresses(
-                model=model,
-                model_parameter_samples=model_prior_samples.detach().cpu().numpy(),
-                subdirectory_name="prior_model",
-                output_directory=output_directory_step,
+        def infer_gp_posterior() -> None:
+            condition_gp(
+                gaussian_process=gaussian_process,
+                inputs=inputs,
+                outputs=outputs,
+                noise_stddevs=noise_stddevs,
+                device=device,
             )
-            if estimate_noise:
-                prior_relative_noise_stddev = _init_relative_noise_stddev_prior()
-                return multiply_priors([prior_relative_noise_stddev, prior_parameters])
-            else:
-                return prior_parameters
 
-        likelihood = _create_likelihood()
-        prior = _determine_prior()
+        def extract_parameter_distribution() -> DistributionProtocol:
+            return extract_gp_inducing_parameter_distribution(
+                gp=gaussian_process,
+                model=model,
+                distribution_type="normalizing flow",
+                is_mean_trainable=True,
+                inputs=inputs,
+                test_cases=test_cases,
+                num_func_samples=32,
+                resample=True,
+                num_iters_wasserstein=list_num_wasserstein_iterations[step],
+                hiden_layer_size_lipschitz_nn=256,
+                num_iters_lipschitz=5,
+                lipschitz_func_pretraining=False,
+                output_subdirectory=posterior_output_subdirectory,
+                project_directory=project_directory,
+                device=device,
+            )
 
-        fit_normalizing_flow_config = FitNormalizingFlowConfig(
-            likelihood=likelihood,
-            prior=prior,
-            num_flows=num_flows,
-            relative_width_flow_layers=relative_width_flow_layers,
-            num_samples=64,
-            initial_learning_rate=5e-4,
-            final_learning_rate=1e-4,
-            num_iterations=100_000,
-            output_subdirectory=output_directory_step,
-            project_directory=project_directory,
+        gaussian_process = create_gp()
+        fit_gp_prior()
+        infer_gp_posterior()
+        parameter_distribution = extract_parameter_distribution()
+
+        parameter_moments, parameter_samples = sample_and_analyse_distribution(
+            parameter_distribution, num_samples_posterior
         )
 
-        normalizing_flow = fit_normalizing_flow(fit_normalizing_flow_config, device)
-        posterior_moments, posterior_samples = sample_from_normalizing_flow(
-            normalizing_flow, num_samples_posterior
-        )
-        _, model_posterior_samples = reduce_to_model_posterior(
-            posterior_moments, posterior_samples
-        )
-
-        output_subdirectory_posterior = os.path.join(
-            output_directory_step, output_subdirectory_name_posterior
-        )
         plot_histograms(
             parameter_names=parameter_names,
             true_parameters=tuple(None for _ in range(num_parameters)),
-            moments=posterior_moments,
-            samples=posterior_samples,
+            moments=parameter_moments,
+            samples=parameter_samples,
             algorithm_name="nf",
-            output_subdirectory=output_subdirectory_posterior,
+            output_subdirectory=posterior_output_subdirectory,
             project_directory=project_directory,
         )
         plot_stresses(
             model=model,
-            model_parameter_samples=model_posterior_samples,
-            subdirectory_name="posterior_model",
+            model_parameter_samples=parameter_samples,
+            subdirectory_name="model_full",
             output_directory=output_directory_step,
         )
 
         if not is_last_step:
-            trim_model(
+            select_model(
                 model=model,
-                metric=trim_metric,
+                metric=selection_metric,
                 relative_thresshold=list_relative_selection_thressholds[step],
-                parameter_samples=torch.from_numpy(model_posterior_samples)
+                parameter_samples=torch.from_numpy(parameter_samples)
                 .type(torch.get_default_dtype())
                 .to(device),
                 inputs=inputs,
@@ -494,85 +324,85 @@ if retrain_normalizing_flow:
             )
             plot_stresses(
                 model=model,
-                model_parameter_samples=model_posterior_samples,
-                subdirectory_name="posterior_model_trimmed",
+                model_parameter_samples=parameter_samples,
+                subdirectory_name="model_selected",
                 output_directory=output_directory_step,
             )
             model.reduce_to_activated_parameters()
 
         save_model_state(model, output_directory_step, project_directory)
-else:
-    for step in range(num_calibration_steps):
-        is_first_step = step == 0
-        is_last_step = step == num_calibration_steps - 1
-        output_directory_step = os.path.join(
-            output_directory, f"calibration_step_{step}"
-        )
-        if is_first_step:
-            input_directory_step = output_directory_step
-        else:
-            input_step = step - 1
-            input_directory_step = os.path.join(
-                output_directory, f"calibration_step_{input_step}"
-            )
+# else:
+#     for step in range(num_calibration_steps):
+#         is_first_step = step == 0
+#         is_last_step = step == num_calibration_steps - 1
+#         output_directory_step = os.path.join(
+#             output_directory, f"calibration_step_{step}"
+#         )
+#         if is_first_step:
+#             input_directory_step = output_directory_step
+#         else:
+#             input_step = step - 1
+#             input_directory_step = os.path.join(
+#                 output_directory, f"calibration_step_{input_step}"
+#             )
 
-        if not is_first_step:
-            load_model_state(model, input_directory_step, project_directory, device)
+#         if not is_first_step:
+#             load_model_state(model, input_directory_step, project_directory, device)
 
-        num_parameters = determine_number_of_parameters(model)
-        parameter_names = determine_parameter_names(model)
+#         num_parameters = determine_number_of_parameters(model)
+#         parameter_names = determine_parameter_names(model)
 
-        load_normalizing_flow_config = LoadNormalizingFlowConfig(
-            num_parameters=num_parameters,
-            num_flows=num_flows,
-            relative_width_flow_layers=relative_width_flow_layers,
-            output_subdirectory=output_directory_step,
-            project_directory=project_directory,
-        )
-        normalizing_flow = load_normalizing_flow(load_normalizing_flow_config, device)
-        posterior_moments, posterior_samples = sample_from_normalizing_flow(
-            normalizing_flow, num_samples_posterior
-        )
-        _, model_posterior_samples = reduce_to_model_posterior(
-            posterior_moments, posterior_samples
-        )
+#         load_normalizing_flow_config = LoadNormalizingFlowConfig(
+#             num_parameters=num_parameters,
+#             num_flows=num_flows,
+#             relative_width_flow_layers=relative_width_flow_layers,
+#             output_subdirectory=output_directory_step,
+#             project_directory=project_directory,
+#         )
+#         normalizing_flow = load_normalizing_flow(load_normalizing_flow_config, device)
+#         posterior_moments, posterior_samples = sample_from_normalizing_flow(
+#             normalizing_flow, num_samples_posterior
+#         )
+#         _, model_posterior_samples = reduce_to_model_posterior(
+#             posterior_moments, posterior_samples
+#         )
 
-        output_subdirectory_posterior = os.path.join(
-            output_directory_step, output_subdirectory_name_posterior
-        )
-        plot_histograms(
-            parameter_names=parameter_names,
-            true_parameters=tuple(None for _ in range(num_parameters)),
-            moments=posterior_moments,
-            samples=posterior_samples,
-            algorithm_name="nf",
-            output_subdirectory=output_subdirectory_posterior,
-            project_directory=project_directory,
-        )
-        plot_stresses(
-            model=model,
-            model_parameter_samples=model_posterior_samples,
-            subdirectory_name="posterior_model",
-            output_directory=output_directory_step,
-        )
+#         output_subdirectory_posterior = os.path.join(
+#             output_directory_step, output_subdirectory_name_posterior
+#         )
+#         plot_histograms(
+#             parameter_names=parameter_names,
+#             true_parameters=tuple(None for _ in range(num_parameters)),
+#             moments=posterior_moments,
+#             samples=posterior_samples,
+#             algorithm_name="nf",
+#             output_subdirectory=output_subdirectory_posterior,
+#             project_directory=project_directory,
+#         )
+#         plot_stresses(
+#             model=model,
+#             model_parameter_samples=model_posterior_samples,
+#             subdirectory_name="posterior_model",
+#             output_directory=output_directory_step,
+#         )
 
-        if not is_last_step:
-            trim_model(
-                model=model,
-                metric=trim_metric,
-                relative_thresshold=list_relative_selection_thressholds[step],
-                parameter_samples=torch.from_numpy(model_posterior_samples)
-                .type(torch.get_default_dtype())
-                .to(device),
-                inputs=inputs,
-                test_cases=test_cases,
-                outputs=outputs,
-                output_subdirectory=output_directory_step,
-                project_directory=project_directory,
-            )
-            plot_stresses(
-                model=model,
-                model_parameter_samples=model_posterior_samples,
-                subdirectory_name="posterior_model_trimmed",
-                output_directory=output_directory_step,
-            )
+#         if not is_last_step:
+#             trim_model(
+#                 model=model,
+#                 metric=selection_metric,
+#                 relative_thresshold=list_relative_selection_thressholds[step],
+#                 parameter_samples=torch.from_numpy(model_posterior_samples)
+#                 .type(torch.get_default_dtype())
+#                 .to(device),
+#                 inputs=inputs,
+#                 test_cases=test_cases,
+#                 outputs=outputs,
+#                 output_subdirectory=output_directory_step,
+#                 project_directory=project_directory,
+#             )
+#             plot_stresses(
+#                 model=model,
+#                 model_parameter_samples=model_posterior_samples,
+#                 subdirectory_name="posterior_model_trimmed",
+#                 output_directory=output_directory_step,
+#             )

@@ -5,8 +5,8 @@ from typing import Iterator, TypeAlias
 import normflows as nf
 import torch
 
-from bayesianmdisc.bayes.likelihood import LikelihoodProtocol
 from bayesianmdisc.bayes.distributions import DistributionProtocol
+from bayesianmdisc.bayes.likelihood import LikelihoodProtocol
 from bayesianmdisc.customtypes import (
     Device,
     NFBaseDistribution,

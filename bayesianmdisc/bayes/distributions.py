@@ -2,31 +2,77 @@ from typing import Protocol, TypeAlias, Union
 
 import torch
 
-from bayesianmdisc.customtypes import Device, Tensor, NPArray
+from bayesianmdisc.customtypes import Device, NPArray, Tensor
 from bayesianmdisc.statistics.distributions import (
     IndependentMultivariateGammaDistribution as _IndependentMultivariateGammaDistribution,
+)
+from bayesianmdisc.statistics.distributions import (
     IndependentMultivariateHalfNormalDistribution as _IndependentMultivariateHalfNormalDistribution,
+)
+from bayesianmdisc.statistics.distributions import (
     IndependentMultivariateInverseGammaDistribution as _IndependentMultivariateInverseGammaDistribution,
+)
+from bayesianmdisc.statistics.distributions import (
     IndependentMultivariateNormalDistribution as _IndependentMultivariateNormalDistribution,
+)
+from bayesianmdisc.statistics.distributions import (
     IndependentMultivariateStudentTDistribution as _IndependentMultivariateStudentTDistribution,
+)
+from bayesianmdisc.statistics.distributions import (
     MultivariateNormalDistribution as _MultivariateNormalDistribution,
+)
+from bayesianmdisc.statistics.distributions import (
     MultivariateUniformDistribution as _MultivariateUniformDistribution,
+)
+from bayesianmdisc.statistics.distributions import (
     UnivariateGammaDistribution as _UnivariateGammaDistribution,
+)
+from bayesianmdisc.statistics.distributions import (
     UnivariateHalfNormalDistribution as _UnivariateHalfNormalDistribution,
+)
+from bayesianmdisc.statistics.distributions import (
     UnivariateInverseGammaDistribution as _UnivariateInverseGammaDistribution,
+)
+from bayesianmdisc.statistics.distributions import (
     UnivariateNormalDistribution as _UnivariateNormalDistribution,
+)
+from bayesianmdisc.statistics.distributions import (
     UnivariateUniformDistribution as _UnivariateUniformDistribution,
+)
+from bayesianmdisc.statistics.distributions import (
     create_independent_multivariate_gamma_distribution as _create_independent_multivariate_gamma_distribution,
+)
+from bayesianmdisc.statistics.distributions import (
     create_independent_multivariate_half_normal_distribution as _create_independent_multivariate_half_normal_distribution,
+)
+from bayesianmdisc.statistics.distributions import (
     create_independent_multivariate_inverse_gamma_distribution as _create_independent_multivariate_inverse_gamma_distribution,
+)
+from bayesianmdisc.statistics.distributions import (
     create_independent_multivariate_normal_distribution as _create_independent_multivariate_normal_distribution,
+)
+from bayesianmdisc.statistics.distributions import (
     create_independent_multivariate_studentT_distribution as _create_independent_multivariate_studentT_distribution,
+)
+from bayesianmdisc.statistics.distributions import (
     create_multivariate_normal_distribution as _create_multivariate_normal_distribution,
+)
+from bayesianmdisc.statistics.distributions import (
     create_multivariate_uniform_distribution as _create_multivariate_uniform_distribution,
+)
+from bayesianmdisc.statistics.distributions import (
     create_univariate_gamma_distribution as _create_univariate_gamma_distribution,
+)
+from bayesianmdisc.statistics.distributions import (
     create_univariate_half_normal_distribution as _create_univariate_half_normal_distribution,
+)
+from bayesianmdisc.statistics.distributions import (
     create_univariate_inverse_gamma_distribution as _create_univariate_inverse_gamma_distribution,
+)
+from bayesianmdisc.statistics.distributions import (
     create_univariate_normal_distribution as _create_univariate_normal_distribution,
+)
+from bayesianmdisc.statistics.distributions import (
     create_univariate_uniform_distribution as _create_univariate_uniform_distribution,
 )
 from bayesianmdisc.statistics.utility import (

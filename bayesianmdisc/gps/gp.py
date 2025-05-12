@@ -15,7 +15,7 @@ from bayesianmdisc.gps.base import (
     validate_training_data,
 )
 from bayesianmdisc.gps.kernels import Kernel, ScaledMaternKernel, ScaledRBFKernel
-from bayesianmdisc.gps.means import ZeroMean, NonZeroMean, LinearMean
+from bayesianmdisc.gps.means import LinearMean, NonZeroMean, ZeroMean
 from bayesianmdisc.gps.normalizers import InputNormalizer
 from bayesianmdisc.gps.utility import validate_parameters_size
 

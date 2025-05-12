@@ -15,13 +15,13 @@ from bayesianmdisc.bayes.distributions import (
 from bayesianmdisc.customtypes import Device, Module, NFFlow, Parameter, Tensor
 from bayesianmdisc.errors import ParameterExtractionError
 from bayesianmdisc.models import ModelProtocol
+from bayesianmdisc.normalizingflows import NormalizingFlowDistribution
 from bayesianmdisc.normalizingflows.base import BaseDistributionProtocol
 from bayesianmdisc.normalizingflows.flows import (
     NormalizingFlow,
     create_exponential_constrained_flow,
     create_masked_autoregressive_flow,
 )
-from bayesianmdisc.normalizingflows import NormalizingFlowDistribution
 from bayesianmdisc.normalizingflows.utility import freeze_model
 
 NumLayersList: TypeAlias = list[int]

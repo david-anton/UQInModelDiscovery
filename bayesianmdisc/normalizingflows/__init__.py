@@ -1,3 +1,4 @@
+from .distributionwrapper import NormalizingFlowDistribution
 from .flows.normalizingflows import NormalizingFlowProtocol
 from .normalizingflow import (
     FitNormalizingFlowConfig,
@@ -5,7 +6,6 @@ from .normalizingflow import (
     fit_normalizing_flow,
     load_normalizing_flow,
 )
-from .distributionwrapper import NormalizingFlowDistribution
 
 __all__ = [
     "FitNormalizingFlowConfig",

@@ -12,8 +12,8 @@ from bayesianmdisc.data.testcases import (
     test_case_identifier_biaxial_tension,
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_pure_shear,
-    test_case_identifier_uniaxial_tension,
     test_case_identifier_simple_shear,
+    test_case_identifier_uniaxial_tension,
 )
 from bayesianmdisc.errors import StressPlotterError
 from bayesianmdisc.io import ProjectDirectory

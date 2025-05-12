@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import itertools
+from dataclasses import dataclass
 
 import torch
 
@@ -9,8 +9,8 @@ from bayesianmdisc.data import (
     StressOutputs,
     TestCases,
     data_set_label_kawabata,
-    data_set_label_treloar,
     data_set_label_linka,
+    data_set_label_treloar,
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_uniaxial_tension,
 )

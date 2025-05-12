@@ -3,8 +3,8 @@ from typing import TypeAlias
 
 import torch
 
-from bayesianmdisc.gps.base import NamedParameters
 from bayesianmdisc.customtypes import Device, Tensor
+from bayesianmdisc.gps.base import NamedParameters
 
 MeanOutput: TypeAlias = Tensor
 

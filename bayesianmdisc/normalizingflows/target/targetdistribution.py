@@ -1,7 +1,7 @@
 from torch.func import vmap
 
-from bayesianmdisc.bayes.likelihood import LikelihoodProtocol
 from bayesianmdisc.bayes.distributions import DistributionProtocol
+from bayesianmdisc.bayes.likelihood import LikelihoodProtocol
 from bayesianmdisc.customtypes import Device, Tensor
 
 
