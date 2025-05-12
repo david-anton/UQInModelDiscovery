@@ -2,7 +2,7 @@ from typing import Protocol, TypeAlias, Union
 
 import torch
 
-from bayesianmdisc.customtypes import Device, Tensor
+from bayesianmdisc.customtypes import Device, Tensor, NPArray
 from bayesianmdisc.statistics.distributions import (
     IndependentMultivariateGammaDistribution as _IndependentMultivariateGammaDistribution,
     IndependentMultivariateHalfNormalDistribution as _IndependentMultivariateHalfNormalDistribution,
@@ -28,6 +28,10 @@ from bayesianmdisc.statistics.distributions import (
     create_univariate_inverse_gamma_distribution as _create_univariate_inverse_gamma_distribution,
     create_univariate_normal_distribution as _create_univariate_normal_distribution,
     create_univariate_uniform_distribution as _create_univariate_uniform_distribution,
+)
+from bayesianmdisc.statistics.utility import (
+    MomentsMultivariateNormal,
+    determine_moments_of_multivariate_normal_distribution,
 )
 from bayesianmdisc.normalizingflows.flows import NormalizingFlowProtocol
 
@@ -285,3 +289,26 @@ class NormalizingFlowDistribution:
 
     def _log_prob(self, parameters: Tensor) -> Tensor:
         return self._normalizing_flow.log_prob(parameters)
+
+
+Samples: TypeAlias = list[Tensor]
+
+
+def sample_and_analyse_distribution(
+    distribution: DistributionProtocol, num_samples: int
+) -> tuple[MomentsMultivariateNormal, NPArray]:
+
+    def draw_samples() -> list[Tensor]:
+        samples, _ = distribution.sample(num_samples)
+        return list(samples)
+
+    samples_list = draw_samples()
+    return _determine_statistical_moments(samples_list)
+
+
+def _determine_statistical_moments(
+    samples_list: Samples,
+) -> tuple[MomentsMultivariateNormal, NPArray]:
+    samples = torch.stack(samples_list, dim=0).detach().cpu().numpy()
+    moments = determine_moments_of_multivariate_normal_distribution(samples)
+    return moments, samples

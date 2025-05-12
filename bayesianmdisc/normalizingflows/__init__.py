@@ -5,14 +5,11 @@ from .normalizingflow import (
     fit_normalizing_flow,
     load_normalizing_flow,
 )
-from .postprocessing import determine_statistical_moments, sample_from_normalizing_flow
 
 __all__ = [
     "FitNormalizingFlowConfig",
     "fit_normalizing_flow",
     "load_normalizing_flow",
     "NormalizingFlowProtocol",
-    "determine_statistical_moments",
     "LoadNormalizingFlowConfig",
-    "sample_from_normalizing_flow",
 ]
