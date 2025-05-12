@@ -81,7 +81,7 @@ list_relative_selection_thressholds = [1.0]
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_1_mae_inversegamma"
+output_directory = f"{current_date}_{input_directory}_threshold_1_mae_normalizingflow_lipschitznetwidth512_trainablebase"
 output_subdirectory_name_posterior = "posterior"
 output_subdirectory_name_prior = "prior"
 
@@ -268,14 +268,14 @@ if retrain_posterior:
             return extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
                 model=model,
-                distribution_type="inverse Gamma",  # "normalizing flow"
+                distribution_type="normalizing flow",  # "inverse Gamma",
                 is_mean_trainable=True,
                 inputs=inputs,
                 test_cases=test_cases,
                 num_func_samples=32,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
-                hiden_layer_size_lipschitz_nn=256,  # 128,
+                hiden_layer_size_lipschitz_nn=512,  # 128,
                 num_iters_lipschitz=5,
                 lipschitz_func_pretraining=False,
                 output_subdirectory=posterior_output_subdirectory,
