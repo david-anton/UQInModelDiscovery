@@ -5,6 +5,7 @@ from .normalizingflow import (
     fit_normalizing_flow,
     load_normalizing_flow,
 )
+from .distributionwrapper import NormalizingFlowDistribution
 
 __all__ = [
     "FitNormalizingFlowConfig",
@@ -12,4 +13,5 @@ __all__ = [
     "load_normalizing_flow",
     "NormalizingFlowProtocol",
     "LoadNormalizingFlowConfig",
+    "NormalizingFlowDistribution",
 ]

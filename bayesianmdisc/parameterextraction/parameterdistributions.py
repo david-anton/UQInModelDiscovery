@@ -11,7 +11,6 @@ from bayesianmdisc.bayes.distributions import (
     create_independent_multivariate_inverse_gamma_distribution,
     create_independent_multivariate_normal_distribution,
     create_independent_multivariate_studentT_distribution,
-    NormalizingFlowDistribution,
 )
 from bayesianmdisc.customtypes import Device, Module, NFFlow, Parameter, Tensor
 from bayesianmdisc.errors import ParameterExtractionError
@@ -22,6 +21,7 @@ from bayesianmdisc.normalizingflows.flows import (
     create_exponential_constrained_flow,
     create_masked_autoregressive_flow,
 )
+from bayesianmdisc.normalizingflows import NormalizingFlowDistribution
 from bayesianmdisc.normalizingflows.utility import freeze_model
 
 NumLayersList: TypeAlias = list[int]
