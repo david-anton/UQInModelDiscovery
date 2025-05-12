@@ -306,7 +306,7 @@ def sample_and_analyse_distribution(
 ) -> tuple[MomentsMultivariateNormal, NPArray]:
 
     def draw_samples() -> list[Tensor]:
-        samples, _ = distribution.sample(num_samples)
+        samples = distribution.sample(num_samples)
         return list(samples)
 
     samples_list = draw_samples()
