@@ -1,12 +1,12 @@
 import torch
 from torch.func import vmap
 
-from bayesianmdisc.bayes.prior import Prior
+from bayesianmdisc.bayes.distributions import Distribution
 from bayesianmdisc.customtypes import Device, Tensor
 
 
 class BaseDistributionWrapper(torch.nn.Module):
-    def __init__(self, prior: Prior, device: Device) -> None:
+    def __init__(self, prior: Distribution, device: Device) -> None:
         super().__init__()
         self._prior = prior
         self._device = device
