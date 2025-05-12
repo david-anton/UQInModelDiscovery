@@ -2,10 +2,12 @@ import torch
 import torch.nn as nn
 from torch.func import grad, vmap
 
-from bayesianmdisc.bayes.prior import PriorProtocol
+from bayesianmdisc.bayes.distributions import DistributionProtocol
 from bayesianmdisc.customtypes import Device, Tensor, TorchLRScheduler, TorchOptimizer
 from bayesianmdisc.data import DeformationInputs, TestCases
-from bayesianmdisc.gppriors.priors import create_parameter_prior
+from bayesianmdisc.parameterextraction.parameterdistributions import (
+    create_parameter_distribution,
+)
 from bayesianmdisc.gps import GaussianProcess
 from bayesianmdisc.gps.base import GPMultivariateNormal
 from bayesianmdisc.gps.multioutputgp import flatten_outputs
@@ -21,10 +23,10 @@ print_interval = 10
 num_iters_lipschitz_pretraining = 2_000
 
 
-def infer_gp_induced_prior(
+def extract_gp_inducing_parameter_distribution(
     gp: GaussianProcess,
     model: ModelProtocol,
-    prior_type: str,
+    distribution_type: str,
     is_mean_trainable: bool,
     inputs: DeformationInputs,
     test_cases: TestCases,
@@ -37,19 +39,19 @@ def infer_gp_induced_prior(
     output_subdirectory: str,
     project_directory: ProjectDirectory,
     device: Device,
-) -> PriorProtocol:
+) -> DistributionProtocol:
     output_dim = model.output_dim
     num_flattened_outputs = len(inputs) * output_dim
 
     penalty_coefficient_lipschitz = torch.tensor(10.0, device=device)
     learning_rate_lipschitz_func = 5e-4
 
-    lr_decay_rate_prior = 1.0
+    lr_decay_rate_distribution = 1.0
 
-    prior = create_parameter_prior(
-        prior_type=prior_type,
+    distribution = create_parameter_distribution(
+        distribution_type=distribution_type,
         is_mean_trainable=is_mean_trainable,
-        model_library=model,
+        model=model,
         device=device,
     )
     lipschitz_func = FFNN(
@@ -78,11 +80,11 @@ def infer_gp_induced_prior(
         for parameters in likelihood.parameters():
             parameters.requires_grad = False
 
-    def create_prior_optimizer() -> TorchOptimizer:
-        return torch.optim.RMSprop(params=prior.get_parameters_and_options())
+    def create_distribution_optimizer() -> TorchOptimizer:
+        return torch.optim.Adam(params=distribution.get_parameters_and_options())
 
     def create_lipschitz_func_optimizer() -> TorchOptimizer:
-        return torch.optim.RMSprop(
+        return torch.optim.Adam(
             params=lipschitz_func.parameters(), lr=learning_rate_lipschitz_func
         )
 
@@ -99,7 +101,7 @@ def infer_gp_induced_prior(
             return fixed_gp_func_values
 
     def draw_model_func_values() -> Tensor:
-        model_parameters = prior(num_func_samples)
+        model_parameters = distribution(num_func_samples)
         vmap_model_func = lambda _model_parameters: flatten_outputs(
             model(inputs, test_cases, _model_parameters)
         )
@@ -177,10 +179,10 @@ def infer_gp_induced_prior(
     if lipschitz_func_pretraining:
         pretrain_lipschitz_func()
 
-    optimizer_prior = create_prior_optimizer()
+    optimizer_distribution = create_distribution_optimizer()
     optimizer_lipschitz = create_lipschitz_func_optimizer()
-    lr_scheduler_prior = create_learning_rate_scheduler(
-        optimizer_prior, lr_decay_rate_prior
+    lr_scheduler_distribution = create_learning_rate_scheduler(
+        optimizer_distribution, lr_decay_rate_distribution
     )
     wasserstein_loss_hist = []
 
@@ -200,13 +202,13 @@ def infer_gp_induced_prior(
 
         gp_func_values = draw_gp_func_values()
         model_func_values = draw_model_func_values()
-        optimizer_prior.zero_grad(set_to_none=True)
+        optimizer_distribution.zero_grad(set_to_none=True)
         loss_wasserstein = wasserstein_loss(
             gp_func_values=gp_func_values, model_func_values=model_func_values
         )
         loss_wasserstein.backward(retain_graph=True)
-        optimizer_prior.step()
-        lr_scheduler_prior.step()
+        optimizer_distribution.step()
+        lr_scheduler_distribution.step()
         loss_wasserstein_float = loss_wasserstein.detach().cpu().item()
         loss_lipschitz_float = loss_lipschitz.detach().cpu().item()
         wasserstein_loss_hist += [loss_wasserstein_float]
@@ -227,7 +229,7 @@ def infer_gp_induced_prior(
     )
 
     ############################################################
-    prior.print_hyperparameters()
+    distribution.print_hyperparameters()
     ############################################################
 
-    return prior.get_prior_distribution()
+    return distribution.get_distribution()

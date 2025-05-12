@@ -6,7 +6,7 @@ import normflows as nf
 import torch
 
 from bayesianmdisc.bayes.likelihood import LikelihoodProtocol
-from bayesianmdisc.bayes.prior import PriorProtocol
+from bayesianmdisc.bayes.distributions import DistributionProtocol
 from bayesianmdisc.customtypes import (
     Device,
     NFBaseDistribution,
@@ -45,7 +45,7 @@ file_name_model = "normalizing_flow_parameters"
 @dataclass
 class FitNormalizingFlowConfig:
     likelihood: LikelihoodProtocol
-    prior: PriorProtocol
+    prior: DistributionProtocol
     num_flows: int
     relative_width_flow_layers: int
     num_samples: int
@@ -90,7 +90,7 @@ def _create_normalizing_flow(
 
 def _fit_normalizing_flow(
     likelihood: LikelihoodProtocol,
-    prior: PriorProtocol,
+    prior: DistributionProtocol,
     num_flows: int,
     relative_width_flow_layers: int,
     num_samples: int,

@@ -32,7 +32,7 @@ class GPError(Error):
         super().__init__(message)
 
 
-class GPPriorError(Error):
+class ParameterExtractionError(Error):
     def __init__(self, message: str) -> None:
         super().__init__(message)
 

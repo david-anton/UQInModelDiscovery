@@ -4,31 +4,31 @@ import normflows as nf
 import torch
 import torch.nn as nn
 
-from bayesianmdisc.bayes.prior import (
-    PriorProtocol,
-    create_independent_multivariate_gamma_distributed_prior,
-    create_independent_multivariate_half_normal_distributed_prior,
-    create_independent_multivariate_inverse_gamma_distributed_prior,
-    create_independent_multivariate_normal_distributed_prior,
-    create_independent_multivariate_studentT_distributed_prior,
+from bayesianmdisc.bayes.distributions import (
+    DistributionProtocol,
+    create_independent_multivariate_gamma_distribution,
+    create_independent_multivariate_half_normal_distribution,
+    create_independent_multivariate_inverse_gamma_distribution,
+    create_independent_multivariate_normal_distribution,
+    create_independent_multivariate_studentT_distribution,
+    NormalizingFlowDistribution,
 )
 from bayesianmdisc.customtypes import Device, Module, NFFlow, Parameter, Tensor
-from bayesianmdisc.errors import GPPriorError
+from bayesianmdisc.errors import ParameterExtractionError
 from bayesianmdisc.models import ModelProtocol
 from bayesianmdisc.normalizingflows.base import BaseDistributionProtocol
 from bayesianmdisc.normalizingflows.flows import (
     NormalizingFlow,
     create_exponential_constrained_flow,
-    create_real_nvp_flow,
+    create_masked_autoregressive_flow,
 )
-from bayesianmdisc.normalizingflows.prior import NormalizingFlowPrior
 from bayesianmdisc.normalizingflows.utility import freeze_model
 
 NumLayersList: TypeAlias = list[int]
 ParameterOptions: TypeAlias = list[Dict[str, Any]]
 
 
-class ParameterPrior(Protocol):
+class ParameterDistribution(Protocol):
     def __call__(self, num_samples: int) -> Tensor:
         pass
 
@@ -41,66 +41,70 @@ class ParameterPrior(Protocol):
     def get_parameters_and_options(self) -> ParameterOptions:
         pass
 
-    def get_prior_distribution(self) -> PriorProtocol:
+    def get_distribution(self) -> DistributionProtocol:
         pass
 
     def print_hyperparameters(self) -> None:
         pass
 
 
-def create_parameter_prior(
-    prior_type: str,
+def create_parameter_distribution(
+    distribution_type: str,
     is_mean_trainable: bool,
-    model_library: ModelProtocol,
+    model: ModelProtocol,
     device: Device,
-) -> ParameterPrior:
-    if prior_type == "Gamma":
+) -> ParameterDistribution:
+    if distribution_type == "Gamma":
         if not is_mean_trainable:
-            GPPriorError("Gamma prior has always a trainable mean.")
-        return GammaParameterPrior(
-            model=model_library,
+            ParameterExtractionError("Gamma distribution has always a trainable mean.")
+        return GammaParameterDistribution(
+            model=model,
             device=device,
         )
-    elif prior_type == "inverse Gamma":
+    elif distribution_type == "inverse Gamma":
         if not is_mean_trainable:
-            GPPriorError("Inverse Gamma prior has always a trainable mean.")
-        return InverseGammaParameterPrior(
-            model=model_library,
+            ParameterExtractionError(
+                "Inverse Gamma distribution has always a trainable mean."
+            )
+        return InverseGammaParameterDistribution(
+            model=model,
             device=device,
         )
-    elif prior_type == "half Gaussian":
+    elif distribution_type == "half Gaussian":
         if is_mean_trainable:
-            GPPriorError("Half Gaussian prior has never a trainable mean.")
-        return HalfNormalParameterPrior(
-            model=model_library,
+            ParameterExtractionError(
+                "Half Gaussian distribution has never a trainable mean."
+            )
+        return HalfNormalParameterDistribution(
+            model=model,
             device=device,
         )
-    elif prior_type == "normalizing flow":
+    elif distribution_type == "normalizing flow":
         if not is_mean_trainable:
-            GPPriorError("Gamma prior has always a trainable mean.")
-        return NormalizingFlowParameterPrior(
-            model=model_library,
+            ParameterExtractionError("Gamma distribution has always a trainable mean.")
+        return NormalizingFlowParameterDistribution(
+            model=model,
             device=device,
         )
-    elif prior_type == "Gaussian":
-        return GaussianParameterPrior(
-            model=model_library,
+    elif distribution_type == "Gaussian":
+        return GaussianParameterDistribution(
+            model=model,
             is_mean_trainable=is_mean_trainable,
             device=device,
         )
-    elif prior_type == "hierarchical Gaussian":
-        return HierarchicalGaussianParameterPrior(
-            model=model_library,
+    elif distribution_type == "hierarchical Gaussian":
+        return HierarchicalGaussianParameterDistribution(
+            model=model,
             is_mean_trainable=is_mean_trainable,
             device=device,
         )
     else:
-        raise GPPriorError(
-            f"There is no implementation for the requested prior type {prior_type}"
+        raise ParameterExtractionError(
+            f"There is no implementation for the requested distribution type {distribution_type}"
         )
 
 
-class GammaParameterPrior(nn.Module):
+class GammaParameterDistribution(nn.Module):
     def __init__(
         self,
         model: ModelProtocol,
@@ -133,10 +137,10 @@ class GammaParameterPrior(nn.Module):
             {"params": self._rhos_rates, "lr": self._learning_rates_rates},
         ]
 
-    def get_prior_distribution(self) -> PriorProtocol:
+    def get_distribution(self) -> DistributionProtocol:
         # shape = concentrations (PyTorch)
         shapes, rates = self._shapes_and_rates()
-        return create_independent_multivariate_gamma_distributed_prior(
+        return create_independent_multivariate_gamma_distribution(
             concentrations=shapes,
             rates=rates,
             device=self._device,
@@ -170,7 +174,7 @@ class GammaParameterPrior(nn.Module):
         return shapes, rates
 
 
-class InverseGammaParameterPrior(nn.Module):
+class InverseGammaParameterDistribution(nn.Module):
     def __init__(
         self,
         model: ModelProtocol,
@@ -203,10 +207,10 @@ class InverseGammaParameterPrior(nn.Module):
             {"params": self._rhos_rates, "lr": self._learning_rates_rates},
         ]
 
-    def get_prior_distribution(self) -> PriorProtocol:
+    def get_distribution(self) -> DistributionProtocol:
         # shape = concentrations (PyTorch)
         shapes, rates = self._shapes_and_rates()
-        return create_independent_multivariate_inverse_gamma_distributed_prior(
+        return create_independent_multivariate_inverse_gamma_distribution(
             concentrations=shapes,
             rates=rates,
             device=self._device,
@@ -240,7 +244,7 @@ class InverseGammaParameterPrior(nn.Module):
         return shapes, rates
 
 
-class HalfNormalParameterPrior(nn.Module):
+class HalfNormalParameterDistribution(nn.Module):
     def __init__(
         self,
         model: ModelProtocol,
@@ -262,9 +266,9 @@ class HalfNormalParameterPrior(nn.Module):
     def get_parameters_and_options(self) -> ParameterOptions:
         return [{"params": self._rhos, "lr": self._learning_rate_rhos}]
 
-    def get_prior_distribution(self) -> PriorProtocol:
+    def get_distribution(self) -> DistributionProtocol:
         standard_deviations = self._sigmas().data.detach()
-        return create_independent_multivariate_half_normal_distributed_prior(
+        return create_independent_multivariate_half_normal_distribution(
             standard_deviations=standard_deviations,
             device=self._device,
         )
@@ -319,7 +323,7 @@ class GaussianMean(nn.Module):
         return nn.Parameter(means).requires_grad_(self._is_trainable)
 
 
-class GaussianParameterPrior(nn.Module):
+class GaussianParameterDistribution(nn.Module):
     def __init__(
         self,
         model: ModelProtocol,
@@ -350,10 +354,10 @@ class GaussianParameterPrior(nn.Module):
         parameter_options = [{"params": self._rhos, "lr": self._learning_rate_rhos}]
         return mean_parameter_options + parameter_options
 
-    def get_prior_distribution(self) -> PriorProtocol:
+    def get_distribution(self) -> DistributionProtocol:
         means = self._means()
         standard_deviations = self._sigmas().data.detach()
-        return create_independent_multivariate_normal_distributed_prior(
+        return create_independent_multivariate_normal_distribution(
             means=means,
             standard_deviations=standard_deviations,
             device=self._device,
@@ -377,7 +381,7 @@ class GaussianParameterPrior(nn.Module):
         return rhos_to_parameters(self._rhos)
 
 
-class HierarchicalGaussianParameterPrior(nn.Module):
+class HierarchicalGaussianParameterDistribution(nn.Module):
     def __init__(
         self,
         model: ModelProtocol,
@@ -416,7 +420,7 @@ class HierarchicalGaussianParameterPrior(nn.Module):
             {"params": self._rhos_rates, "lr": self._learning_rates_rates},
         ]
 
-    def get_prior_distribution(self) -> PriorProtocol:
+    def get_distribution(self) -> DistributionProtocol:
         # alpha = shape
         # beta = scale
         shapes, rates = self._shapes_and_rates()
@@ -424,7 +428,7 @@ class HierarchicalGaussianParameterPrior(nn.Module):
         degrees_of_freedom = 2 * shapes  # 2 * alpha
         scales = 1 / rates
         scales_studentT = scales / shapes  # beta / alpha
-        return create_independent_multivariate_studentT_distributed_prior(
+        return create_independent_multivariate_studentT_distribution(
             degrees_of_freedom=degrees_of_freedom,
             means=means,
             scales=scales_studentT,
@@ -467,7 +471,7 @@ class HierarchicalGaussianParameterPrior(nn.Module):
         return shapes, rates
 
 
-class NormalizingFlowParameterPrior(nn.Module):
+class NormalizingFlowParameterDistribution(nn.Module):
     def __init__(self, model: ModelProtocol, device: Device) -> None:
         super().__init__()
         self._dim = model.num_parameters
@@ -482,11 +486,11 @@ class NormalizingFlowParameterPrior(nn.Module):
         return samples
 
     def get_parameters_and_options(self) -> ParameterOptions:
-        return [{"params": self._normalizing_flow.parameters(), "lr": 1.0}]
+        return [{"params": self._normalizing_flow.parameters(), "lr": 0.0001}]
 
-    def get_prior_distribution(self) -> PriorProtocol:
+    def get_distribution(self) -> DistributionProtocol:
         freeze_model(cast(Module, self._normalizing_flow))
-        return NormalizingFlowPrior(
+        return NormalizingFlowDistribution(
             normalizing_flow=self._normalizing_flow,
             dim=self._dim,
             device=self._device,
@@ -509,7 +513,7 @@ class NormalizingFlowParameterPrior(nn.Module):
         width_layers = int(self._relative_width_layers * self._dim)
         indices_constrained_outputs = [_ for _ in range(self._dim)]
         flows: list[NFFlow] = [
-            create_real_nvp_flow(
+            create_masked_autoregressive_flow(
                 number_inputs=self._dim,
                 width_hidden_layer=width_layers,
             )

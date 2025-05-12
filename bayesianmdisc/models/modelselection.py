@@ -25,7 +25,7 @@ ModelAccuracies: TypeAlias = list[float]
 file_name_parameters = "relevant_parameters.txt"
 
 
-def trim_model(
+def select_model(
     model: ModelProtocol,
     metric: str,
     relative_thresshold: float,
