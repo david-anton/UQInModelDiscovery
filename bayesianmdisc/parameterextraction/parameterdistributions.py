@@ -486,7 +486,7 @@ class NormalizingFlowParameterDistribution(nn.Module):
         return samples
 
     def get_parameters_and_options(self) -> ParameterOptions:
-        return [{"params": self._normalizing_flow.parameters(), "lr": 0.0001}]
+        return [{"params": self._normalizing_flow.parameters(), "lr": 0.0005}]
 
     def get_distribution(self) -> DistributionProtocol:
         freeze_model(cast(Module, self._normalizing_flow))
