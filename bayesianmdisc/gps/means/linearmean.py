@@ -1,10 +1,10 @@
 import gpytorch
 import torch
 
+from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.gps.base import NamedParameters
 from bayesianmdisc.gps.means.base import MeanOutput, NonZeroMean
 from bayesianmdisc.gps.utility import validate_parameters_size
-from bayesianmdisc.customtypes import Device, Tensor
 
 
 class LinearMean(NonZeroMean):
@@ -22,9 +22,10 @@ class LinearMean(NonZeroMean):
         return self._mean(x)
 
     def set_parameters(self, parameters: Tensor) -> None:
-        validate_parameters_size(parameters, self.num_hyperparameters)
         weights = parameters[: self._num_weights].clone().reshape((-1, 1))
+        validate_parameters_size(weights, torch.Size([self._num_weights, 1]))
         bias = parameters[-1].clone()
+        validate_parameters_size(bias, torch.Size([]))
         self._mean.weights = torch.nn.Parameter(weights).to(self._device)
         self._mean.bias = torch.nn.Parameter(bias).to(self._device)
 
