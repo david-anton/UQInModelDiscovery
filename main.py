@@ -75,15 +75,13 @@ elif data_set_label == data_set_label_linka:
 relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
 num_calibration_steps = 2
-list_num_wasserstein_iterations = [30_000, 20_000]
+list_num_wasserstein_iterations = [40_000, 20_000]
 selection_metric = "mae"
 list_relative_selection_thressholds = [1.0]
 num_samples_posterior = 4096
 
 
-output_directory = (
-    f"{current_date}_{input_directory}_threshold_1_mae_normalizingflow_lr1e-3"
-)
+output_directory = f"{current_date}_{input_directory}_threshold_1_mae_normalizingflow_lipschitznetwidth256"
 output_subdirectory_name_posterior = "posterior"
 output_subdirectory_name_prior = "prior"
 
@@ -277,7 +275,7 @@ if retrain_posterior:
                 num_func_samples=32,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
-                hiden_layer_size_lipschitz_nn=128,
+                hiden_layer_size_lipschitz_nn=256,  # 128,
                 num_iters_lipschitz=5,
                 lipschitz_func_pretraining=False,
                 output_subdirectory=posterior_output_subdirectory,
