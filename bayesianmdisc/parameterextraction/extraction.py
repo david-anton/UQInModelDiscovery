@@ -46,7 +46,8 @@ def extract_gp_inducing_parameter_distribution(
     penalty_coefficient_lipschitz = torch.tensor(10.0, device=device)
     learning_rate_lipschitz_func = 1e-4
 
-    lr_decay_rate_distribution = 0.9999  # 1.0
+    lr_decay_rate_distribution = 0.9995  # 1.0
+    lr_decay_rate_lipschitz_func = 1.0
 
     distribution = create_parameter_distribution(
         distribution_type=distribution_type,
@@ -182,9 +183,12 @@ def extract_gp_inducing_parameter_distribution(
         pretrain_lipschitz_func()
 
     optimizer_distribution = create_distribution_optimizer()
-    optimizer_lipschitz = create_lipschitz_func_optimizer()
+    optimizer_lipschitz_func = create_lipschitz_func_optimizer()
     lr_scheduler_distribution = create_learning_rate_scheduler(
         optimizer_distribution, lr_decay_rate_distribution
+    )
+    lr_scheduler_lipschitz_func = create_learning_rate_scheduler(
+        optimizer_lipschitz_func, lr_decay_rate_lipschitz_func
     )
     wasserstein_loss_hist = []
 
@@ -193,14 +197,14 @@ def extract_gp_inducing_parameter_distribution(
             gp_func_values = draw_gp_func_values()
             model_func_values = draw_model_func_values()
 
-            optimizer_lipschitz.zero_grad(set_to_none=True)
+            optimizer_lipschitz_func.zero_grad(set_to_none=True)
             loss_lipschitz = lipschitz_func_loss(
                 gp_func_values=gp_func_values,
                 model_func_values=model_func_values,
                 penalty_coefficient=penalty_coefficient_lipschitz,
             )
             loss_lipschitz.backward(retain_graph=True)
-            optimizer_lipschitz.step()
+            optimizer_lipschitz_func.step()
 
         gp_func_values = draw_gp_func_values()
         model_func_values = draw_model_func_values()
@@ -211,6 +215,7 @@ def extract_gp_inducing_parameter_distribution(
         loss_wasserstein.backward(retain_graph=True)
         optimizer_distribution.step()
         lr_scheduler_distribution.step()
+        lr_scheduler_lipschitz_func.step()
         loss_wasserstein_float = loss_wasserstein.detach().cpu().item()
         loss_lipschitz_float = loss_lipschitz.detach().cpu().item()
         wasserstein_loss_hist += [loss_wasserstein_float]
