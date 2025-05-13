@@ -81,7 +81,7 @@ list_relative_selection_thressholds = [1.0]
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_1_mae_normalizingflow_trainablebase_lipschitznet256"
+output_directory = f"{current_date}_{input_directory}_threshold_1_mae_normalizingflow_trainablebase_lipschitznet256_nflayers32"
 output_subdirectory_name_posterior = "posterior"
 output_subdirectory_name_prior = "prior"
 
