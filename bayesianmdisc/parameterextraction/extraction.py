@@ -48,7 +48,7 @@ def extract_gp_inducing_parameter_distribution(
     output_dim = model.output_dim
     num_flattened_outputs = len(inputs) * output_dim
 
-    penalty_coefficient_lipschitz = torch.tensor(20.0, device=device)
+    penalty_coefficient_lipschitz = torch.tensor(1.0, device=device)
     learning_rate_lipschitz_func = 1e-4
 
     lr_decay_rate_distribution = 1.0
