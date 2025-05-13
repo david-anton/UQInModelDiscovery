@@ -61,7 +61,7 @@ def extract_gp_inducing_parameter_distribution(
             hiden_layer_size_lipschitz_nn,
             1,
         ],
-        activation=nn.Softplus(),
+        activation=nn.SiLU(),  # nn.Softplus(),
         init_weights=nn.init.xavier_uniform_,
         init_bias=nn.init.zeros_,
     ).to(device)
