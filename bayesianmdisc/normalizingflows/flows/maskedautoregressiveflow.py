@@ -14,7 +14,7 @@ def create_masked_autoregressive_flow(
         hidden_features=width_hidden_layer,
         context_features=None,
         num_blocks=1,
-        use_residual_blocks=False,
+        use_residual_blocks=True,  # False,
         random_mask=False,
         activation=torch.nn.functional.relu,
         dropout_probability=0.0,
