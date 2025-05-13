@@ -3,7 +3,12 @@ import torch.nn as nn
 from torch.func import grad, vmap
 
 from bayesianmdisc.bayes.distributions import DistributionProtocol
-from bayesianmdisc.customtypes import Device, Tensor, TorchLRScheduler, TorchOptimizer
+from bayesianmdisc.customtypes import (
+    Device,
+    Tensor,
+    TorchLRScheduler,
+    TorchOptimizer,
+)
 from bayesianmdisc.data import DeformationInputs, TestCases
 from bayesianmdisc.gps import GaussianProcess
 from bayesianmdisc.gps.base import GPMultivariateNormal
@@ -43,35 +48,19 @@ def extract_gp_inducing_parameter_distribution(
     output_dim = model.output_dim
     num_flattened_outputs = len(inputs) * output_dim
 
-    penalty_coefficient_lipschitz = torch.tensor(10.0, device=device)
+    penalty_coefficient_lipschitz = torch.tensor(20.0, device=device)
     learning_rate_lipschitz_func = 1e-4
 
     lr_decay_rate_distribution = 1.0
     lr_decay_rate_lipschitz_func = 1.0
 
-    distribution = create_parameter_distribution(
-        distribution_type=distribution_type,
-        is_mean_trainable=is_mean_trainable,
-        model=model,
-        device=device,
-    )
-    lipschitz_func = FFNN(
-        layer_sizes=[
-            num_flattened_outputs,
-            hiden_layer_size_lipschitz_nn,
-            hiden_layer_size_lipschitz_nn,
-            1,
-        ],
-        activation=nn.Softplus(),
-        init_weights=nn.init.xavier_uniform_,
-        init_bias=nn.init.zeros_,
-    ).to(device)
-    gp_distribution: GPMultivariateNormal = gp(inputs)
-
-    if not resample:
-        fixed_gp_func_values = gp_distribution.rsample(
-            sample_shape=torch.Size([num_func_samples])
-        )
+    def create_lipschitz_network(layer_sizes: list[int], device: Device) -> FFNN:
+        return FFNN(
+            layer_sizes=layer_sizes,
+            activation=nn.Softplus(),
+            init_weights=nn.init.xavier_uniform_,
+            init_bias=nn.init.zeros_,
+        ).to(device)
 
     def freeze_gp(gp: GaussianProcess) -> None:
         gp.train(False)
@@ -177,6 +166,28 @@ def extract_gp_inducing_parameter_distribution(
             print(f"Iteration: {iter_wasserstein}")
             print(f"Loss Wasserstein distance: {loss_wasserstein}")
             print(f"Loss Lipschitz function: {loss_lipschitz_func}")
+
+    distribution = create_parameter_distribution(
+        distribution_type=distribution_type,
+        is_mean_trainable=is_mean_trainable,
+        model=model,
+        device=device,
+    )
+    lipschitz_func = create_lipschitz_network(
+        layer_sizes=[
+            num_flattened_outputs,
+            hiden_layer_size_lipschitz_nn,
+            hiden_layer_size_lipschitz_nn,
+            1,
+        ],
+        device=device,
+    )
+    gp_distribution: GPMultivariateNormal = gp(inputs)
+
+    if not resample:
+        fixed_gp_func_values = gp_distribution.rsample(
+            sample_shape=torch.Size([num_func_samples])
+        )
 
     freeze_gp(gp)
     if lipschitz_func_pretraining:
