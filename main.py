@@ -81,7 +81,7 @@ list_relative_selection_thressholds = [1.0]
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_1_mae_normalizingflow_adamlessmomentum_samples128"
+output_directory = f"{current_date}_{input_directory}_threshold_1_mae_inversegamma_adamlessmomentum_samples128"
 output_subdirectory_name_posterior = "posterior"
 output_subdirectory_name_prior = "prior"
 
@@ -268,7 +268,7 @@ if retrain_posterior:
             return extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
                 model=model,
-                distribution_type="normalizing flow",  # "inverse Gamma",
+                distribution_type="inverse Gamma",  # "normalizing flow",
                 is_mean_trainable=True,
                 inputs=inputs,
                 test_cases=test_cases,
