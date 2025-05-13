@@ -75,7 +75,7 @@ elif data_set_label == data_set_label_linka:
 relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
 num_calibration_steps = 2
-list_num_wasserstein_iterations = [40_000, 20_000]
+list_num_wasserstein_iterations = [10_000, 10_000]
 selection_metric = "mae"
 list_relative_selection_thressholds = [1.0]
 num_samples_posterior = 4096
