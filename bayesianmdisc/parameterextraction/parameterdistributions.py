@@ -477,7 +477,7 @@ class NormalizingFlowParameterDistribution(nn.Module):
         self._dim = model.num_parameters
         self._device = device
         self._is_base_trainable = False
-        self._num_layers = 4  # 16
+        self._num_layers = 16
         self._relative_width_layers = 4.0
         self._normalizing_flow = self._init_normalizing_flow()
 
@@ -489,8 +489,8 @@ class NormalizingFlowParameterDistribution(nn.Module):
         return [
             {
                 "params": self._normalizing_flow.parameters(),
-                "lr": 1e-4,
-                "betas": (0.0, 0.9),
+                "lr": 5e-4,  # 1e-4,
+                # "betas": (0.0, 0.9),
             }
         ]
 
