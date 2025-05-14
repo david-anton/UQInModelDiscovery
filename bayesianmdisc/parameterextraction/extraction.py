@@ -52,7 +52,7 @@ def extract_gp_inducing_parameter_distribution(
     penalty_coefficient_lipschitz = torch.tensor(10.0, device=device)
     learning_rate_lipschitz_func = 1e-4
 
-    lr_decay_rate_distribution = 0.9995  # 1.0
+    lr_decay_rate_distribution = 0.99995  # 1.0
     lr_decay_rate_lipschitz_func = 1.0
 
     def create_lipschitz_network(
