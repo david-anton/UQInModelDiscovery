@@ -28,7 +28,7 @@ from bayesianmdisc.statistics.utility import determine_quantiles
 credible_interval = 0.95
 
 
-class StressPlotterConfigTreloar:
+class ModelStressPlotterConfigTreloar:
     def __init__(self) -> None:
         # label size
         self.label_size = 10
@@ -79,7 +79,7 @@ class StressPlotterConfigTreloar:
         self.dpi = 300
 
 
-def plot_stresses_treloar(
+def plot_model_stresses_treloar(
     model: IsotropicModelLibrary,
     parameter_samples: NPArray,
     inputs: NPArray,
@@ -89,7 +89,7 @@ def plot_stresses_treloar(
     project_directory: ProjectDirectory,
     device: Device,
 ) -> None:
-    config = StressPlotterConfigTreloar()
+    config = ModelStressPlotterConfigTreloar()
     considered_test_cases = [
         test_case_identifier_uniaxial_tension,
         test_case_identifier_equibiaxial_tension,
@@ -398,7 +398,7 @@ def plot_stresses_treloar(
     plt.clf()
 
 
-class StressPlotterConfigKawabata:
+class ModelStressPlotterConfigKawabata:
     def __init__(self) -> None:
         # label size
         self.label_size = 10
@@ -438,7 +438,7 @@ class StressPlotterConfigKawabata:
         self.dpi = 300
 
 
-def plot_stresses_kawabata(
+def plot_model_stresses_kawabata(
     model: IsotropicModelLibrary,
     parameter_samples: NPArray,
     inputs: NPArray,
@@ -448,7 +448,7 @@ def plot_stresses_kawabata(
     project_directory: ProjectDirectory,
     device: Device,
 ) -> None:
-    config = StressPlotterConfigKawabata()
+    config = ModelStressPlotterConfigKawabata()
     num_data_points = 76
     set_sizes = [1, 6, 6, 8, 8, 8, 8, 8, 7, 7, 6, 3]
     num_sets = len(set_sizes)
@@ -687,7 +687,7 @@ def plot_stresses_kawabata(
     plt.clf()
 
 
-class StressPlotterConfigLinka:
+class ModelStressPlotterConfigLinka:
     def __init__(self) -> None:
         # label size
         self.label_size = 10
@@ -728,7 +728,7 @@ class StressPlotterConfigLinka:
         self.dpi = 300
 
 
-def plot_stresses_linka(
+def plot_model_stresses_linka(
     model: OrthotropicCANN,
     parameter_samples: NPArray,
     inputs: NPArray,
@@ -738,7 +738,7 @@ def plot_stresses_linka(
     project_directory: ProjectDirectory,
     device: Device,
 ) -> None:
-    config = StressPlotterConfigLinka()
+    config = ModelStressPlotterConfigLinka()
     num_data_sets_simple_shear = 6
     num_data_sets_biaxial_tension = 5
     num_data_sets = num_data_sets_simple_shear + num_data_sets_biaxial_tension

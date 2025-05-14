@@ -39,9 +39,9 @@ from bayesianmdisc.models import (
 from bayesianmdisc.parameterextraction import extract_gp_inducing_parameter_distribution
 from bayesianmdisc.postprocessing.plot import (
     plot_histograms,
-    plot_stresses_kawabata,
-    plot_stresses_linka,
-    plot_stresses_treloar,
+    plot_model_stresses_kawabata,
+    plot_model_stresses_linka,
+    plot_model_stresses_treloar,
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
@@ -99,7 +99,7 @@ def plot_stresses(
     output_subdirectory = join_output_subdirectory()
 
     def plot_treloar() -> None:
-        plot_stresses_treloar(
+        plot_model_stresses_treloar(
             model=cast(IsotropicModelLibrary, model),
             parameter_samples=model_parameter_samples,
             inputs=inputs.detach().cpu().numpy(),
@@ -119,7 +119,7 @@ def plot_stresses(
             isotropic_model = cast(IsotropicModelLibrary, model)
             isotropic_model.set_output_dimension(2)
 
-            plot_stresses_kawabata(
+            plot_model_stresses_kawabata(
                 model=isotropic_model,
                 parameter_samples=model_parameter_samples,
                 inputs=inputs.detach().cpu().numpy(),
@@ -135,7 +135,7 @@ def plot_stresses(
         _plot_kawabata()
 
     def plot_kawabata() -> None:
-        plot_stresses_kawabata(
+        plot_model_stresses_kawabata(
             model=cast(IsotropicModelLibrary, model),
             parameter_samples=model_parameter_samples,
             inputs=inputs.detach().cpu().numpy(),
@@ -147,7 +147,7 @@ def plot_stresses(
         )
 
     def plot_linka() -> None:
-        plot_stresses_linka(
+        plot_model_stresses_linka(
             model=cast(OrthotropicCANN, model),
             parameter_samples=model_parameter_samples,
             inputs=inputs.detach().cpu().numpy(),

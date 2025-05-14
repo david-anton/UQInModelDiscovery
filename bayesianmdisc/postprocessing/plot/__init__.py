@@ -4,10 +4,10 @@ from .plot_history import (
     plot_loss_history,
     plot_statistical_loss_history,
 )
-from .plot_stress import (
-    plot_stresses_kawabata,
-    plot_stresses_linka,
-    plot_stresses_treloar,
+from .plot_stress_model import (
+    plot_model_stresses_kawabata,
+    plot_model_stresses_linka,
+    plot_model_stresses_treloar,
 )
 
 __all__ = [
@@ -15,7 +15,7 @@ __all__ = [
     "HistoryPlotterConfig",
     "plot_loss_history",
     "plot_statistical_loss_history",
-    "plot_stresses_linka",
-    "plot_stresses_treloar",
-    "plot_stresses_kawabata",
+    "plot_model_stresses_linka",
+    "plot_model_stresses_treloar",
+    "plot_model_stresses_kawabata",
 ]
