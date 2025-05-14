@@ -81,7 +81,7 @@ list_relative_selection_thressholds = [0.2]  # [1.0]
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_mae_0.2_normalizingflow_lrdecay95_nflayers16"
+output_directory = f"{current_date}_{input_directory}_threshold_mae_0.2_normalizingflow_lrdecay95_nflayers32"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
