@@ -82,8 +82,8 @@ num_samples_posterior = 4096
 
 
 output_directory = f"{current_date}_{input_directory}_threshold_1_mae_normalizingflow_lipschitznet256_nflayers16_rmsprop_lrdecay_nonnegativeparams"
-output_subdirectory_name_posterior = "posterior"
-output_subdirectory_name_prior = "prior"
+output_subdirectory_name_parameters = "parameters"
+output_subdirectory_name_gp = "gp"
 
 
 def plot_stresses(
@@ -179,11 +179,11 @@ if retrain_posterior:
         output_directory_step = os.path.join(
             output_directory, f"calibration_step_{step}"
         )
-        prior_output_subdirectory = os.path.join(
-            output_directory_step, output_subdirectory_name_prior
+        output_subdirectory_gp = os.path.join(
+            output_directory_step, output_subdirectory_name_gp
         )
-        posterior_output_subdirectory = os.path.join(
-            output_directory_step, output_subdirectory_name_prior
+        output_subdirectory_parameters = os.path.join(
+            output_directory_step, output_subdirectory_name_parameters
         )
         num_parameters = model.num_parameters
         parameter_names = model.parameter_names
@@ -242,7 +242,7 @@ if retrain_posterior:
             else:
                 return create_independent_multi_output_gp()
 
-        def fit_gp_prior() -> None:
+        def select_gp_prior() -> None:
             optimize_gp_hyperparameters(
                 gaussian_process=gaussian_process,
                 inputs=inputs,
@@ -250,7 +250,7 @@ if retrain_posterior:
                 initial_noise_stddevs=noise_stddevs,
                 num_iterations=int(5e4),
                 learning_rate=1e-3,
-                output_subdirectory=prior_output_subdirectory,
+                output_subdirectory=output_subdirectory_gp,
                 project_directory=project_directory,
                 device=device,
             )
@@ -278,13 +278,13 @@ if retrain_posterior:
                 hiden_layer_size_lipschitz_nn=256,
                 num_iters_lipschitz=5,
                 lipschitz_func_pretraining=False,
-                output_subdirectory=posterior_output_subdirectory,
+                output_subdirectory=output_subdirectory_parameters,
                 project_directory=project_directory,
                 device=device,
             )
 
         gaussian_process = create_gp()
-        fit_gp_prior()
+        select_gp_prior()
         infer_gp_posterior()
         parameter_distribution = extract_parameter_distribution()
 
@@ -298,7 +298,7 @@ if retrain_posterior:
             moments=parameter_moments,
             samples=parameter_samples,
             algorithm_name="nf",
-            output_subdirectory=posterior_output_subdirectory,
+            output_subdirectory=output_subdirectory_parameters,
             project_directory=project_directory,
         )
         plot_stresses(
