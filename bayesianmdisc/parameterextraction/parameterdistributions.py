@@ -525,12 +525,12 @@ class NormalizingFlowParameterDistribution(nn.Module):
             )
             for _ in range(self._num_layers)
         ]
-        # flows += [
-        #     create_exponential_constrained_flow(
-        #         total_num_outputs=self._dim,
-        #         indices_constrained_outputs=indices_constrained_outputs,
-        #     )
-        # ]
+        flows += [
+            create_exponential_constrained_flow(
+                total_num_outputs=self._dim,
+                indices_constrained_outputs=indices_constrained_outputs,
+            )
+        ]
         return flows
 
 
