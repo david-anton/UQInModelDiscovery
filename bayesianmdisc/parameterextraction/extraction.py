@@ -58,43 +58,43 @@ def extract_gp_inducing_parameter_distribution(
     def create_lipschitz_network(
         layer_sizes: list[int], use_layer_normalization: bool, device: Device
     ) -> Module:
-        activation = nn.Softplus()
-        initializer_weights = nn.init.xavier_uniform_
-        initializer_bias = nn.init.zeros_
-        layers: list[Module] = []
+        # activation = nn.Softplus()
+        # initializer_weights = nn.init.xavier_uniform_
+        # initializer_bias = nn.init.zeros_
+        # layers: list[Module] = []
 
-        for i in range(1, len(layer_sizes) - 1):
-            size_input = layer_sizes[i - 1]
-            size_output = layer_sizes[i]
-            layers.append(
-                LinearHiddenLayer(
-                    size_input=size_input,
-                    size_output=size_output,
-                    activation=activation,
-                    init_weights=initializer_weights,
-                    init_bias=initializer_bias,
-                )
-            )
-            if use_layer_normalization:
-                layers.append(nn.LayerNorm(size_output))
+        # for i in range(1, len(layer_sizes) - 1):
+        #     size_input = layer_sizes[i - 1]
+        #     size_output = layer_sizes[i]
+        #     layers.append(
+        #         LinearHiddenLayer(
+        #             size_input=size_input,
+        #             size_output=size_output,
+        #             activation=activation,
+        #             init_weights=initializer_weights,
+        #             init_bias=initializer_bias,
+        #         )
+        #     )
+        #     if use_layer_normalization:
+        #         layers.append(nn.LayerNorm(size_output))
 
-        layers.append(
-            LinearOutputLayer(
-                size_input=layer_sizes[-2],
-                size_output=layer_sizes[-1],
-                init_weights=initializer_weights,
-                init_bias=initializer_bias,
-            )
-        )
+        # layers.append(
+        #     LinearOutputLayer(
+        #         size_input=layer_sizes[-2],
+        #         size_output=layer_sizes[-1],
+        #         init_weights=initializer_weights,
+        #         init_bias=initializer_bias,
+        #     )
+        # )
 
-        return nn.Sequential(*layers).to(device)
+        # return nn.Sequential(*layers).to(device)
 
-        # return FFNN(
-        #     layer_sizes=layer_sizes,
-        #     activation=nn.Softplus(),
-        #     init_weights=nn.init.xavier_uniform_,
-        #     init_bias=nn.init.zeros_,
-        # ).to(device)
+        return FFNN(
+            layer_sizes=layer_sizes,
+            activation=nn.Softplus(),
+            init_weights=nn.init.xavier_uniform_,
+            init_bias=nn.init.zeros_,
+        ).to(device)
 
     def freeze_gp(gp: GaussianProcess) -> None:
         gp.train(False)
