@@ -8,6 +8,7 @@ from bayesianmdisc.customtypes import (
     Tensor,
     TorchLRScheduler,
     TorchOptimizer,
+    Module,
 )
 from bayesianmdisc.data import DeformationInputs, TestCases
 from bayesianmdisc.gps import GaussianProcess
@@ -15,7 +16,7 @@ from bayesianmdisc.gps.base import GPMultivariateNormal
 from bayesianmdisc.gps.multioutputgp import flatten_outputs
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import ModelProtocol
-from bayesianmdisc.networks import FFNN
+from bayesianmdisc.networks.ffnn import FFNN, LinearHiddenLayer, LinearOutputLayer
 from bayesianmdisc.parameterextraction.parameterdistributions import (
     create_parameter_distribution,
 )
@@ -54,7 +55,40 @@ def extract_gp_inducing_parameter_distribution(
     lr_decay_rate_distribution = 1.0
     lr_decay_rate_lipschitz_func = 1.0
 
-    def create_lipschitz_network(layer_sizes: list[int], device: Device) -> FFNN:
+    def create_lipschitz_network(
+        layer_sizes: list[int], use_layer_normalization: bool, device: Device
+    ) -> Module:
+        # activation = nn.Softplus()
+        # initializer_weights = nn.init.xavier_uniform_
+        # initializer_bias = nn.init.zeros_
+        # layers: list[Module] = []
+
+        # for i in range(1, len(layer_sizes) - 1):
+        #     size_input = layer_sizes[i - 1]
+        #     size_output = layer_sizes[i]
+        #     layers.append(
+        #         LinearHiddenLayer(
+        #             size_input=size_input,
+        #             size_output=size_output,
+        #             activation=activation,
+        #             init_weights=initializer_weights,
+        #             init_bias=initializer_bias,
+        #         )
+        #     )
+        #     if use_layer_normalization:
+        #         layers.append(nn.LayerNorm(size_output))
+
+        # layers.append(
+        #     LinearOutputLayer(
+        #         size_input=layer_sizes[-2],
+        #         size_output=layer_sizes[-1],
+        #         init_weights=initializer_weights,
+        #         init_bias=initializer_bias,
+        #     )
+        # )
+
+        # return nn.Sequential(*layers).to(device)
+
         return FFNN(
             layer_sizes=layer_sizes,
             activation=nn.Softplus(),
@@ -75,10 +109,14 @@ def extract_gp_inducing_parameter_distribution(
         # return torch.optim.Adam(params=distribution.get_parameters_and_options())
 
     def create_lipschitz_func_optimizer() -> TorchOptimizer:
-        return torch.optim.Adam(
+        # return torch.optim.Adam(
+        #     params=lipschitz_func.parameters(),
+        #     lr=learning_rate_lipschitz_func,
+        #     betas=(0.0, 0.9),
+        # )
+        return torch.optim.RMSprop(
             params=lipschitz_func.parameters(),
             lr=learning_rate_lipschitz_func,
-            betas=(0.0, 0.9),
         )
 
     def create_learning_rate_scheduler(
@@ -181,6 +219,7 @@ def extract_gp_inducing_parameter_distribution(
             hiden_layer_size_lipschitz_nn,
             1,
         ],
+        use_layer_normalization=True,
         device=device,
     )
     gp_distribution: GPMultivariateNormal = gp(inputs)
