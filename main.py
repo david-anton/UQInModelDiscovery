@@ -42,6 +42,7 @@ from bayesianmdisc.postprocessing.plot import (
     plot_model_stresses_kawabata,
     plot_model_stresses_linka,
     plot_model_stresses_treloar,
+    plot_gp_stresses_treloar,
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
@@ -75,18 +76,38 @@ elif data_set_label == data_set_label_linka:
 relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
 num_calibration_steps = 2
-list_num_wasserstein_iterations = [20_000, 10_000]
+list_num_wasserstein_iterations = [40_000, 20_000]
 selection_metric = "mae"
 list_relative_selection_thressholds = [0.5]
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_mae_0.5_normalizingflow_lrdecay9_nflayers16_noise5e-2_largermodel_AdamW"
+output_directory = f"{current_date}_{input_directory}_threshold_mae_0.5_normalizingflow_lrdecay9_nflayers16_noise5e-2_largermodel_AdamW_moreiters"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
 
-def plot_stresses(
+def plot_gp_stresses(
+    gaussian_process: GaussianProcess,
+    output_subdirectory: str,
+) -> None:
+
+    def plot_treloar() -> None:
+        plot_gp_stresses_treloar(
+            gaussian_process=gaussian_process,
+            inputs=inputs.detach().cpu().numpy(),
+            outputs=outputs.detach().cpu().numpy(),
+            test_cases=test_cases.detach().cpu().numpy(),
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+            device=device,
+        )
+
+    if data_set_label == data_set_label_treloar:
+        plot_treloar()
+
+
+def plot_model_stresses(
     model: ModelProtocol,
     model_parameter_samples: NPArray,
     subdirectory_name: str,
@@ -254,6 +275,10 @@ if retrain_posterior:
                 project_directory=project_directory,
                 device=device,
             )
+            # plot_gp_stresses(
+            #     gaussian_process=gaussian_process,
+            #     output_subdirectory=output_subdirectory_gp,
+            # )
 
         def infer_gp_posterior() -> None:
             condition_gp(
@@ -301,7 +326,7 @@ if retrain_posterior:
             output_subdirectory=output_subdirectory_parameters,
             project_directory=project_directory,
         )
-        plot_stresses(
+        plot_model_stresses(
             model=model,
             model_parameter_samples=parameter_samples,
             subdirectory_name="model_full",
@@ -322,7 +347,7 @@ if retrain_posterior:
                 output_subdirectory=output_directory_step,
                 project_directory=project_directory,
             )
-            plot_stresses(
+            plot_model_stresses(
                 model=model,
                 model_parameter_samples=parameter_samples,
                 subdirectory_name="model_selected",
