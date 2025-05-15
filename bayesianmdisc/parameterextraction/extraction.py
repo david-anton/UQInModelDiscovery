@@ -55,45 +55,13 @@ def extract_gp_inducing_parameter_distribution(
     lr_decay_rate_distribution = 0.9999
     lr_decay_rate_lipschitz_func = 1.0
 
-    def create_lipschitz_network(
-        layer_sizes: list[int], use_layer_normalization: bool, device: Device
-    ) -> Module:
-        # activation = nn.Softplus()
-        # initializer_weights = nn.init.xavier_uniform_
-        # initializer_bias = nn.init.zeros_
-        # layers: list[Module] = []
-
-        # for i in range(1, len(layer_sizes) - 1):
-        #     size_input = layer_sizes[i - 1]
-        #     size_output = layer_sizes[i]
-        #     layers.append(
-        #         LinearHiddenLayer(
-        #             size_input=size_input,
-        #             size_output=size_output,
-        #             activation=activation,
-        #             init_weights=initializer_weights,
-        #             init_bias=initializer_bias,
-        #         )
-        #     )
-        #     if use_layer_normalization:
-        #         layers.append(nn.LayerNorm(size_output))
-
-        # layers.append(
-        #     LinearOutputLayer(
-        #         size_input=layer_sizes[-2],
-        #         size_output=layer_sizes[-1],
-        #         init_weights=initializer_weights,
-        #         init_bias=initializer_bias,
-        #     )
-        # )
-
-        # return nn.Sequential(*layers).to(device)
-
+    def create_lipschitz_network(layer_sizes: list[int], device: Device) -> Module:
         return FFNN(
             layer_sizes=layer_sizes,
             activation=nn.Softplus(),
             init_weights=nn.init.xavier_uniform_,
             init_bias=nn.init.zeros_,
+            use_layer_norm=False,
         ).to(device)
 
     def freeze_gp(gp: GaussianProcess) -> None:
@@ -105,18 +73,17 @@ def extract_gp_inducing_parameter_distribution(
             parameters.requires_grad = False
 
     def create_distribution_optimizer() -> TorchOptimizer:
-        return torch.optim.Rprop(params=distribution.get_parameters_and_options())
-        # return torch.optim.RMSprop(params=distribution.get_parameters_and_options())
+        return torch.optim.RMSprop(params=distribution.get_parameters_and_options())
 
     def create_lipschitz_func_optimizer() -> TorchOptimizer:
         return torch.optim.AdamW(
             params=lipschitz_func.parameters(),
             lr=learning_rate_lipschitz_func,
-            betas=(0.0, 0.9),
         )
-        # return torch.optim.RMSprop(
+        # return torch.optim.Adam(
         #     params=lipschitz_func.parameters(),
         #     lr=learning_rate_lipschitz_func,
+        #     betas=(0.0, 0.9),
         # )
 
     def create_learning_rate_scheduler(
@@ -219,7 +186,6 @@ def extract_gp_inducing_parameter_distribution(
             hiden_layer_size_lipschitz_nn,
             1,
         ],
-        use_layer_normalization=True,
         device=device,
     )
     gp_distribution: GPMultivariateNormal = gp(inputs)
