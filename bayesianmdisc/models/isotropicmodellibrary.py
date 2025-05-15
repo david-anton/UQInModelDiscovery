@@ -58,13 +58,15 @@ class IsotropicModelLibrary:
 
     def __init__(self, output_dim: int, device: Device):
         self._device = device
-        self._degree_mr_terms = 4  # 3
+        self._degree_mr_terms = 3
         self._mr_exponents = self._determine_mr_exponents()
-        self._num_negative_ogden_terms = 8  # 4
-        self._num_positive_ogden_terms = 8  # 4
+        self._num_regular_negative_ogden_terms = 8  # 4
+        self._num_regular_positive_ogden_terms = 8  # 4
+        self._min_regular_ogden_exponent = torch.tensor(-2.0, device=self._device)
+        self._max_regular_ogden_exponent = torch.tensor(2.0, device=self._device)
+        self._additional_ogden_terms = [-5.0, -4.0, -3.0, 3.0, 4.0, 5.0]
+        self._num_additional_ogden_terms = len(self._additional_ogden_terms)
         self._num_ogden_terms = self._determine_number_of_ogden_terms()
-        self._min_ogden_exponent = torch.tensor(-2.0, device=self._device)
-        self._max_ogden_exponent = torch.tensor(2.0, device=self._device)
         self._ogden_exponents = self._determine_ogden_exponents()
         self._num_ln_feature_terms = 1
         self._test_case_identifier_ut = test_case_identifier_uniaxial_tension
@@ -221,20 +223,24 @@ class IsotropicModelLibrary:
         return torch.concat(exponents, dim=0).tolist()
 
     def _determine_number_of_ogden_terms(self) -> int:
-        return self._num_negative_ogden_terms + self._num_positive_ogden_terms
+        return (
+            self._num_regular_negative_ogden_terms
+            + self._num_regular_positive_ogden_terms
+            + self._num_additional_ogden_terms
+        )
 
     def _determine_ogden_exponents(self) -> OgdenExponents:
         negative_exponents = torch.linspace(
-            start=self._min_ogden_exponent,
+            start=self._min_regular_ogden_exponent,
             end=0.0,
-            steps=self._num_negative_ogden_terms + 1,
+            steps=self._num_regular_negative_ogden_terms + 1,
         )[:-1].tolist()
         positive_exponents = torch.linspace(
             start=0.0,
-            end=self._max_ogden_exponent,
-            steps=self._num_positive_ogden_terms + 1,
+            end=self._max_regular_ogden_exponent,
+            steps=self._num_regular_positive_ogden_terms + 1,
         )[1:].tolist()
-        return negative_exponents + positive_exponents
+        return negative_exponents + positive_exponents + self._additional_ogden_terms
 
     def _determine_allowed_test_cases(self) -> AllowedTestCases:
         return torch.tensor(
@@ -284,14 +290,12 @@ class IsotropicModelLibrary:
 
         def compose_ogden_parameter_names() -> ParameterNames:
             parameter_names = []
-            for index, exponent in zip(
-                range(1, self._num_ogden_terms + 1), self._ogden_exponents
-            ):
-                parameter_names += [f"O_{index} ({round(exponent,2)})"]
+            for exponent in self._ogden_exponents:
+                parameter_names += [f"Ogden ({round(exponent,2)})"]
             return tuple(parameter_names)
 
         def compose_ln_feature_parameter_name() -> ParameterNames:
-            return ("ln_I2",)
+            return ("ln(I2)",)
 
         mr_parameter_names = compose_mr_parameter_names()
         ogden_parameter_names = compose_ogden_parameter_names()
