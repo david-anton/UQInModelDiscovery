@@ -72,7 +72,7 @@ elif data_set_label == data_set_label_linka:
     data_reader = LinkaHeartDataReader(input_directory, project_directory, device)
     model = OrthotropicCANN(device)
 
-relative_noise_stddevs = 5e-2
+relative_noise_stddevs = 1e-1  # 5e-2
 min_noise_stddev = 1e-3
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
@@ -81,7 +81,7 @@ list_relative_selection_thressholds = [0.2]
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_mae_0.2_normalizingflow_lrdecay9_nflayers16_noise5e-2"
+output_directory = f"{current_date}_{input_directory}_threshold_mae_0.2_normalizingflow_lrdecay9_nflayers16_noise1e-1"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
