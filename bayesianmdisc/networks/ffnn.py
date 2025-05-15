@@ -28,13 +28,13 @@ class LinearHiddenLayer(nn.Module):
         self._activation = activation
         self._use_layer_norm = use_layer_norm
         if self._use_layer_norm:
-            self._layer_norm = nn.RMSNorm(size_input)
+            self._layer_norm = nn.RMSNorm(size_output)
         init_weights(self._linear_layer.weight)
         init_bias(self._linear_layer.bias)
 
     def forward(self, x: Tensor) -> Tensor:
         if self._use_layer_norm:
-            return self._activation(self._linear_layer(self._layer_norm(x)))
+            return self._activation(self._layer_norm(self._linear_layer(x)))
         else:
             return self._activation(self._linear_layer(x))
 
