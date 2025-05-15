@@ -75,13 +75,13 @@ elif data_set_label == data_set_label_linka:
 relative_noise_stddevs = 5e-2
 min_noise_stddev = 1e-3
 num_calibration_steps = 2
-list_num_wasserstein_iterations = [40_000, 20_000]
+list_num_wasserstein_iterations = [20_000, 10_000]
 selection_metric = "mae"
-list_relative_selection_thressholds = [0.2]  # [1.0]
+list_relative_selection_thressholds = [0.2]
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_mae_0.2_normalizingflow_lrdecay95_nflayers32_funcsamples256"
+output_directory = f"{current_date}_{input_directory}_threshold_mae_0.2_normalizingflow_lrdecay9_nflayers16_noise5e-2"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
@@ -268,11 +268,11 @@ if retrain_posterior:
             return extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
                 model=model,
-                distribution_type="normalizing flow",  # "inverse Gamma",
+                distribution_type="normalizing flow",
                 is_mean_trainable=True,
                 inputs=inputs,
                 test_cases=test_cases,
-                num_func_samples=256,  # 32,
+                num_func_samples=32,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
                 hiden_layer_size_lipschitz_nn=256,
