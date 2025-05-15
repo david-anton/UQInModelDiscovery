@@ -81,7 +81,7 @@ list_relative_selection_thressholds = [0.5]
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_mae_0.5_normalizingflow_lrdecay9_nflayers16_noise5e-2_largermodel_AdamW"
+output_directory = f"{current_date}_{input_directory}_threshold_mae_0.5_normalizingflow_lrdecay9_nflayers16_noise5e-2_largermodel_AdamW_lipschitz512"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
@@ -275,7 +275,7 @@ if retrain_posterior:
                 num_func_samples=32,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
-                hiden_layer_size_lipschitz_nn=256,
+                hiden_layer_size_lipschitz_nn=512,  # 256,
                 num_iters_lipschitz=5,
                 lipschitz_func_pretraining=False,
                 output_subdirectory=output_subdirectory_parameters,
