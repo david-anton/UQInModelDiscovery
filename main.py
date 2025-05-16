@@ -38,11 +38,11 @@ from bayesianmdisc.models import (
 )
 from bayesianmdisc.parameterextraction import extract_gp_inducing_parameter_distribution
 from bayesianmdisc.postprocessing.plot import (
+    plot_gp_stresses_treloar,
     plot_histograms,
     plot_model_stresses_kawabata,
     plot_model_stresses_linka,
     plot_model_stresses_treloar,
-    # plot_gp_stresses_treloar,
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
@@ -87,24 +87,24 @@ output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
 
-# def plot_gp_stresses(
-#     gaussian_process: GaussianProcess,
-#     output_subdirectory: str,
-# ) -> None:
+def plot_gp_stresses(
+    gaussian_process: GaussianProcess,
+    output_subdirectory: str,
+) -> None:
 
-#     def plot_treloar() -> None:
-#         plot_gp_stresses_treloar(
-#             gaussian_process=gaussian_process,
-#             inputs=inputs.detach().cpu().numpy(),
-#             outputs=outputs.detach().cpu().numpy(),
-#             test_cases=test_cases.detach().cpu().numpy(),
-#             output_subdirectory=output_subdirectory,
-#             project_directory=project_directory,
-#             device=device,
-#         )
+    def plot_treloar() -> None:
+        plot_gp_stresses_treloar(
+            gaussian_process=gaussian_process,
+            inputs=inputs.detach().cpu().numpy(),
+            outputs=outputs.detach().cpu().numpy(),
+            test_cases=test_cases.detach().cpu().numpy(),
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+            device=device,
+        )
 
-#     if data_set_label == data_set_label_treloar:
-#         plot_treloar()
+    if data_set_label == data_set_label_treloar:
+        plot_treloar()
 
 
 def plot_model_stresses(
@@ -275,10 +275,6 @@ if retrain_posterior:
                 project_directory=project_directory,
                 device=device,
             )
-            # plot_gp_stresses(
-            #     gaussian_process=gaussian_process,
-            #     output_subdirectory=output_subdirectory_gp,
-            # )
 
         def infer_gp_posterior() -> None:
             condition_gp(
@@ -287,6 +283,10 @@ if retrain_posterior:
                 outputs=outputs,
                 noise_stddevs=noise_stddevs,
                 device=device,
+            )
+            plot_gp_stresses(
+                gaussian_process=gaussian_process,
+                output_subdirectory=output_subdirectory_gp,
             )
 
         def extract_parameter_distribution() -> DistributionProtocol:

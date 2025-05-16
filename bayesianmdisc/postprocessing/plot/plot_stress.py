@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TypeAlias, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,7 +7,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from torch import vmap
 
-from bayesianmdisc.customtypes import Device, NPArray
+from bayesianmdisc.customtypes import Device, NPArray, Tensor
 from bayesianmdisc.data.testcases import (
     test_case_identifier_biaxial_tension,
     test_case_identifier_equibiaxial_tension,
@@ -16,8 +16,11 @@ from bayesianmdisc.data.testcases import (
     test_case_identifier_uniaxial_tension,
 )
 from bayesianmdisc.errors import StressPlotterError
+from bayesianmdisc.gps.gp import GP
+from bayesianmdisc.gps.multioutputgp import IndependentMultiOutputGP
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import IsotropicModelLibrary, ModelProtocol, OrthotropicCANN
+from bayesianmdisc.models.base import assemble_stretches_from_factors
 from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
     coverage_test,
@@ -25,7 +28,15 @@ from bayesianmdisc.statistics.metrics import (
 )
 from bayesianmdisc.statistics.utility import determine_quantiles
 
+GaussianProcess: TypeAlias = GP | IndependentMultiOutputGP
+
 credible_interval = 0.95
+factor_stddev_credible_interval = 1.96
+
+
+################################################################################
+# Model
+################################################################################
 
 
 class ModelStressPlotterConfigTreloar:
@@ -90,60 +101,9 @@ def plot_model_stresses_treloar(
     device: Device,
 ) -> None:
     config = ModelStressPlotterConfigTreloar()
-    considered_test_cases = [
-        test_case_identifier_uniaxial_tension,
-        test_case_identifier_equibiaxial_tension,
-        test_case_identifier_pure_shear,
-    ]
-    num_data_points_ut = 25
-    num_data_points_ebt = 14
-    num_data_points_ps = 14
-    expected_set_sizes = [num_data_points_ut, num_data_points_ebt, num_data_points_ps]
     num_model_inputs = 256
 
     figure_all, axes_all = plt.subplots()
-
-    def split_inputs_and_outputs(
-        inputs: NPArray, test_cases: NPArray, outputs: NPArray
-    ) -> tuple[list[NPArray], list[int], list[NPArray]]:
-
-        def split_data() -> tuple[list[NPArray], list[int], list[NPArray]]:
-            input_sets = []
-            test_case_sets = []
-            output_sets = []
-
-            for test_case in considered_test_cases:
-                filter = test_cases == test_case
-                input_sets += [inputs[filter]]
-                test_case_sets += [test_case]
-                output_sets += [outputs[filter]]
-
-            return input_sets, test_case_sets, output_sets
-
-        def validate_data_sets(
-            input_sets: list[NPArray],
-            test_case_sets: list[int],
-            output_sets: list[NPArray],
-        ) -> None:
-            input_set_sizes = [len(set) for set in input_sets]
-            output_set_sizes = [len(set) for set in output_sets]
-
-            valid_set_sizes = (
-                input_set_sizes == expected_set_sizes
-                and output_set_sizes == expected_set_sizes
-                and len(test_case_sets) == 3
-            )
-            valid_test_case_sets = test_case_sets == considered_test_cases
-
-            if not valid_set_sizes and valid_test_case_sets:
-                raise StressPlotterError(
-                    """The number of data points to be plotted
-                                        does not match the size of the Treloar data set."""
-                )
-
-        input_sets, test_case_sets, output_sets = split_data()
-        validate_data_sets(input_sets, test_case_sets, output_sets)
-        return input_sets, test_case_sets, output_sets
 
     def plot_one_input_output_set(
         inputs: NPArray, test_case: int, outputs: NPArray
@@ -347,11 +307,6 @@ def plot_model_stresses_treloar(
         # legend
         axes_all.legend(fontsize=config.font_size, loc="upper left")
 
-        output_path = project_directory.create_output_file_path(
-            file_name=file_name, subdir_name=output_subdirectory
-        )
-        figure_all.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
-
         # text box metrics
         coverage = calclulate_coverage(
             model,
@@ -385,7 +340,12 @@ def plot_model_stresses_treloar(
             bbox=text_properties,
         )
 
-    input_sets, test_case_sets, output_sets = split_inputs_and_outputs(
+        output_path = project_directory.create_output_file_path(
+            file_name=file_name, subdir_name=output_subdirectory
+        )
+        figure_all.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
+
+    input_sets, test_case_sets, output_sets = split_treloar_inputs_and_outputs(
         inputs, test_cases, outputs
     )
 
@@ -497,7 +457,7 @@ def plot_model_stresses_kawabata(
         split_indices = determine_split_indices()
         return split_data_sets(split_indices)
 
-    def plot_one_input_output_set(
+    def plot_one_stress_dimension(
         input_sets: list[NPArray],
         output_sets: list[NPArray],
         test_case_sets: list[NPArray],
@@ -682,8 +642,8 @@ def plot_model_stresses_kawabata(
     input_sets, output_sets, test_case_sets = split_inputs_and_outputs(
         inputs, outputs, test_cases
     )
-    plot_one_input_output_set(input_sets, output_sets, test_case_sets, stress_dim=0)
-    plot_one_input_output_set(input_sets, output_sets, test_case_sets, stress_dim=1)
+    plot_one_stress_dimension(input_sets, output_sets, test_case_sets, stress_dim=0)
+    plot_one_stress_dimension(input_sets, output_sets, test_case_sets, stress_dim=1)
     plt.clf()
 
 
@@ -1195,3 +1155,408 @@ def calculate_root_mean_squared_error(
         outputs = outputs[:, output_dim].reshape((-1, 1))
 
     return root_mean_squared_error(mean_model_outputs, outputs)
+
+
+################################################################################
+# Gaussian processes
+################################################################################
+
+
+class GPStressPlotterConfigTreloar:
+    def __init__(self) -> None:
+        # label size
+        self.label_size = 10
+        # font size in legend
+        self.font_size = 12
+        self.font: Dict[str, Any] = {"size": self.font_size}
+
+        # major ticks
+        self.major_tick_label_size = 12
+        self.major_ticks_size = self.font_size
+        self.major_ticks_width = 2
+
+        # minor ticks
+        self.minor_tick_label_size = 12
+        self.minor_ticks_size = 12
+        self.minor_ticks_width = 1
+
+        ### stresses
+        # data
+        self.data_label_ut = "data ut"
+        self.data_label_ebt = "data ebt"
+        self.data_label_ps = "data ps"
+        self.data_marker_ut = "x"
+        self.data_marker_ebt = "x"
+        self.data_marker_ps = "x"
+        self.data_color_ut = "tab:blue"
+        self.data_color_ebt = "tab:purple"
+        self.data_color_ps = "tab:green"
+        self.data_marker_size = 5
+        # gp
+        self.gp_color_ut = "tab:blue"
+        self.gp_color_ebt = "tab:purple"
+        self.gp_color_ps = "tab:green"
+        # mean
+        self.gp_label_mean_ut = "mean ut"
+        self.gp_label_mean_ebt = "mean ebt"
+        self.gp_label_mean_ps = "mean ps"
+        self.gp_mean_linewidth = 1.0
+        # credible interval
+        self.gp_credible_interval_alpha = 0.4
+        # samples
+        self.gp_label_samples_ut = "samples ut"
+        self.gp_label_samples_ebt = "samples ebt"
+        self.gp_label_samples_ps = "samples ps"
+        self.gp_samples_color = "tab:gray"
+        self.gp_samples_linewidth = 1.0
+        self.gp_samples_alpha = 0.2
+
+        # scientific notation
+        self.scientific_notation_size = self.font_size
+
+        # save options
+        self.dpi = 300
+
+
+def plot_gp_stresses_treloar(
+    gaussian_process: GaussianProcess,
+    inputs: NPArray,
+    outputs: NPArray,
+    test_cases: NPArray,
+    output_subdirectory: str,
+    project_directory: ProjectDirectory,
+    device: Device,
+) -> None:
+    config = GPStressPlotterConfigTreloar()
+    num_gp_samples = 8
+    num_gp_inputs = 256
+
+    figure_all, axes_all = plt.subplots()
+
+    def plot_one_input_output_set(
+        inputs: NPArray, test_case: int, outputs: NPArray
+    ) -> None:
+        if test_case == test_case_identifier_uniaxial_tension:
+            test_case_label = "uniaxial_tension"
+            data_marker = config.data_marker_ut
+            data_color = config.data_color_ut
+            data_label = config.data_label_ut
+            gp_color = config.gp_color_ut
+            gp_color_credible_interval = config.gp_color_ut
+            gp_label_mean = config.gp_label_mean_ut
+            gp_label_samples = config.gp_label_samples_ut
+        elif test_case == test_case_identifier_equibiaxial_tension:
+            test_case_label = "equibiaxial_tension"
+            data_marker = config.data_marker_ebt
+            data_color = config.data_color_ebt
+            data_label = config.data_label_ebt
+            gp_color = config.gp_color_ebt
+            gp_color_credible_interval = config.gp_color_ebt
+            gp_label_mean = config.gp_label_mean_ebt
+            gp_label_samples = config.gp_label_samples_ebt
+        else:
+            test_case_label = "pure_shear"
+            data_marker = config.data_marker_ps
+            data_color = config.data_color_ps
+            data_label = config.data_label_ps
+            gp_color = config.gp_color_ps
+            gp_color_credible_interval = config.gp_color_ps
+            gp_label_mean = config.gp_label_mean_ps
+            gp_label_samples = config.gp_label_samples_ps
+
+        file_name = f"treloar_data_{test_case_label}.png"
+
+        figure, axes = plt.subplots()
+
+        stretches = inputs[:, 0]
+        min_stretch = np.amin(stretches)
+        max_stretch = np.amax(stretches)
+
+        # data points
+        data_stretches = stretches
+        data_stresses = outputs
+        axes.plot(
+            data_stretches,
+            data_stresses,
+            marker=data_marker,
+            color=data_color,
+            markersize=config.data_marker_size,
+            linestyle="None",
+            label=data_label,
+        )
+        axes_all.plot(
+            data_stretches,
+            data_stresses,
+            marker=data_marker,
+            color=data_color,
+            markersize=config.data_marker_size,
+            linestyle="None",
+            label=data_label,
+        )
+
+        # gp
+        gp_stretches_plot = np.linspace(min_stretch, max_stretch, num_gp_inputs)
+
+        gp_stretches = (
+            torch.from_numpy(gp_stretches_plot.reshape((-1, 1)))
+            .type(torch.get_default_dtype())
+            .to(device)
+        )
+        gp_test_cases = torch.full((num_gp_inputs,), test_case, device=device)
+        gp_inputs = assemble_stretches_from_factors(gp_stretches, gp_test_cases, device)
+
+        means = calculate_gp_means(gaussian_process, gp_inputs)
+        min_quantiles, max_quantiles = calculate_gp_quantiles(
+            gaussian_process, gp_inputs
+        )
+
+        means_plot = means.reshape((-1,))
+        min_quantiles_plot = min_quantiles.reshape((-1,))
+        max_quantiles_plot = max_quantiles.reshape((-1,))
+
+        axes.plot(
+            gp_stretches_plot,
+            means_plot,
+            color=gp_color,
+            linewidth=config.gp_mean_linewidth,
+            label=gp_label_mean,
+        )
+        axes.fill_between(
+            gp_stretches_plot,
+            min_quantiles_plot,
+            max_quantiles_plot,
+            color=gp_color_credible_interval,
+            alpha=config.gp_credible_interval_alpha,
+        )
+        axes_all.plot(
+            gp_stretches_plot,
+            means_plot,
+            color=gp_color,
+            linewidth=config.gp_mean_linewidth,
+            label=gp_label_mean,
+        )
+        axes_all.fill_between(
+            gp_stretches_plot,
+            min_quantiles_plot,
+            max_quantiles_plot,
+            color=gp_color_credible_interval,
+            alpha=config.gp_credible_interval_alpha,
+        )
+
+        samples = sample_from_gp(gaussian_process, gp_inputs, num_gp_samples)
+        for sample_counter, sample in enumerate(samples):
+            if sample_counter == (num_gp_samples - 1):
+                axes.plot(
+                    gp_stretches_plot,
+                    sample,
+                    color=config.gp_samples_color,
+                    linewidth=config.gp_samples_linewidth,
+                    alpha=config.gp_samples_alpha,
+                    label=gp_label_samples,
+                )
+            axes.plot(
+                gp_stretches_plot,
+                sample,
+                color=config.gp_samples_color,
+                linewidth=config.gp_samples_linewidth,
+                alpha=config.gp_samples_alpha,
+            )
+
+        # axis ticks
+        x_ticks = np.linspace(min_stretch, max_stretch, num=6)
+        x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
+        axes.set_xticks(x_ticks)
+        axes.set_xticklabels(x_tick_labels)
+
+        # axis labels
+        axes.set_xlabel("stretch [-]", **config.font)
+        axes.set_ylabel("stress [kPa]", **config.font)
+        axes.tick_params(
+            axis="both", which="minor", labelsize=config.minor_tick_label_size
+        )
+        axes.tick_params(
+            axis="both", which="major", labelsize=config.major_tick_label_size
+        )
+
+        # legend
+        axes.legend(fontsize=config.font_size, loc="upper left")
+
+        output_path = project_directory.create_output_file_path(
+            file_name=file_name, subdir_name=output_subdirectory
+        )
+
+        figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
+
+    def plot_all_input_and_output_sets() -> None:
+        file_name = f"treloar_data.png"
+
+        # data
+        data_stretches = inputs[:, 0]
+        min_stretch = np.amin(data_stretches)
+        max_stretch = np.amax(data_stretches)
+
+        # axis ticks
+        x_ticks = np.linspace(min_stretch, max_stretch, num=6)
+        x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
+        axes_all.set_xticks(x_ticks)
+        axes_all.set_xticklabels(x_tick_labels)
+
+        # axis labels
+        axes_all.set_xlabel("stretch [-]", **config.font)
+        axes_all.set_ylabel("stress [kPa]", **config.font)
+        axes_all.tick_params(
+            axis="both", which="minor", labelsize=config.minor_tick_label_size
+        )
+        axes_all.tick_params(
+            axis="both", which="major", labelsize=config.major_tick_label_size
+        )
+
+        # legend
+        axes_all.legend(fontsize=config.font_size, loc="upper left")
+
+        output_path = project_directory.create_output_file_path(
+            file_name=file_name, subdir_name=output_subdirectory
+        )
+        figure_all.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
+
+    input_sets, test_case_sets, output_sets = split_treloar_inputs_and_outputs(
+        inputs, test_cases, outputs
+    )
+
+    for input_set, test_case, output_set in zip(
+        input_sets, test_case_sets, output_sets
+    ):
+        plot_one_input_output_set(input_set, test_case, output_set)
+
+    plot_all_input_and_output_sets()
+    plt.clf()
+
+
+def calculate_gp_means(
+    gaussian_process: GaussianProcess,
+    inputs: Tensor,
+    output_dim: Optional[int] = None,
+) -> NPArray:
+    gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
+    likelihood = gp.likelihood
+    predictive_distribution = likelihood(gp(inputs))
+    _means = predictive_distribution.mean
+    means = _means.cpu().detach().numpy()
+    return means
+
+
+def calculate_gp_quantiles(
+    gaussian_process: GaussianProcess,
+    inputs: Tensor,
+    output_dim: Optional[int] = None,
+) -> tuple[NPArray, NPArray]:
+    gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
+    likelihood = gp.likelihood
+    predictive_distribution = likelihood(gp(inputs))
+    means = predictive_distribution.mean
+    stddevs = predictive_distribution.stddev
+    _min_quantiles = means - factor_stddev_credible_interval * stddevs
+    _max_quantiles = means + factor_stddev_credible_interval * stddevs
+    min_quantiles = _min_quantiles.cpu().detach().numpy()
+    max_quantiles = _max_quantiles.cpu().detach().numpy()
+    return min_quantiles, max_quantiles
+
+
+def sample_from_gp(
+    gaussian_process: GaussianProcess,
+    inputs: Tensor,
+    num_samples: int,
+    output_dim: Optional[int] = None,
+) -> NPArray:
+    gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
+    likelihood = gp.likelihood
+    predictive_distribution = likelihood(gp(inputs))
+    _samples = predictive_distribution.sample(sample_shape=torch.Size((num_samples,)))
+    samples = _samples.cpu().detach().numpy()
+    return samples
+
+
+def reduce_gp_to_output_dimension(
+    gaussian_process: GaussianProcess, output_dim: int | None
+) -> GP:
+    _validate_gp_and_output_dimension(gaussian_process, output_dim)
+    is_multi_output_gp = isinstance(gaussian_process, IndependentMultiOutputGP)
+    is_output_dim_defined = not (output_dim == None)
+
+    if is_multi_output_gp and is_output_dim_defined:
+        return gaussian_process.get_gp_for_one_output_dimension(cast(int, output_dim))
+    else:
+        return gaussian_process
+
+
+def _validate_gp_and_output_dimension(
+    gaussian_process: GaussianProcess, output_dim: int | None
+) -> None:
+    is_multi_output_gp = isinstance(gaussian_process, IndependentMultiOutputGP)
+    is_output_dim_defined = not (output_dim == None)
+    if is_multi_output_gp and not is_output_dim_defined:
+        raise StressPlotterError(
+            """For independent multi-output GPs, 
+            the output dimension must be defined for the evaluation."""
+        )
+    elif not is_multi_output_gp and is_output_dim_defined:
+        raise StressPlotterError(
+            "No output dimension can be defined for single-output GPs"
+        )
+
+
+################################################################################
+# Utility
+################################################################################
+
+
+def split_treloar_inputs_and_outputs(
+    inputs: NPArray, test_cases: NPArray, outputs: NPArray
+) -> tuple[list[NPArray], list[int], list[NPArray]]:
+    considered_test_cases = [
+        test_case_identifier_uniaxial_tension,
+        test_case_identifier_equibiaxial_tension,
+        test_case_identifier_pure_shear,
+    ]
+    num_data_points_ut = 25
+    num_data_points_ebt = 14
+    num_data_points_ps = 14
+    expected_set_sizes = [num_data_points_ut, num_data_points_ebt, num_data_points_ps]
+
+    def split_data() -> tuple[list[NPArray], list[int], list[NPArray]]:
+        input_sets = []
+        test_case_sets = []
+        output_sets = []
+
+        for test_case in considered_test_cases:
+            filter = test_cases == test_case
+            input_sets += [inputs[filter]]
+            test_case_sets += [test_case]
+            output_sets += [outputs[filter]]
+
+        return input_sets, test_case_sets, output_sets
+
+    def validate_data_sets(
+        input_sets: list[NPArray],
+        test_case_sets: list[int],
+        output_sets: list[NPArray],
+    ) -> None:
+        input_set_sizes = [len(set) for set in input_sets]
+        output_set_sizes = [len(set) for set in output_sets]
+
+        valid_set_sizes = (
+            input_set_sizes == expected_set_sizes
+            and output_set_sizes == expected_set_sizes
+            and len(test_case_sets) == 3
+        )
+        valid_test_case_sets = test_case_sets == considered_test_cases
+
+        if not valid_set_sizes and valid_test_case_sets:
+            raise StressPlotterError(
+                """The number of data points to be plotted
+                                        does not match the size of the Treloar data set."""
+            )
+
+    input_sets, test_case_sets, output_sets = split_data()
+    validate_data_sets(input_sets, test_case_sets, output_sets)
+    return input_sets, test_case_sets, output_sets

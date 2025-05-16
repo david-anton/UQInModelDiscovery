@@ -5,10 +5,10 @@ from torch.func import grad, vmap
 from bayesianmdisc.bayes.distributions import DistributionProtocol
 from bayesianmdisc.customtypes import (
     Device,
+    Module,
     Tensor,
     TorchLRScheduler,
     TorchOptimizer,
-    Module,
 )
 from bayesianmdisc.data import DeformationInputs, TestCases
 from bayesianmdisc.gps import GaussianProcess
@@ -16,7 +16,7 @@ from bayesianmdisc.gps.base import GPMultivariateNormal
 from bayesianmdisc.gps.multioutputgp import flatten_outputs
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import ModelProtocol
-from bayesianmdisc.networks.ffnn import FFNN, LinearHiddenLayer, LinearOutputLayer
+from bayesianmdisc.networks.ffnn import FFNN
 from bayesianmdisc.parameterextraction.parameterdistributions import (
     create_parameter_distribution,
 )

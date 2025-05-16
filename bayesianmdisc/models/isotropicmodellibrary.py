@@ -30,6 +30,8 @@ from bayesianmdisc.models.base import (
     StrainEnergy,
     Stretch,
     Stretches,
+    assemble_stretches_from_factors,
+    assemble_stretches_from_incompressibility_assumption,
     calculate_pressure_from_incompressibility_constraint,
     count_active_parameters,
     determine_initial_parameter_mask,
@@ -320,63 +322,13 @@ class IsotropicModelLibrary:
     ):
         stretch_dim = stretches.shape[1]
         if stretch_dim == 1:
-            return self._assemble_stretches_from_factors(stretches, test_cases)
+            return assemble_stretches_from_factors(stretches, test_cases, self._device)
         if stretch_dim == 2:
-            return self._assemble_stretches_from_incompressibility_assumption(stretches)
+            return assemble_stretches_from_incompressibility_assumption(
+                stretches, self._device
+            )
         else:
             return stretches
-
-    def _assemble_stretches_from_factors(
-        self, stretch_factors: Stretches, test_cases: TestCases
-    ):
-        indices_ut = test_cases == self._test_case_identifier_ut
-        indices_ebt = test_cases == self._test_case_identifier_ebt
-        indices_ps = test_cases == self._test_case_identifier_ps
-
-        stretch_factors_ut = stretch_factors[indices_ut]
-        stretch_factors_ebt = stretch_factors[indices_ebt]
-        stretch_factors_ps = stretch_factors[indices_ps]
-
-        one = torch.tensor(1.0, device=self._device)
-
-        def calculate_stretches_ut(stretch_factors: Stretches) -> Stretches:
-            stretch_1 = stretch_factors
-            stretch_2 = stretch_3 = one / torch.sqrt(stretch_factors)
-            return torch.concat((stretch_1, stretch_2, stretch_3), dim=1)
-
-        def calculate_stretches_ebt(stretch_factors: Stretches) -> Stretches:
-            stretch_1 = stretch_2 = stretch_factors
-            stretch_3 = one / stretch_factors**2
-            return torch.concat((stretch_1, stretch_2, stretch_3), dim=1)
-
-        def calculate_stretches_ps(stretch_factors: Stretches) -> Stretches:
-            stretch_1 = stretch_factors
-            stretch_2 = torch.ones_like(stretch_factors, device=self._device)
-            stretch_3 = one / stretch_factors
-            return torch.concat((stretch_1, stretch_2, stretch_3), dim=1)
-
-        all_stretches = []
-        if not torch.numel(stretch_factors_ut) == 0:
-            all_stretches += [calculate_stretches_ut(stretch_factors_ut)]
-        if not torch.numel(stretch_factors_ebt) == 0:
-            all_stretches += [calculate_stretches_ebt(stretch_factors_ebt)]
-        if not torch.numel(stretch_factors_ps) == 0:
-            all_stretches += [calculate_stretches_ps(stretch_factors_ps)]
-
-        return torch.vstack(all_stretches)
-
-    def _assemble_stretches_from_incompressibility_assumption(
-        self, stretches: Stretches
-    ) -> Stretches:
-        one = torch.tensor(1.0, device=self._device)
-
-        def calculate_stretches(stretches: Stretches) -> Stretches:
-            stretch_1 = stretches[:, 0].reshape((-1, 1))
-            stretch_2 = stretches[:, 1].reshape((-1, 1))
-            stretch_3 = one / (stretch_1 * stretch_2)
-            return torch.concat((stretch_1, stretch_2, stretch_3), dim=1)
-
-        return calculate_stretches(stretches)
 
     def _calculate_stress(
         self, stretches: Stretches, parameters: Parameters
