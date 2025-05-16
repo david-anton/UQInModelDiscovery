@@ -58,8 +58,10 @@ def determine_quantiles(samples: NPArray, credible_interval: float) -> QuantileV
             )
 
     _validate_credible_interval(credible_interval)
-    min_quantile = 1.0 - credible_interval
-    max_quantile = credible_interval
+
+    quantile = (1.0 - credible_interval) / 2
+    min_quantile = quantile
+    max_quantile = 1.0 - quantile
     return np.quantile(
         samples, [min_quantile, max_quantile], method="inverted_cdf", axis=0
     )
