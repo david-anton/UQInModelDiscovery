@@ -53,7 +53,7 @@ def extract_gp_inducing_parameter_distribution(
     learning_rate_lipschitz_func = 1e-4
 
     lr_decay_rate_distribution = 0.9999
-    lr_decay_rate_lipschitz_func = 1.0
+    lr_decay_rate_lipschitz_func = 0.9999  # 1.0
 
     def create_lipschitz_network(layer_sizes: list[int], device: Device) -> Module:
         return FFNN(
