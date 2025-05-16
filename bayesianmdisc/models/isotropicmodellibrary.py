@@ -60,17 +60,17 @@ class IsotropicModelLibrary:
 
     def __init__(self, output_dim: int, device: Device):
         self._device = device
-        self._degree_mr_terms = 4  # 3
+        self._degree_mr_terms = 0  # 3
         self._mr_exponents = self._determine_mr_exponents()
         self._num_regular_negative_ogden_terms = 8  # 4
         self._num_regular_positive_ogden_terms = 8  # 4
         self._min_regular_ogden_exponent = torch.tensor(-2.0, device=self._device)
         self._max_regular_ogden_exponent = torch.tensor(2.0, device=self._device)
-        self._additional_ogden_terms: list[float] = []
+        self._additional_ogden_terms: list[float] = [-4.0, -3.0, 3.0, 4.0]
         self._num_additional_ogden_terms = len(self._additional_ogden_terms)
         self._num_ogden_terms = self._determine_number_of_ogden_terms()
         self._ogden_exponents = self._determine_ogden_exponents()
-        self._num_ln_feature_terms = 1
+        # self._num_ln_feature_terms = 1
         self._test_case_identifier_ut = test_case_identifier_uniaxial_tension
         self._test_case_identifier_ebt = test_case_identifier_equibiaxial_tension
         self._test_case_identifier_bt = test_case_identifier_biaxial_tension
@@ -82,12 +82,12 @@ class IsotropicModelLibrary:
         (
             self._num_mr_parameters,
             self._num_ogden_parameters,
-            self._num_ln_feature_parameters,
+            # self._num_ln_feature_parameters,
         ) = self._determine_number_of_parameters()
         self._initial_num_parameters = (
             self._num_mr_parameters
             + self._num_ogden_parameters
-            + self._num_ln_feature_parameters
+            # + self._num_ln_feature_parameters
         )
         self._initial_parameter_names = self._init_parameter_names()
         validate_stress_output_dimension(output_dim, self._allowed_output_dimensions)
@@ -255,7 +255,9 @@ class IsotropicModelLibrary:
             device=self._device,
         )
 
-    def _determine_number_of_parameters(self) -> tuple[int, int, int]:
+    def _determine_number_of_parameters(
+        self,
+    ) -> tuple[int, int]:  # tuple[int, int, int]:
 
         def determine_number_of_mr_parameters() -> int:
             num_parameters = 0
@@ -266,13 +268,13 @@ class IsotropicModelLibrary:
         def determine_number_of_ogden_parameters() -> int:
             return self._num_ogden_terms
 
-        def determine_number_of_ln_feature_parameters() -> int:
-            return self._num_ln_feature_terms
+        # def determine_number_of_ln_feature_parameters() -> int:
+        #     return self._num_ln_feature_terms
 
         num_mr_parameters = determine_number_of_mr_parameters()
         num_ogden_parameters = determine_number_of_ogden_parameters()
-        num_ln_feature_parameters = determine_number_of_ln_feature_parameters()
-        return num_mr_parameters, num_ogden_parameters, num_ln_feature_parameters
+        # num_ln_feature_parameters = determine_number_of_ln_feature_parameters()
+        return num_mr_parameters, num_ogden_parameters  # , num_ln_feature_parameters
 
     def _init_parameter_names(self) -> ParameterNames:
 
@@ -296,13 +298,13 @@ class IsotropicModelLibrary:
                 parameter_names += [f"Ogden ({round(exponent,3)})"]
             return tuple(parameter_names)
 
-        def compose_ln_feature_parameter_name() -> ParameterNames:
-            return ("ln(I2)",)
+        # def compose_ln_feature_parameter_name() -> ParameterNames:
+        #     return ("ln(I2)",)
 
         mr_parameter_names = compose_mr_parameter_names()
         ogden_parameter_names = compose_ogden_parameter_names()
-        ln_feature_parameter_name = compose_ln_feature_parameter_name()
-        return mr_parameter_names + ogden_parameter_names + ln_feature_parameter_name
+        # ln_feature_parameter_name = compose_ln_feature_parameter_name()
+        return mr_parameter_names + ogden_parameter_names  # + ln_feature_parameter_name
 
     def _validate_inputs(
         self, inputs: DeformationInputs, test_cases: TestCases, parameters: Parameters
@@ -388,7 +390,7 @@ class IsotropicModelLibrary:
             [
                 self._num_mr_parameters,
                 self._num_ogden_parameters,
-                self._num_ln_feature_parameters,
+                # self._num_ln_feature_parameters,
             ],
         )
 

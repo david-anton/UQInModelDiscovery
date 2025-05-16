@@ -78,11 +78,11 @@ min_noise_stddev = 1e-3
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
 selection_metric = "mae"
-list_relative_selection_thressholds = [0.5]
+list_relative_selection_thressholds = [0.2]
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_mae_0.5_normalizingflow_lrdecay9_nflayers16_noise5e-2_largermodel_AdamW_higherlipschitzlr"
+output_directory = f"{current_date}_{input_directory}_threshold_mae_0.2_normalizingflow_noise5e-2_onlyogden"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
