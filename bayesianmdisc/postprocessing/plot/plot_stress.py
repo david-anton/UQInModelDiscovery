@@ -70,18 +70,23 @@ class ModelStressPlotterConfigTreloar:
         self.data_color_ps = "tab:green"
         self.data_marker_size = 5
         # model
-        self.model_label_ut = "model ut"
-        self.model_label_ebt = "model ebt"
-        self.model_label_ps = "model ps"
+        self.model_color_ut = "tab:blue"
+        self.model_color_ebt = "tab:purple"
+        self.model_color_ps = "tab:green"
         # mean
-        self.model_color_mean_ut = "tab:blue"
-        self.model_color_mean_ebt = "tab:purple"
-        self.model_color_mean_ps = "tab:green"
+        self.model_label_mean_ut = "mean ut"
+        self.model_label_mean_ebt = "mean ebt"
+        self.model_label_mean_ps = "mean ps"
+        self.model_mean_linewidth = 1.0
         # credible interval
-        self.model_credible_interval_alpha = 0.2
-        self.model_color_credible_interval_ut = "tab:blue"
-        self.model_color_credible_interval_ebt = "tab:purple"
-        self.model_color_credible_interval_ps = "tab:green"
+        self.model_credible_interval_alpha = 0.4
+        # samples
+        self.model_label_samples_ut = "samples ut"
+        self.model_label_samples_ebt = "samples ebt"
+        self.model_label_samples_ps = "samples ps"
+        self.model_samples_color = "tab:gray"
+        self.model_samples_linewidth = 1.0
+        self.model_samples_alpha = 0.2
 
         # scientific notation
         self.scientific_notation_size = self.font_size
@@ -102,6 +107,7 @@ def plot_model_stresses_treloar(
 ) -> None:
     config = ModelStressPlotterConfigTreloar()
     num_model_inputs = 256
+    num_model_samples = 16
 
     figure_all, axes_all = plt.subplots()
 
@@ -113,25 +119,28 @@ def plot_model_stresses_treloar(
             data_marker = config.data_marker_ut
             data_color = config.data_color_ut
             data_label = config.data_label_ut
-            model_color_mean = config.model_color_mean_ut
-            model_color_credible_interval = config.model_color_credible_interval_ut
-            model_label = config.model_label_ut
+            model_color_mean = config.model_color_ut
+            model_color_credible_interval = config.model_color_ut
+            model_label_mean = config.model_label_mean_ut
+            model_label_samples = config.model_label_samples_ut
         elif test_case == test_case_identifier_equibiaxial_tension:
             test_case_label = "equibiaxial_tension"
             data_marker = config.data_marker_ebt
             data_color = config.data_color_ebt
             data_label = config.data_label_ebt
-            model_color_mean = config.model_color_mean_ebt
-            model_color_credible_interval = config.model_color_credible_interval_ebt
-            model_label = config.model_label_ebt
+            model_color_mean = config.model_color_ebt
+            model_color_credible_interval = config.model_color_ebt
+            model_label_mean = config.model_label_mean_ebt
+            model_label_samples = config.model_label_samples_ebt
         else:
             test_case_label = "pure_shear"
             data_marker = config.data_marker_ps
             data_color = config.data_color_ps
             data_label = config.data_label_ps
-            model_color_mean = config.model_color_mean_ps
-            model_color_credible_interval = config.model_color_credible_interval_ps
-            model_label = config.model_label_ps
+            model_color_mean = config.model_color_ps
+            model_color_credible_interval = config.model_color_ps
+            model_label_mean = config.model_label_mean_ps
+            model_label_samples = config.model_label_samples_ps
 
         file_name = f"treloar_data_{test_case_label}.png"
 
@@ -187,7 +196,8 @@ def plot_model_stresses_treloar(
             model_stretches_plot,
             means_plot,
             color=model_color_mean,
-            label=model_label,
+            linewidth=config.model_mean_linewidth,
+            label=model_label_mean,
         )
         axes.fill_between(
             model_stretches_plot,
@@ -200,7 +210,8 @@ def plot_model_stresses_treloar(
             model_stretches_plot,
             means_plot,
             color=model_color_mean,
-            label=model_label,
+            linewidth=config.model_mean_linewidth,
+            label=model_label_mean,
         )
         axes_all.fill_between(
             model_stretches_plot,
@@ -209,6 +220,32 @@ def plot_model_stresses_treloar(
             color=model_color_credible_interval,
             alpha=config.model_credible_interval_alpha,
         )
+
+        samples = sample_from_model(
+            model,
+            parameter_samples[:num_model_samples, :],
+            model_stretches,
+            model_test_cases,
+            device,
+        )
+        for sample_counter, sample in enumerate(samples):
+            sample_plot = sample.reshape((-1,))
+            if sample_counter == (num_model_samples - 1):
+                axes.plot(
+                    model_stretches_plot,
+                    sample_plot,
+                    color=config.model_samples_color,
+                    linewidth=config.model_samples_linewidth,
+                    alpha=config.model_samples_alpha,
+                    label=model_label_samples,
+                )
+            axes.plot(
+                model_stretches_plot,
+                sample,
+                color=config.model_samples_color,
+                linewidth=config.model_samples_linewidth,
+                alpha=config.model_samples_alpha,
+            )
 
         # axis ticks
         x_ticks = np.linspace(min_stretch, max_stretch, num=6)
@@ -266,7 +303,7 @@ def plot_model_stresses_treloar(
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axes.text(
             0.03,
-            0.8,
+            0.72,
             text,
             transform=axes.transAxes,
             fontsize=config.font_size,
@@ -1045,6 +1082,29 @@ def calculate_model_predictions(
     return predictions.cpu().detach().numpy()
 
 
+def sample_from_model(
+    model: ModelProtocol,
+    parameter_samples: NPArray,
+    inputs: NPArray,
+    test_cases: NPArray,
+    device: Device,
+    output_dim: Optional[int] = None,
+) -> NPArray:
+    num_samples = len(parameter_samples)
+    samples = calculate_model_predictions(
+        model=model,
+        parameter_samples=parameter_samples,
+        inputs=inputs,
+        test_cases=test_cases,
+        device=device,
+    )
+
+    if output_dim is not None:
+        samples = samples[:, :, output_dim].reshape((num_samples, -1, 1))
+
+    return samples
+
+
 def calculate_model_mean_and_stddev(
     model: ModelProtocol,
     parameter_samples: NPArray,
@@ -1228,7 +1288,7 @@ def plot_gp_stresses_treloar(
     device: Device,
 ) -> None:
     config = GPStressPlotterConfigTreloar()
-    num_gp_samples = 8
+    num_gp_samples = 16
     num_gp_inputs = 256
 
     figure_all, axes_all = plt.subplots()
