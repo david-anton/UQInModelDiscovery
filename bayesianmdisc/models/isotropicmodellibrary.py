@@ -291,7 +291,7 @@ class IsotropicModelLibrary:
         def compose_ogden_parameter_names() -> ParameterNames:
             parameter_names = []
             for exponent in self._ogden_exponents:
-                parameter_names += [f"Ogden ({round(exponent,2)})"]
+                parameter_names += [f"Ogden ({round(exponent,3)})"]
             return tuple(parameter_names)
 
         def compose_ln_feature_parameter_name() -> ParameterNames:
