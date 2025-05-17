@@ -13,7 +13,7 @@ def create_masked_autoregressive_flow(
         features=number_inputs,
         hidden_features=width_hidden_layer,
         context_features=None,
-        num_blocks=2,  # 1,
+        num_blocks=1,
         use_residual_blocks=False,
         random_mask=False,
         activation=torch.nn.functional.relu,
