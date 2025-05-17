@@ -60,10 +60,10 @@ class IsotropicModelLibrary:
 
     def __init__(self, output_dim: int, device: Device):
         self._device = device
-        self._degree_mr_terms = 4  # 3
+        self._degree_mr_terms = 3
         self._mr_exponents = self._determine_mr_exponents()
-        self._num_regular_negative_ogden_terms = 16  # 4
-        self._num_regular_positive_ogden_terms = 16  # 4
+        self._num_regular_negative_ogden_terms = 8  # 4
+        self._num_regular_positive_ogden_terms = 8  # 4
         self._min_regular_ogden_exponent = torch.tensor(-2.0, device=self._device)
         self._max_regular_ogden_exponent = torch.tensor(2.0, device=self._device)
         self._additional_ogden_terms: list[float] = [-4.0, -3.0, 3.0, 4.0]
