@@ -368,8 +368,8 @@ def plot_model_stresses_treloar(
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axes_all.text(
-            0.3,
-            0.55,
+            0.03,
+            0.5,
             text,
             transform=axes_all.transAxes,
             fontsize=config.font_size,
