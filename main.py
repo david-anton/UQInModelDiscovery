@@ -82,7 +82,7 @@ list_relative_selection_thressholds = [0.5]
 num_samples_posterior = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_mae_0.5_normalizingflow_noise5e-2_lipschitz_iters5_lambda10_lr2"
+output_directory = f"{current_date}_{input_directory}_threshold_mae_0.5_normalizingflow_noise5e-2_lipschitz_iters5_lambda5_lr1"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
