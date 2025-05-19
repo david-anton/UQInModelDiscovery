@@ -83,7 +83,7 @@ num_samples_posterior = 4096
 preslect_terms = True
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_mae_0.05_normalizingflow_noise5e-2_lipschitz_iters10_lambda10_lr0_layers2_width256_preselected"
+output_directory = f"{current_date}_{input_directory}_threshold_mae_0.05_normalizingflow_noise5e-2_lipschitz_iters10_lambda10_lr1_layers2_width256_preselected"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
