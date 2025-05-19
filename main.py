@@ -80,9 +80,10 @@ list_num_wasserstein_iterations = [20_000, 10_000]
 selection_metric = "mae"
 list_relative_selection_thressholds = [0.05]
 num_samples_posterior = 4096
+preslect_terms = True
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_mae_0.05_normalizingflow_noise5e-2_lipschitz_iters10_lambda10_lr1_layers2_width256_lessogdenterms"
+output_directory = f"{current_date}_{input_directory}_threshold_mae_0.05_normalizingflow_noise5e-2_lipschitz_iters5_lambda10_lr1_layers2_width256_preselected"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
@@ -301,12 +302,32 @@ if retrain_posterior:
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
                 hiden_layer_size_lipschitz_nn=256,
-                num_iters_lipschitz=10,  # 5,
+                num_iters_lipschitz=5,
                 lipschitz_func_pretraining=False,
                 output_subdirectory=output_subdirectory_parameters,
                 project_directory=project_directory,
                 device=device,
             )
+
+        if step == 0 and preslect_terms:
+            activae_parameter_names = [
+                "C_1_0 (NH)",
+                "C_3_0",
+                "Ogden (1.0)",
+                "Ogden (2.0)",
+                "C_2_0",
+                "Ogden (-1.0)",
+                "Ogden (-0.75)",
+            ]
+            num_parameters = model.num_parameters
+            parameter_names = model.parameter_names
+            for parameter_index, parameter_name in zip(
+                range(num_parameters), parameter_names
+            ):
+                if not parameter_name in activae_parameter_names:
+                    model.deactivate_parameters([parameter_index])
+            print("Preselected parameters:")
+            print(model.get_active_parameter_names())
 
         gaussian_process = create_gp()
         select_gp_prior()
