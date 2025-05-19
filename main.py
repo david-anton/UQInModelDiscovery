@@ -326,8 +326,9 @@ if retrain_posterior:
             ):
                 if not parameter_name in activae_parameter_names:
                     model.deactivate_parameters([parameter_index])
+            model.reduce_to_activated_parameters()
             print("Preselected parameters:")
-            print(model.get_active_parameter_names())
+            print(model.parameter_names)
 
         gaussian_process = create_gp()
         select_gp_prior()
