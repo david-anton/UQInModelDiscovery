@@ -74,7 +74,7 @@ elif data_set_label == data_set_label_linka:
     model = OrthotropicCANN(device)
 
 relative_noise_stddevs = 5e-2
-min_noise_stddev = 1e-3
+min_absolute_noise_stddev = 1e-2  # 1e-3
 num_calibration_steps = 1  # 2
 list_num_wasserstein_iterations = [20_000]  # [20_000, 10_000]
 selection_metric = "mae"
@@ -83,7 +83,7 @@ num_samples_posterior = 4096
 preslect_terms = True
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_mae_0.05_normalizingflow_noise5e-2_lipschitz_iters10_lambda10_lr1_layers2_width256_preselected"
+output_directory = f"{current_date}_{input_directory}_threshold_mae_0.05_normalizingflow_noise5e-2_lipschitz_iters10_lambda10_lr1_layers2_width256_preselected_minnoise1e-2"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
@@ -190,7 +190,7 @@ def plot_model_stresses(
 
 inputs, test_cases, outputs = data_reader.read()
 noise_stddevs = determine_heteroscedastic_noise(
-    relative_noise_stddevs, min_noise_stddev, outputs
+    relative_noise_stddevs, min_absolute_noise_stddev, outputs
 )
 validate_data(inputs, test_cases, outputs, noise_stddevs)
 

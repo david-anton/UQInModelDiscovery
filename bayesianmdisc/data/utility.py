@@ -245,12 +245,12 @@ def validate_data(
 
 def determine_heteroscedastic_noise(
     relative_noise_stddevs: float | Tensor,
-    min_noise_stddev: float,
+    min_absolute_noise_stddev: float,
     outputs: StressOutputs,
 ) -> Tensor:
     noise_stddevs = relative_noise_stddevs * outputs
     return torch.where(
-        noise_stddevs < min_noise_stddev,
-        min_noise_stddev,
+        noise_stddevs < min_absolute_noise_stddev,
+        min_absolute_noise_stddev,
         noise_stddevs,
     )
