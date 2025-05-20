@@ -296,7 +296,7 @@ if retrain_posterior:
                 is_mean_trainable=True,
                 inputs=inputs,
                 test_cases=test_cases,
-                num_func_samples=1024,  # 32,
+                num_func_samples=32,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
                 hiden_layer_size_lipschitz_nn=256,
