@@ -477,8 +477,8 @@ class NormalizingFlowParameterDistribution(nn.Module):
         self._dim = model.num_parameters
         self._device = device
         self._is_base_trainable = False
-        self._num_layers = 8  # 16
-        self._relative_width_layers = 8.0  # 4.0
+        self._num_layers = 16
+        self._relative_width_layers = 4.0
         self._normalizing_flow = self._init_normalizing_flow()
 
     def forward(self, num_samples: int) -> Tensor:

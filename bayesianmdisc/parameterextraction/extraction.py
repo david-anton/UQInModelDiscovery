@@ -76,10 +76,14 @@ def extract_gp_inducing_parameter_distribution(
         return torch.optim.RMSprop(params=distribution.get_parameters_and_options())
 
     def create_lipschitz_func_optimizer() -> TorchOptimizer:
-        return torch.optim.AdamW(
+        return torch.optim.RMSprop(
             params=lipschitz_func.parameters(),
             lr=learning_rate_lipschitz_func,
         )
+        # return torch.optim.AdamW(
+        #     params=lipschitz_func.parameters(),
+        #     lr=learning_rate_lipschitz_func,
+        # )
         # return torch.optim.Adam(
         #     params=lipschitz_func.parameters(),
         #     lr=learning_rate_lipschitz_func,
