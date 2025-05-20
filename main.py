@@ -74,7 +74,7 @@ elif data_set_label == data_set_label_linka:
     model = OrthotropicCANN(device)
 
 relative_noise_stddevs = 5e-2
-min_absolute_noise_stddev = 1e-1  # 1e-3
+min_absolute_noise_stddev = 5e-2  # 1e-3
 num_calibration_steps = 1  # 2
 list_num_wasserstein_iterations = [20_000]  # [20_000, 10_000]
 selection_metric = "mae"
@@ -83,7 +83,7 @@ num_samples_posterior = 4096
 preslect_terms = True
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_mae_0.05_normalizingflow_noise5e-2_lipschitz_iters10_lambda10_lr1_layers2_width256_preselected_minnoise1e-1"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_noise5e-2_lipschitz_iters5_lambda10_lr1_layers2_width512_preselected5_minnoise5e-2"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
@@ -299,8 +299,8 @@ if retrain_posterior:
                 num_func_samples=32,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
-                hiden_layer_size_lipschitz_nn=256,
-                num_iters_lipschitz=10,  # 5,
+                hiden_layer_size_lipschitz_nn=512,  # 256,
+                num_iters_lipschitz=5,
                 lipschitz_func_pretraining=False,
                 output_subdirectory=output_subdirectory_parameters,
                 project_directory=project_directory,
@@ -313,9 +313,9 @@ if retrain_posterior:
                 "C_3_0",
                 "Ogden (1.0)",
                 "Ogden (2.0)",
-                "C_2_0",
+                # "C_2_0",
                 "Ogden (-1.0)",
-                "Ogden (-0.75)",
+                # "Ogden (-0.75)",
             ]
             num_parameters = model.num_parameters
             parameter_names = model.parameter_names
