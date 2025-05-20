@@ -74,7 +74,7 @@ elif data_set_label == data_set_label_linka:
     model = OrthotropicCANN(device)
 
 relative_noise_stddevs = 5e-2
-min_absolute_noise_stddev = 5e-2  # 1e-3
+min_absolute_noise_stddev = 1e-1  # 1e-3
 num_calibration_steps = 2
 list_num_wasserstein_iterations = [20_000, 10_000]
 selection_metric = "mae"
@@ -83,7 +83,7 @@ num_samples_posterior = 4096
 preslect_terms = True
 
 
-output_directory = f"{current_date}_{input_directory}_threshold_mae_0.5_normalizingflow_noise5e-2_lipschitz_iters5_lambda10_lr1_layers2_width512_minnoise5e-2"
+output_directory = f"{current_date}_{input_directory}_threshold_mae_0.5_normalizingflow_noise5e-2_lipschitz_iters5_lambda10_lr1_layers2_width512_minnoise1e-1"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
