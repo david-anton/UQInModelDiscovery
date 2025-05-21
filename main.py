@@ -83,7 +83,7 @@ num_samples_posterior = 4096
 preslect_terms = True
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples128_width512_inputs32_terms4_layernorm"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples128_layer4_width128_inputs32_terms4"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
@@ -303,7 +303,7 @@ if retrain_posterior:
                 num_func_samples=128,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
-                hiden_layer_size_lipschitz_nn=512,  # 256,
+                hiden_layer_size_lipschitz_nn=128,  # 256,
                 num_iters_lipschitz=10,
                 lipschitz_func_pretraining=False,
                 output_subdirectory=output_subdirectory_parameters,

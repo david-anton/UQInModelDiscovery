@@ -61,7 +61,7 @@ def extract_gp_inducing_parameter_distribution(
             activation=nn.Softplus(),
             init_weights=nn.init.xavier_uniform_,
             init_bias=nn.init.zeros_,
-            use_layer_norm=True,
+            use_layer_norm=False,
         ).to(device)
 
     def freeze_gp(gp: GaussianProcess) -> None:
@@ -177,6 +177,8 @@ def extract_gp_inducing_parameter_distribution(
     lipschitz_func = create_lipschitz_network(
         layer_sizes=[
             num_flattened_outputs,
+            hiden_layer_size_lipschitz_nn,
+            hiden_layer_size_lipschitz_nn,
             hiden_layer_size_lipschitz_nn,
             hiden_layer_size_lipschitz_nn,
             1,
