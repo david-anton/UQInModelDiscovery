@@ -83,7 +83,7 @@ num_samples_posterior = 4096
 preslect_terms = True
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_selectedterms"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_allterms"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
@@ -307,23 +307,23 @@ if retrain_posterior:
                 device=device,
             )
 
-        if step == 0 and preslect_terms:
-            activae_parameter_names = [
-                "C_1_0 (NH)",
-                "C_3_0",
-                "Ogden (1.0)",
-                "Ogden (-1.0)",
-            ]
-            num_parameters = model.num_parameters
-            parameter_names = model.parameter_names
-            for parameter_index, parameter_name in zip(
-                range(num_parameters), parameter_names
-            ):
-                if not parameter_name in activae_parameter_names:
-                    model.deactivate_parameters([parameter_index])
-            model.reduce_to_activated_parameters()
-            print("Preselected parameters:")
-            print(model.parameter_names)
+        # if step == 0 and preslect_terms:
+        #     activae_parameter_names = [
+        #         "C_1_0 (NH)",
+        #         "C_3_0",
+        #         "Ogden (1.0)",
+        #         "Ogden (-1.0)",
+        #     ]
+        #     num_parameters = model.num_parameters
+        #     parameter_names = model.parameter_names
+        #     for parameter_index, parameter_name in zip(
+        #         range(num_parameters), parameter_names
+        #     ):
+        #         if not parameter_name in activae_parameter_names:
+        #             model.deactivate_parameters([parameter_index])
+        #     model.reduce_to_activated_parameters()
+        #     print("Preselected parameters:")
+        #     print(model.parameter_names)
 
         num_parameters = model.num_parameters
         parameter_names = model.parameter_names
