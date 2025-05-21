@@ -83,7 +83,7 @@ num_samples_posterior = 4096
 preslect_terms = True
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_width256_inputs128_rmspropboth"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples128_width512_inputs32_terms4"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
@@ -291,7 +291,7 @@ if retrain_posterior:
         def extract_parameter_distribution() -> DistributionProtocol:
             _data_set = cast(TreloarDataSet, data_set)
             inputs_extraction, test_cases_extraction = (
-                _data_set.generate_uniform_inputs(num_points_per_test_case=128)
+                _data_set.generate_uniform_inputs(num_points_per_test_case=32)
             )
             return extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
@@ -300,10 +300,10 @@ if retrain_posterior:
                 is_mean_trainable=True,
                 inputs=inputs_extraction,
                 test_cases=test_cases_extraction,
-                num_func_samples=32,
+                num_func_samples=128,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
-                hiden_layer_size_lipschitz_nn=256,
+                hiden_layer_size_lipschitz_nn=512,  # 256,
                 num_iters_lipschitz=10,
                 lipschitz_func_pretraining=False,
                 output_subdirectory=output_subdirectory_parameters,
@@ -334,7 +334,6 @@ if retrain_posterior:
                 "C_3_0",
                 "Ogden (1.0)",
                 "Ogden (-1.0)",
-                "Ogden (-0.75)",
             ]
             num_parameters = model.num_parameters
             parameter_names = model.parameter_names
