@@ -3,7 +3,7 @@ from typing import Protocol, TypeAlias
 
 import torch
 
-from bayesianmdisc.customtypes import Device, Tensor
+from bayesianmdisc.customtypes import Device, Tensor, NPArray
 from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
 from bayesianmdisc.data.testcases import (
     AllowedTestCases,
@@ -33,6 +33,8 @@ ParameterMask: TypeAlias = Tensor
 ParameterIndex: TypeAlias = int
 ParameterIndices: TypeAlias = list[ParameterIndex]
 ParameterPopulationMatrix = Tensor
+LSDesignMatrix: TypeAlias = NPArray
+LSTargets: TypeAlias = NPArray
 
 
 class ModelProtocol(Protocol):

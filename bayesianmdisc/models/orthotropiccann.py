@@ -1,8 +1,11 @@
+from typing import TypeAlias
+
 import torch
 from torch import vmap
 from torch.func import grad
+import numpy as np
 
-from bayesianmdisc.customtypes import Device
+from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
 from bayesianmdisc.data.testcases import (
     test_case_identifier_biaxial_tension,
@@ -22,6 +25,8 @@ from bayesianmdisc.models.base import (
     Parameters,
     SplittedParameters,
     StrainEnergy,
+    LSDesignMatrix,
+    LSTargets,
     calculate_pressure_from_incompressibility_constraint,
     count_active_parameters,
     determine_initial_parameter_mask,
@@ -38,6 +43,8 @@ from bayesianmdisc.models.base import (
     validate_parameters,
     validate_test_cases,
 )
+
+ParameterCouplingTuples: TypeAlias = list[tuple[str, str]]
 
 
 class OrthotropicCANN:
@@ -56,6 +63,9 @@ class OrthotropicCANN:
         self._normal_direction_reference = torch.tensor([1.0, 0.0, 0.0], device=device)
         self._zero_principal_stress_index = 1
         self._initial_num_parameters = self._determine_number_of_parameters()
+        self._initial_num_parameters_per_invariant = (
+            self._determine_number_of_parameters_per_invariant()
+        )
         self._initial_parameter_names = self._init_parameter_names()
         self.output_dim = 9
         self.num_parameters = self._initial_num_parameters
@@ -63,6 +73,9 @@ class OrthotropicCANN:
         self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
         self._parameter_population_matrix = init_parameter_population_matrix(
             self.num_parameters, self._device
+        )
+        self.initial_linear_parameters, self.inital_parameter_couplings = (
+            self._init_linear_parameters_and_couplings(self._initial_parameter_names)
         )
 
     def __call__(
@@ -95,10 +108,16 @@ class OrthotropicCANN:
         return vmap(vmap_func)(inputs)
 
     def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None:
-        mask_parameters(parameter_indices, self._parameter_mask, False)
+        expanded_parameter_indices = self._expand_parameter_indices_by_coupled_indices(
+            parameter_indices
+        )
+        mask_parameters(expanded_parameter_indices, self._parameter_mask, False)
 
     def activate_parameters(self, parameter_indices: ParameterIndices) -> None:
-        mask_parameters(parameter_indices, self._parameter_mask, True)
+        expanded_parameter_indices = self._expand_parameter_indices_by_coupled_indices(
+            parameter_indices
+        )
+        mask_parameters(expanded_parameter_indices, self._parameter_mask, True)
 
     def reset_parameter_deactivations(self) -> None:
         self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
@@ -167,6 +186,48 @@ class OrthotropicCANN:
         init_reduced_models_parameter_mask()
         init_reduced_models_population_matrix()
 
+    def assemble_linear_system_of_equations(
+        self,
+        inputs: DeformationInputs,
+        test_cases: TestCases,
+        outputs: StressOutputs,
+        validate_args=True,
+    ) -> tuple[LSDesignMatrix, LSTargets]:
+        parameters = torch.ones((self.num_parameters,), device=self._device)
+
+        if validate_args:
+            self._validate_inputs(inputs, test_cases, parameters)
+
+        def flatten_outputs(outputs: Tensor) -> Tensor:
+            if outputs.dim() == 1:
+                return outputs
+            else:
+                return torch.transpose(outputs, 1, 0).ravel()
+
+        def assemble_design_matrix(
+            inputs: DeformationInputs, test_cases: TestCases, parameters: Parameters
+        ) -> LSDesignMatrix:
+            covariates = []
+            linear_parameter_indices = self._determine_linear_parameter_indices()
+
+            for parameter_index in linear_parameter_indices:
+                self._deactivate_all_parameters()
+                self.activate_parameters([parameter_index])
+                outputs = self.forward(inputs, test_cases, parameters)
+                flattened_outputs = flatten_outputs(outputs)
+                covariates += [flattened_outputs.cpu().detach().numpy()]
+
+            self.reset_parameter_deactivations()
+            return np.vstack(covariates)
+
+        def assemble_targets(outputs: StressOutputs) -> LSTargets:
+            flattened_outputs = flatten_outputs(outputs)
+            return flattened_outputs.cpu().detach().numpy()
+
+        design_matrix = assemble_design_matrix(inputs, test_cases, parameters)
+        targets = assemble_targets(outputs)
+        return design_matrix, targets
+
     def _determine_allowed_test_cases(self) -> AllowedTestCases:
         return torch.tensor(
             [self._test_case_identifier_bt, self._test_case_identifier_ss],
@@ -185,6 +246,9 @@ class OrthotropicCANN:
             num_invariants * num_power_terms * num_activation_functions
         )
         return num_parameters_first_layer + num_parameters_second_layer
+
+    def _determine_number_of_parameters_per_invariant(self) -> int:
+        return int(round(self._initial_num_parameters / self._num_invariants))
 
     def _init_parameter_names(self) -> ParameterNames:
         parameter_names = []
@@ -221,6 +285,52 @@ class OrthotropicCANN:
                     second_layer_indices += 1
 
         return tuple(parameter_names)
+
+    def _init_linear_parameters_and_couplings(
+        self, initial_parameter_names: ParameterNames
+    ) -> tuple[ParameterNames, ParameterCouplingTuples]:
+        linear_parameters: list[str] = []
+        parameter_coupling_tuples: ParameterCouplingTuples = []
+        step_size = self._initial_num_parameters_per_invariant
+        start_index = 0
+        end_index = step_size
+
+        for _ in range(self._num_invariants):
+            parameter_names = initial_parameter_names[start_index:end_index]
+            linear_param_1 = parameter_names[3]
+            linear_param_2 = parameter_names[5]
+            nonlinear_param_1 = parameter_names[0]
+            nonlinear_param_2 = parameter_names[1]
+            linear_parameters += [linear_param_1, linear_param_2]
+            parameter_coupling_tuples += [(linear_param_1, nonlinear_param_1)]
+            parameter_coupling_tuples += [(linear_param_2, nonlinear_param_2)]
+            start_index = end_index
+            end_index += step_size
+
+        return tuple(linear_parameters), parameter_coupling_tuples
+
+    def _expand_parameter_indices_by_coupled_indices(
+        self, parameter_indices: ParameterIndices
+    ) -> ParameterIndices:
+        expanded_parameter_indices: ParameterIndices = []
+
+        for parameter_index in parameter_indices:
+            is_parameter_coupled = False
+            parameter_name = self.parameter_names[parameter_index]
+
+            for coupling_tuple in self.inital_parameter_couplings:
+                if parameter_name in coupling_tuple:
+                    parameter_name_0 = coupling_tuple[0]
+                    parameter_name_1 = coupling_tuple[1]
+                    parameter_index_0 = self.parameter_names.index(parameter_name_0)
+                    parameter_index_1 = self.parameter_names.index(parameter_name_1)
+                    expanded_parameter_indices += [parameter_index_0, parameter_index_1]
+                    is_parameter_coupled = True
+
+            if not is_parameter_coupled:
+                expanded_parameter_indices += [parameter_index]
+
+        return expanded_parameter_indices
 
     def _validate_inputs(
         self, inputs: DeformationInputs, test_cases: TestCases, parameters: Parameters
@@ -361,3 +471,15 @@ class OrthotropicCANN:
 
     def _flatten_cauchy_stress_tensor(self, stresses: CauchyStresses) -> CauchyStresses:
         return stresses.reshape((-1))
+
+    def _determine_linear_parameter_indices(self) -> ParameterIndices:
+        linear_parameter_indices = []
+        for linear_parameter in self.initial_linear_parameters:
+            if linear_parameter in self.parameter_names:
+                parameter_index = self.parameter_names.index(linear_parameter)
+                linear_parameter_indices += [parameter_index]
+        return linear_parameter_indices
+
+    def _deactivate_all_parameters(self) -> None:
+        parameter_indices = list(range(self.num_parameters))
+        self.deactivate_parameters(parameter_indices)
