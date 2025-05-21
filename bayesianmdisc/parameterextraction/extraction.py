@@ -50,7 +50,7 @@ def extract_gp_inducing_parameter_distribution(
     num_flattened_outputs = len(inputs) * output_dim
 
     penalty_coefficient_lipschitz = torch.tensor(10.0, device=device)
-    learning_rate_lipschitz_func = 1e-4
+    learning_rate_lipschitz_func = 5e-4  # 1e-4
 
     lr_decay_rate_distribution = 0.9999
     lr_decay_rate_lipschitz_func = 1.0
@@ -76,7 +76,11 @@ def extract_gp_inducing_parameter_distribution(
         return torch.optim.RMSprop(params=distribution.get_parameters_and_options())
 
     def create_lipschitz_func_optimizer() -> TorchOptimizer:
-        return torch.optim.AdamW(
+        # return torch.optim.AdamW(
+        #     params=lipschitz_func.parameters(),
+        #     lr=learning_rate_lipschitz_func,
+        # )
+        return torch.optim.RMSprop(
             params=lipschitz_func.parameters(),
             lr=learning_rate_lipschitz_func,
         )

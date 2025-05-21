@@ -76,14 +76,14 @@ elif data_set_label == data_set_label_linka:
 relative_noise_stddevs = 5e-2
 min_absolute_noise_stddev = 5e-2
 num_calibration_steps = 1  # 2
-list_num_wasserstein_iterations = [20_000]  # [20_000, 10_000]
+list_num_wasserstein_iterations = [10_000]  # [20_000, 10_000]
 selection_metric = "mae"
 list_relative_selection_thressholds = [0.5]
 num_samples_posterior = 4096
 preslect_terms = True
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_width256_inputs32"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_width256_inputs128_rmspropboth"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
@@ -291,7 +291,7 @@ if retrain_posterior:
         def extract_parameter_distribution() -> DistributionProtocol:
             _data_set = cast(TreloarDataSet, data_set)
             inputs_extraction, test_cases_extraction = (
-                _data_set.generate_uniform_inputs(num_points_per_test_case=32)
+                _data_set.generate_uniform_inputs(num_points_per_test_case=128)
             )
             return extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
