@@ -10,7 +10,7 @@ from bayesianmdisc.bayes.distributions import (
 )
 from bayesianmdisc.customtypes import NPArray
 from bayesianmdisc.data import (
-    DataReaderProtocol,
+    DataProtocol,
     KawabataDataReader,
     LinkaHeartDataReader,
     TreloarDataReader,
@@ -60,7 +60,7 @@ set_seed(0)
 current_date = date.today().strftime("%Y%m%d")
 if data_set_label == data_set_label_treloar:
     input_directory = data_set_label
-    data_reader: DataReaderProtocol = TreloarDataReader(
+    data_reader: DataProtocol = TreloarDataReader(
         input_directory, project_directory, device
     )
     model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)

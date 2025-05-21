@@ -1,12 +1,14 @@
-from .base import data_set_label_kawabata, data_set_label_linka, data_set_label_treloar
-from .reader import (
-    DataReaderProtocol,
+from .base import (
+    data_set_label_kawabata,
+    data_set_label_linka,
+    data_set_label_treloar,
+    DataProtocol,
     DeformationInputs,
-    KawabataDataReader,
-    LinkaHeartDataReader,
     StressOutputs,
-    TreloarDataReader,
 )
+from .treloardata import TreloarDataReader
+from .kawabatadata import KawabataDataReader
+from .linkaheartdata import LinkaHeartDataReader
 from .testcases import (
     AllowedTestCases,
     TestCase,
@@ -25,7 +27,7 @@ __all__ = [
     "TestCase",
     "TestCases",
     "TreloarDataReader",
-    "DataReaderProtocol",
+    "DataProtocol",
     "AllowedTestCases",
     "KawabataDataReader",
     "validate_data",
