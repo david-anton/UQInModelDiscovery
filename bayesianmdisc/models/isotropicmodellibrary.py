@@ -69,7 +69,7 @@ class IsotropicModelLibrary:
         self._num_regular_positive_ogden_terms = 7
         self._min_regular_ogden_exponent = torch.tensor(-1.75, device=self._device)
         self._max_regular_ogden_exponent = torch.tensor(1.75, device=self._device)
-        self._additional_ogden_terms: list[float] = [-4.0, -3.0, 3.0, 4.0]
+        self._additional_ogden_terms: list[float] = []
         self._num_additional_ogden_terms = len(self._additional_ogden_terms)
         self._num_ogden_terms = self._determine_number_of_ogden_terms()
         self._ogden_exponents = self._determine_ogden_exponents()
