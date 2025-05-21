@@ -61,7 +61,7 @@ def extract_gp_inducing_parameter_distribution(
             activation=nn.Softplus(),
             init_weights=nn.init.xavier_uniform_,
             init_bias=nn.init.zeros_,
-            use_layer_norm=False,
+            use_layer_norm=True,
         ).to(device)
 
     def freeze_gp(gp: GaussianProcess) -> None:
