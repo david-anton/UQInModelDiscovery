@@ -83,7 +83,7 @@ num_samples_posterior = 4096
 preslect_terms = True
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters5_lambda10_lr1_samples128_layer2_width512_inputs64_terms4"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters5_lambda10_lr1_samples128_layer2_width512_inputs32_terms4"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
@@ -291,7 +291,7 @@ if retrain_posterior:
         def extract_parameter_distribution() -> DistributionProtocol:
             _data_set = cast(TreloarDataSet, data_set)
             inputs_extraction, test_cases_extraction = (
-                _data_set.generate_uniform_inputs(num_points_per_test_case=64)
+                _data_set.generate_uniform_inputs(num_points_per_test_case=32)
             )
             return extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
