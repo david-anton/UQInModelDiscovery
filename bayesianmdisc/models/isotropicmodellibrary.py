@@ -65,11 +65,11 @@ class IsotropicModelLibrary:
         self._device = device
         self._degree_mr_terms = 3
         self._mr_exponents = self._determine_mr_exponents()
-        self._num_regular_negative_ogden_terms = 8
-        self._num_regular_positive_ogden_terms = 8
-        self._min_regular_ogden_exponent = torch.tensor(-2.0, device=self._device)
-        self._max_regular_ogden_exponent = torch.tensor(2.0, device=self._device)
-        self._additional_ogden_terms: list[float] = [-4.0, -3.0, -2.0, 2.0, 3.0, 4.0]
+        self._num_regular_negative_ogden_terms = 7
+        self._num_regular_positive_ogden_terms = 7
+        self._min_regular_ogden_exponent = torch.tensor(-1.75, device=self._device)
+        self._max_regular_ogden_exponent = torch.tensor(1.75, device=self._device)
+        self._additional_ogden_terms: list[float] = [-4.0, -3.0, 3.0, 4.0]
         self._num_additional_ogden_terms = len(self._additional_ogden_terms)
         self._num_ogden_terms = self._determine_number_of_ogden_terms()
         self._ogden_exponents = self._determine_ogden_exponents()
@@ -457,14 +457,13 @@ class IsotropicModelLibrary:
     def _calculate_ogden_strain_energy_terms(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
     ) -> StrainEnergy:
-        two = torch.tensor(2.0, device=self._device)
+        one = torch.tensor(1.0, device=self._device)
         three = torch.tensor(3.0, device=self._device)
         stretches = self._extract_stretches(deformation_gradient)
 
         terms = torch.concat(
             [
-                (two / exponent**2)
-                * torch.sum(stretches**exponent, dim=0, keepdim=True)
+                (one / exponent) * torch.sum(stretches**exponent, dim=0, keepdim=True)
                 - three
                 for exponent in self._ogden_exponents
             ]

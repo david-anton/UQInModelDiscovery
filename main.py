@@ -333,7 +333,6 @@ if retrain_posterior:
                 "C_1_0 (NH)",
                 "C_3_0",
                 "Ogden (1.0)",
-                "Ogden (2.0)",
                 "Ogden (-1.0)",
                 "Ogden (-0.75)",
             ]
