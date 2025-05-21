@@ -10,10 +10,10 @@ from bayesianmdisc.bayes.distributions import (
 )
 from bayesianmdisc.customtypes import NPArray
 from bayesianmdisc.data import (
-    DataProtocol,
-    KawabataDataReader,
-    LinkaHeartDataReader,
-    TreloarDataReader,
+    DataSetProtocol,
+    KawabataDataSet,
+    LinkaHeartDataSet,
+    TreloarDataSet,
     data_set_label_kawabata,
     data_set_label_linka,
     data_set_label_treloar,
@@ -60,21 +60,21 @@ set_seed(0)
 current_date = date.today().strftime("%Y%m%d")
 if data_set_label == data_set_label_treloar:
     input_directory = data_set_label
-    data_reader: DataProtocol = TreloarDataReader(
+    data_set: DataSetProtocol = TreloarDataSet(
         input_directory, project_directory, device
     )
     model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)
 elif data_set_label == data_set_label_kawabata:
     input_directory = data_set_label
-    data_reader = KawabataDataReader(input_directory, project_directory, device)
+    data_set = KawabataDataSet(input_directory, project_directory, device)
     model = IsotropicModelLibrary(output_dim=2, device=device)
 elif data_set_label == data_set_label_linka:
     input_directory = "heart_data_linka"
-    data_reader = LinkaHeartDataReader(input_directory, project_directory, device)
+    data_set = LinkaHeartDataSet(input_directory, project_directory, device)
     model = OrthotropicCANN(device)
 
 relative_noise_stddevs = 5e-2
-min_absolute_noise_stddev = 5e-2  # 1e-3
+min_absolute_noise_stddev = 5e-2
 num_calibration_steps = 1  # 2
 list_num_wasserstein_iterations = [20_000]  # [20_000, 10_000]
 selection_metric = "mae"
@@ -83,7 +83,7 @@ num_samples_posterior = 4096
 preslect_terms = True
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples128_width256_rmspropboth"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_width256_inputs32"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
@@ -134,10 +134,10 @@ def plot_model_stresses(
 
         def _plot_kawabata() -> None:
             input_directory = data_set_label_kawabata
-            data_reader = KawabataDataReader(input_directory, project_directory, device)
+            data_set = KawabataDataSet(input_directory, project_directory, device)
             output_subdirectory_kawabata = os.path.join(output_subdirectory, "kawabata")
 
-            inputs, test_cases, outputs = data_reader.read()
+            inputs, test_cases, outputs = data_set.read_data()
             isotropic_model = cast(IsotropicModelLibrary, model)
             isotropic_model.set_output_dimension(2)
 
@@ -188,7 +188,7 @@ def plot_model_stresses(
         plot_linka()
 
 
-inputs, test_cases, outputs = data_reader.read()
+inputs, test_cases, outputs = data_set.read_data()
 noise_stddevs = determine_heteroscedastic_noise(
     relative_noise_stddevs, min_absolute_noise_stddev, outputs
 )
@@ -289,14 +289,18 @@ if retrain_posterior:
             )
 
         def extract_parameter_distribution() -> DistributionProtocol:
+            _data_set = cast(TreloarDataSet, data_set)
+            inputs_extraction, test_cases_extraction = (
+                _data_set.generate_uniform_inputs(num_points_per_test_case=32)
+            )
             return extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
                 model=model,
                 distribution_type="normalizing flow",
                 is_mean_trainable=True,
-                inputs=inputs,
-                test_cases=test_cases,
-                num_func_samples=128,
+                inputs=inputs_extraction,
+                test_cases=test_cases_extraction,
+                num_func_samples=32,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
                 hiden_layer_size_lipschitz_nn=256,
@@ -306,6 +310,23 @@ if retrain_posterior:
                 project_directory=project_directory,
                 device=device,
             )
+            # return extract_gp_inducing_parameter_distribution(
+            #     gp=gaussian_process,
+            #     model=model,
+            #     distribution_type="normalizing flow",
+            #     is_mean_trainable=True,
+            #     inputs=inputs,
+            #     test_cases=test_cases,
+            #     num_func_samples=128,
+            #     resample=True,
+            #     num_iters_wasserstein=list_num_wasserstein_iterations[step],
+            #     hiden_layer_size_lipschitz_nn=256,
+            #     num_iters_lipschitz=10,
+            #     lipschitz_func_pretraining=False,
+            #     output_subdirectory=output_subdirectory_parameters,
+            #     project_directory=project_directory,
+            #     device=device,
+            # )
 
         if step == 0 and preslect_terms:
             activae_parameter_names = [
