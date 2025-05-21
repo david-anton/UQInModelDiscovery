@@ -84,11 +84,6 @@ def extract_gp_inducing_parameter_distribution(
         #     params=lipschitz_func.parameters(),
         #     lr=learning_rate_lipschitz_func,
         # )
-        # return torch.optim.Adam(
-        #     params=lipschitz_func.parameters(),
-        #     lr=learning_rate_lipschitz_func,
-        #     betas=(0.0, 0.9),
-        # )
 
     def create_learning_rate_scheduler(
         optimizer: TorchOptimizer, decay_rate: float
