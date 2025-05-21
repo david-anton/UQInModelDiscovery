@@ -83,7 +83,7 @@ num_samples_posterior = 4096
 preslect_terms = True
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters5_lambda10_lr1_samples32_layer2_width512_inputs32_termsall"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_selectedterms"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
@@ -289,62 +289,41 @@ if retrain_posterior:
             )
 
         def extract_parameter_distribution() -> DistributionProtocol:
-            _data_set = cast(TreloarDataSet, data_set)
-            inputs_extraction, test_cases_extraction = (
-                _data_set.generate_uniform_inputs(num_points_per_test_case=32)
-            )
             return extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
                 model=model,
                 distribution_type="normalizing flow",
                 is_mean_trainable=True,
-                inputs=inputs_extraction,
-                test_cases=test_cases_extraction,
+                inputs=inputs,
+                test_cases=test_cases,
                 num_func_samples=32,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
                 hiden_layer_size_lipschitz_nn=512,  # 256,
-                num_iters_lipschitz=5,  # 10,
+                num_iters_lipschitz=10,
                 lipschitz_func_pretraining=False,
                 output_subdirectory=output_subdirectory_parameters,
                 project_directory=project_directory,
                 device=device,
             )
-            # return extract_gp_inducing_parameter_distribution(
-            #     gp=gaussian_process,
-            #     model=model,
-            #     distribution_type="normalizing flow",
-            #     is_mean_trainable=True,
-            #     inputs=inputs,
-            #     test_cases=test_cases,
-            #     num_func_samples=128,
-            #     resample=True,
-            #     num_iters_wasserstein=list_num_wasserstein_iterations[step],
-            #     hiden_layer_size_lipschitz_nn=256,
-            #     num_iters_lipschitz=10,
-            #     lipschitz_func_pretraining=False,
-            #     output_subdirectory=output_subdirectory_parameters,
-            #     project_directory=project_directory,
-            #     device=device,
-            # )
 
-        # if step == 0 and preslect_terms:
-        #     activae_parameter_names = [
-        #         "C_1_0 (NH)",
-        #         "C_3_0",
-        #         "Ogden (1.0)",
-        #         "Ogden (-1.0)",
-        #     ]
-        #     num_parameters = model.num_parameters
-        #     parameter_names = model.parameter_names
-        #     for parameter_index, parameter_name in zip(
-        #         range(num_parameters), parameter_names
-        #     ):
-        #         if not parameter_name in activae_parameter_names:
-        #             model.deactivate_parameters([parameter_index])
-        #     model.reduce_to_activated_parameters()
-        #     print("Preselected parameters:")
-        #     print(model.parameter_names)
+        if step == 0 and preslect_terms:
+            activae_parameter_names = [
+                "C_1_0 (NH)",
+                "C_3_0",
+                "Ogden (1.0)",
+                "Ogden (-1.0)",
+            ]
+            num_parameters = model.num_parameters
+            parameter_names = model.parameter_names
+            for parameter_index, parameter_name in zip(
+                range(num_parameters), parameter_names
+            ):
+                if not parameter_name in activae_parameter_names:
+                    model.deactivate_parameters([parameter_index])
+            model.reduce_to_activated_parameters()
+            print("Preselected parameters:")
+            print(model.parameter_names)
 
         num_parameters = model.num_parameters
         parameter_names = model.parameter_names
