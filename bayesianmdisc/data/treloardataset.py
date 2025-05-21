@@ -5,12 +5,14 @@ import numpy as np
 from bayesianmdisc.customtypes import Device, NPArray
 from bayesianmdisc.data.base import (
     Data,
+    DeformationInputs,
     numpy_data_type,
     stack_arrays,
     convert_to_torch,
     assemble_test_case_identifiers,
 )
 from bayesianmdisc.data.testcases import (
+    TestCases,
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_pure_shear,
     test_case_identifier_uniaxial_tension,
@@ -19,7 +21,7 @@ from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.readerswriters import CSVDataReader
 
 
-class TreloarDataReader:
+class TreloarDataSet:
     def __init__(
         self,
         input_directory: str,
@@ -40,7 +42,7 @@ class TreloarDataReader:
         self._test_case_identifier_ebt = test_case_identifier_equibiaxial_tension
         self._test_case_identifier_ps = test_case_identifier_pure_shear
 
-    def read(self) -> Data:
+    def read_data(self) -> Data:
         stretches_ut, test_cases_ut, stresses_ut = self._read_data(
             self._file_name_uniaxial_tension, self._test_case_identifier_ut
         )
@@ -62,6 +64,33 @@ class TreloarDataReader:
 
         return stretches_torch, test_cases_torch, stresses_torch
 
+    def generate_uniform_inputs(
+        self, num_points_per_test_case: int
+    ) -> tuple[DeformationInputs, TestCases]:
+        stretches_ut, test_cases_ut = self._generate_uniform_inputs(
+            self._file_name_uniaxial_tension,
+            self._test_case_identifier_ut,
+            num_points_per_test_case,
+        )
+        stretches_ebt, test_cases_ebt = self._generate_uniform_inputs(
+            self._file_name_equibiaxial_tension,
+            self._test_case_identifier_ebt,
+            num_points_per_test_case,
+        )
+        stretches_ps, test_cases_ps = self._generate_uniform_inputs(
+            self._file_name_pure_shear,
+            self._test_case_identifier_ps,
+            num_points_per_test_case,
+        )
+        test_cases = stack_arrays([test_cases_ut, test_cases_ebt, test_cases_ps])
+        test_cases = test_cases.reshape((-1,))
+        stretches = stack_arrays([stretches_ut, stretches_ebt, stretches_ps])
+
+        stretches_torch = convert_to_torch(stretches, self._device)
+        test_cases_torch = convert_to_torch(test_cases, self._device)
+
+        return stretches_torch, test_cases_torch
+
     def _read_data(
         self, file_name: str, test_case_identifier: int
     ) -> tuple[NPArray, NPArray, NPArray]:
@@ -71,6 +100,20 @@ class TreloarDataReader:
         test_cases = assemble_test_case_identifiers(test_case_identifier, stretches)
         stresses = data[:, self._index_stresses].reshape((-1, 1))
         return stretches, test_cases, stresses
+
+    def _generate_uniform_inputs(
+        self, file_name: str, test_case_identifier: int, num_inputs: int
+    ) -> tuple[NPArray, NPArray]:
+        data = self._read_csv_file(file_name)
+        data_stretch_factors = data[:, self._index_stretch]
+        min_stretch_factor = np.amin(data_stretch_factors)
+        max_stretch_factor = np.amax(data_stretch_factors)
+        stretch_factors = np.linspace(
+            min_stretch_factor, max_stretch_factor, num=num_inputs, endpoint=True
+        ).reshape((-1, 1))
+        stretches = self._calculate_stretches(stretch_factors, test_case_identifier)
+        test_cases = assemble_test_case_identifiers(test_case_identifier, stretches)
+        return stretches, test_cases
 
     def _read_csv_file(self, file_name: str) -> NPArray:
         return self._csv_reader.read(

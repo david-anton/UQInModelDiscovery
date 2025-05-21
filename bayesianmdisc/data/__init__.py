@@ -2,13 +2,13 @@ from .base import (
     data_set_label_kawabata,
     data_set_label_linka,
     data_set_label_treloar,
-    DataProtocol,
+    DataSetProtocol,
     DeformationInputs,
     StressOutputs,
 )
-from .treloardata import TreloarDataReader
-from .kawabatadata import KawabataDataReader
-from .linkaheartdata import LinkaHeartDataReader
+from .treloardataset import TreloarDataSet
+from .kawabatadataset import KawabataDataSet
+from .linkaheartdataset import LinkaHeartDataSet
 from .testcases import (
     AllowedTestCases,
     TestCase,
@@ -22,14 +22,14 @@ from .utility import determine_heteroscedastic_noise, split_data, validate_data
 
 __all__ = [
     "DeformationInputs",
-    "LinkaHeartDataReader",
+    "LinkaHeartDataSet",
     "StressOutputs",
     "TestCase",
     "TestCases",
-    "TreloarDataReader",
-    "DataProtocol",
+    "TreloarDataSet",
+    "DataSetProtocol",
     "AllowedTestCases",
-    "KawabataDataReader",
+    "KawabataDataSet",
     "validate_data",
     "split_data",
     "determine_heteroscedastic_noise",

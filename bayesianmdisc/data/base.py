@@ -18,8 +18,8 @@ data_set_label_kawabata = "kawabata"
 data_set_label_linka = "heart_data_linka"
 
 
-class DataProtocol(Protocol):
-    def read(self) -> Data: ...
+class DataSetProtocol(Protocol):
+    def read_data(self) -> Data: ...
 
 
 def assemble_test_case_identifiers(

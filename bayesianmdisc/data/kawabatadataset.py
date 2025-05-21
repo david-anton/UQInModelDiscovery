@@ -12,7 +12,7 @@ from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.readerswriters import CSVDataReader
 
 
-class KawabataDataReader:
+class KawabataDataSet:
     def __init__(
         self,
         input_directory: str,
@@ -29,7 +29,7 @@ class KawabataDataReader:
         self._np_data_type = numpy_data_type
         self._test_case_identifier_bt = test_case_identifier_biaxial_tension
 
-    def read(self) -> Data:
+    def read_data(self) -> Data:
         stretches, test_cases, stresses = self._read_data()
         stretches_torch = convert_to_torch(stretches, self._device)
         test_cases_torch = convert_to_torch(test_cases, self._device)

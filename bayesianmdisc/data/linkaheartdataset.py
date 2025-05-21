@@ -23,7 +23,7 @@ from bayesianmdisc.io import ProjectDirectory
 Component: TypeAlias = tuple[int, int]
 
 
-class LinkaHeartDataReader:
+class LinkaHeartDataSet:
     def __init__(
         self,
         input_directory: str,
@@ -48,7 +48,7 @@ class LinkaHeartDataReader:
         self._test_case_identifier_ss = test_case_identifier_simple_shear
         self._data_frame = self._init_data_frame()
 
-    def read(self) -> Data:
+    def read_data(self) -> Data:
         all_deformation_gradients = []
         all_test_cases = []
         all_stresse_tensors = []
