@@ -76,14 +76,14 @@ elif data_set_label == data_set_label_linka:
 relative_noise_stddevs = 5e-2
 min_absolute_noise_stddev = 5e-2
 num_calibration_steps = 2
-list_num_wasserstein_iterations = [20_000, 10_000]
+list_num_wasserstein_iterations = [50_000, 20_000]
 selection_metric = "mae"
 list_relative_selection_thressholds = [0.1]
 num_samples_posterior = 4096
 preslect_terms = True
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs32"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs32_moreepochs_smallerlr"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
