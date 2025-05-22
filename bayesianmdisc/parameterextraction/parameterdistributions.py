@@ -478,7 +478,7 @@ class NormalizingFlowParameterDistribution(nn.Module):
         self._device = device
         self._is_base_trainable = False
         self._num_layers = 16
-        self._relative_width_layers = 4.0
+        self._relative_width_layers = 4
         self._learning_rate = 5e-4
         self._normalizing_flow = self._init_normalizing_flow()
 
@@ -499,7 +499,6 @@ class NormalizingFlowParameterDistribution(nn.Module):
         freeze_model(cast(Module, self._normalizing_flow))
         return NormalizingFlowDistribution(
             normalizing_flow=self._normalizing_flow,
-            dim=self._dim,
             device=self._device,
         )
 
@@ -509,7 +508,9 @@ class NormalizingFlowParameterDistribution(nn.Module):
     def _init_normalizing_flow(self) -> NormalizingFlow:
         base_distribution = self._init_base_distribution()
         flows = self._init_normalizing_flows()
-        return NormalizingFlow(flows, base_distribution, self._device).to(self._device)
+        return NormalizingFlow(self._dim, flows, base_distribution, self._device).to(
+            self._device
+        )
 
     def _init_base_distribution(self) -> BaseDistributionProtocol:
         return nf.distributions.base.DiagGaussian(

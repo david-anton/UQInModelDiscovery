@@ -2,7 +2,7 @@ from typing import Protocol, TypeAlias, Union
 
 import torch
 
-from bayesianmdisc.customtypes import Device, NPArray, Tensor
+from bayesianmdisc.customtypes import Device, Tensor, NPArray
 from bayesianmdisc.statistics.distributions import (
     IndependentMultivariateGammaDistribution as _IndependentMultivariateGammaDistribution,
 )
@@ -80,7 +80,7 @@ from bayesianmdisc.statistics.utility import (
     determine_moments_of_multivariate_normal_distribution,
 )
 
-PriorDistribution: TypeAlias = Union[
+_Distribution: TypeAlias = Union[
     _UnivariateUniformDistribution,
     _UnivariateNormalDistribution,
     _UnivariateHalfNormalDistribution,
@@ -116,7 +116,7 @@ class DistributionProtocol(Protocol):
 
 
 class Distribution:
-    def __init__(self, distribution: PriorDistribution):
+    def __init__(self, distribution: _Distribution):
         self.distribution = distribution
         self.dim = distribution.dim
 
@@ -298,9 +298,6 @@ def multiply_distributions(
     return MultipliedDistributions(distributions)
 
 
-Samples: TypeAlias = list[Tensor]
-
-
 def sample_and_analyse_distribution(
     distribution: DistributionProtocol, num_samples: int
 ) -> tuple[MomentsMultivariateNormal, NPArray]:
@@ -311,6 +308,9 @@ def sample_and_analyse_distribution(
 
     samples_list = draw_samples()
     return _determine_statistical_moments(samples_list)
+
+
+Samples: TypeAlias = list[Tensor]
 
 
 def _determine_statistical_moments(

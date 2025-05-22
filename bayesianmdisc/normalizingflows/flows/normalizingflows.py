@@ -14,6 +14,8 @@ T = TypeVar("T", bound="NormalizingFlowProtocol")
 
 
 class NormalizingFlowProtocol(Protocol):
+    dim: int
+
     def forward(self, base_samples: Tensor) -> Tensor:
         pass
 
@@ -61,11 +63,13 @@ class NormalizingFlowProtocol(Protocol):
 class NormalizingFlow(torch.nn.Module):
     def __init__(
         self,
+        dimension: int,
         flows: list[NFNormalizingFlow],
         base_distribution: NFBaseDistribution,
         device: Device,
     ) -> None:
         super().__init__()
+        self.dim = dimension
         self.flows = torch.nn.ModuleList(flows)
         self.base_distribution = base_distribution
         self._device = device

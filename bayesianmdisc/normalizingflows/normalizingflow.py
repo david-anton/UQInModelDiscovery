@@ -85,7 +85,7 @@ def _create_normalizing_flow(
     flows += [
         create_exponential_constrained_flow(num_parameters, constrained_output_indices)
     ]
-    return NormalizingFlow(flows, base_distribution, device).to(device)
+    return NormalizingFlow(num_parameters, flows, base_distribution, device).to(device)
 
 
 def _fit_normalizing_flow(
@@ -106,8 +106,8 @@ def _fit_normalizing_flow(
     target_distribution = TargetDistributionWrapper(likelihood, prior, device)
 
     def create_optimizer(parameters: Iterator[Tensor]) -> TorchOptimizer:
-        return torch.optim.Adam(
-            params=parameters, lr=initial_learning_rate, betas=(0.95, 0.999)
+        return torch.optim.AdamW(
+            params=parameters, lr=initial_learning_rate  # , betas=(0.9, 0.999)
         )
 
     def create_exponential_learning_rate_scheduler(

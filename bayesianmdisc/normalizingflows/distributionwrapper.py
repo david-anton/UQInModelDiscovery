@@ -6,9 +6,9 @@ from bayesianmdisc.normalizingflows.flows import NormalizingFlowProtocol
 
 class NormalizingFlowDistribution:
     def __init__(
-        self, normalizing_flow: NormalizingFlowProtocol, dim: int, device: Device
+        self, normalizing_flow: NormalizingFlowProtocol, device: Device
     ) -> None:
-        self.dim = dim
+        self.dim = normalizing_flow.dim
         self._normalizing_flow = normalizing_flow
         self._device = device
 
