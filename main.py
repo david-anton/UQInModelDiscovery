@@ -328,23 +328,23 @@ if retrain_posterior:
             #     device=device,
             # )
 
-            # if step == 0 and preslect_terms:
-            activae_parameter_names = [
-                "C_1_0 (NH)",
-                "C_3_0",
-                "Ogden (1.0)",
-                "Ogden (-1.0)",
-            ]
-            num_parameters = model.num_parameters
-            parameter_names = model.parameter_names
-            for parameter_index, parameter_name in zip(
-                range(num_parameters), parameter_names
-            ):
-                if not parameter_name in activae_parameter_names:
-                    model.deactivate_parameters([parameter_index])
-            model.reduce_to_activated_parameters()
-            print("Preselected parameters:")
-            print(model.parameter_names)
+        # if step == 0 and preslect_terms:
+        #     activae_parameter_names = [
+        #         "C_1_0 (NH)",
+        #         "C_3_0",
+        #         "Ogden (1.0)",
+        #         "Ogden (-1.0)",
+        #     ]
+        #     num_parameters = model.num_parameters
+        #     parameter_names = model.parameter_names
+        #     for parameter_index, parameter_name in zip(
+        #         range(num_parameters), parameter_names
+        #     ):
+        #         if not parameter_name in activae_parameter_names:
+        #             model.deactivate_parameters([parameter_index])
+        #     model.reduce_to_activated_parameters()
+        #     print("Preselected parameters:")
+        #     print(model.parameter_names)
 
         num_parameters = model.num_parameters
         parameter_names = model.parameter_names
