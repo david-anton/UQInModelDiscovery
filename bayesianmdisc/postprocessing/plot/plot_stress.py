@@ -16,6 +16,7 @@ from bayesianmdisc.data.testcases import (
     test_case_identifier_uniaxial_tension,
 )
 from bayesianmdisc.errors import StressPlotterError
+from bayesianmdisc.gps.base import GPMultivariateNormal
 from bayesianmdisc.gps.gp import GP
 from bayesianmdisc.gps.multioutputgp import IndependentMultiOutputGP
 from bayesianmdisc.io import ProjectDirectory
@@ -1498,8 +1499,7 @@ def calculate_gp_means(
     output_dim: Optional[int] = None,
 ) -> NPArray:
     gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
-    likelihood = gp.likelihood
-    predictive_distribution = likelihood(gp(inputs))
+    predictive_distribution = infer_predictive_distribution(gp, inputs)
     _means = predictive_distribution.mean
     means = _means.cpu().detach().numpy()
     return means
@@ -1511,8 +1511,7 @@ def calculate_gp_quantiles(
     output_dim: Optional[int] = None,
 ) -> tuple[NPArray, NPArray]:
     gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
-    likelihood = gp.likelihood
-    predictive_distribution = likelihood(gp(inputs))
+    predictive_distribution = infer_predictive_distribution(gp, inputs)
     means = predictive_distribution.mean
     stddevs = predictive_distribution.stddev
     _min_quantiles = means - factor_stddev_credible_interval * stddevs
@@ -1529,11 +1528,17 @@ def sample_from_gp(
     output_dim: Optional[int] = None,
 ) -> NPArray:
     gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
-    likelihood = gp.likelihood
-    predictive_distribution = likelihood(gp(inputs))
+    predictive_distribution = infer_predictive_distribution(gp, inputs)
     _samples = predictive_distribution.sample(sample_shape=torch.Size((num_samples,)))
     samples = _samples.cpu().detach().numpy()
     return samples
+
+
+def infer_predictive_distribution(
+    gaussian_process: GaussianProcess, inputs: Tensor
+) -> GPMultivariateNormal:
+    likelihood = gaussian_process.likelihood
+    return likelihood(gaussian_process(inputs))
 
 
 def reduce_gp_to_output_dimension(

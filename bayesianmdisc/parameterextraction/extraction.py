@@ -73,8 +73,7 @@ def extract_gp_inducing_parameter_distribution(
             parameters.requires_grad = False
 
     def create_distribution_optimizer() -> TorchOptimizer:
-        # return torch.optim.RMSprop(distribution.get_parameters_and_options())
-        return torch.optim.AdamW(distribution.get_parameters_and_options())
+        return torch.optim.RMSprop(distribution.get_parameters_and_options())
 
     def create_lipschitz_func_optimizer() -> TorchOptimizer:
         return torch.optim.AdamW(
@@ -185,7 +184,10 @@ def extract_gp_inducing_parameter_distribution(
         ],
         device=device,
     )
-    gp_distribution: GPMultivariateNormal = gp(inputs)
+
+    gp_likelihood = gp.likelihood
+    gp_distribution: GPMultivariateNormal = gp_likelihood(gp(inputs))
+    # gp_distribution: GPMultivariateNormal = gp(inputs)
 
     if not resample:
         fixed_gp_func_values = gp_distribution.rsample(

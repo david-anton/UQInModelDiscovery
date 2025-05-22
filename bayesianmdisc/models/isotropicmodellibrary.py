@@ -461,13 +461,6 @@ class IsotropicModelLibrary:
         three = torch.tensor(3.0, device=self._device)
         stretches = self._extract_stretches(deformation_gradient)
 
-        # terms = torch.concat(
-        #     [
-        #         (one / exponent**2)
-        #         * (torch.sum(stretches**exponent, dim=0, keepdim=True) - three)
-        #         for exponent in self._ogden_exponents
-        #     ]
-        # )
         terms = torch.concat(
             [
                 (torch.sum(stretches**exponent, dim=0, keepdim=True) - three)
