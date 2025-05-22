@@ -9,7 +9,7 @@
 ## Build command
 ## singularity build --fakeroot --force bayesianmdisc.sif app/.devcontainer/container.def
 
-SCRIPT=main_sh.py
+SCRIPT=main_nf.py
 
 srun singularity run \
  --cleanenv \
