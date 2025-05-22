@@ -303,7 +303,7 @@ if retrain_posterior:
                 num_func_samples=32,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
-                hiden_layer_size_lipschitz_nn=512,  # 256,
+                hiden_layer_size_lipschitz_nn=512,
                 num_iters_lipschitz=10,
                 lipschitz_func_pretraining=False,
                 output_subdirectory=output_subdirectory_parameters,
