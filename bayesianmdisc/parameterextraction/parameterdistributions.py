@@ -491,7 +491,7 @@ class NormalizingFlowParameterDistribution(nn.Module):
             {
                 "params": self._normalizing_flow.parameters(),
                 "lr": self._learning_rate,
-                "betas": (0.0, 0.9),
+                # "betas": (0.0, 0.9),
             }
         ]
 
