@@ -83,7 +83,7 @@ num_samples_posterior = 4096
 preslect_terms = True
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_allterms_numinputs128_adamw"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_allterms_numinputs128_adamw_lr1e-4"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
