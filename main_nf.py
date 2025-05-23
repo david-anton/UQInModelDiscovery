@@ -27,7 +27,7 @@ from bayesianmdisc.models import (
     ModelProtocol,
     OrthotropicCANN,
     save_model_state,
-    select_model,
+    select_model_through_backward_elimination,
 )
 from bayesianmdisc.bayes.likelihood import LikelihoodProtocol, create_likelihood
 from bayesianmdisc.postprocessing.plot import (
@@ -181,12 +181,12 @@ if retrain_posterior:
 
         def create_prior() -> DistributionProtocol:
             if data_set_label == data_set_label_treloar:
-                concentrations = 1.0
+                concentrations = 1000.0
                 rates = 0.1
             else:
                 concentrations = 0.1
                 rates = 0.1
-            return create_independent_multivariate_inverse_gamma_distribution(
+            prior = create_independent_multivariate_inverse_gamma_distribution(
                 concentrations=torch.tensor(
                     [concentrations for _ in range(num_parameters)],
                     device=device,
@@ -197,6 +197,15 @@ if retrain_posterior:
                 ),
                 device=device,
             )
+
+            prior_samples = prior.sample(num_samples_posterior)
+            plot_model_stresses(
+                model=model,
+                model_parameter_samples=prior_samples.detach().cpu().numpy(),
+                subdirectory_name="prior",
+                output_directory=output_directory_step,
+            )
+            return prior
 
         def _create_likelihood() -> LikelihoodProtocol:
             return create_likelihood(
@@ -253,7 +262,7 @@ if retrain_posterior:
         )
 
         if not is_last_step:
-            select_model(
+            select_model_through_backward_elimination(
                 model=model,
                 metric=selection_metric,
                 relative_thresshold=list_relative_selection_thressholds[step],
