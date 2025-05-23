@@ -9,7 +9,7 @@ class NormalizingFlowDistribution:
         self, normalizing_flow: NormalizingFlowProtocol, device: Device
     ) -> None:
         self.dim = normalizing_flow.dim
-        self._normalizing_flow = normalizing_flow
+        self.normalizing_flow = normalizing_flow
         self._device = device
 
     def prob(self, parameters: Tensor) -> Tensor:
@@ -32,11 +32,11 @@ class NormalizingFlowDistribution:
         )[0]
 
     def sample(self, num_samples: int = 1) -> Tensor:
-        samples, _ = self._normalizing_flow.sample(num_samples)
+        samples, _ = self.normalizing_flow.sample(num_samples)
         return samples
 
     def _prob(self, parameters: Tensor) -> Tensor:
         return torch.exp(self._log_prob(parameters))
 
     def _log_prob(self, parameters: Tensor) -> Tensor:
-        return self._normalizing_flow.log_prob(parameters)
+        return self.normalizing_flow.log_prob(parameters)

@@ -1,3 +1,4 @@
+from typing import cast
 import torch
 import torch.nn as nn
 from torch.func import grad, vmap
@@ -10,6 +11,7 @@ from bayesianmdisc.customtypes import (
     TorchLRScheduler,
     TorchOptimizer,
 )
+from bayesianmdisc.io.loaderssavers import PytorchModelSaver, PytorchModelLoader
 from bayesianmdisc.data import DeformationInputs, TestCases
 from bayesianmdisc.gps import GaussianProcess
 from bayesianmdisc.gps.base import GPMultivariateNormal
@@ -19,6 +21,11 @@ from bayesianmdisc.models import ModelProtocol
 from bayesianmdisc.networks.ffnn import FFNN
 from bayesianmdisc.parameterextraction.parameterdistributions import (
     create_parameter_distribution,
+    NormalizingFlowParameterDistribution,
+)
+from bayesianmdisc.normalizingflows import (
+    NormalizingFlowDistribution,
+    NormalizingFlowProtocol,
 )
 from bayesianmdisc.postprocessing.plot import (
     HistoryPlotterConfig,
@@ -27,6 +34,7 @@ from bayesianmdisc.postprocessing.plot import (
 
 print_interval = 10
 num_iters_lipschitz_pretraining = 2_000
+file_name_model_parameters_nf = "normalizing_flow_parameters"
 
 
 def extract_gp_inducing_parameter_distribution(
@@ -169,6 +177,18 @@ def extract_gp_inducing_parameter_distribution(
             print(f"Loss Wasserstein distance: {loss_wasserstein}")
             print(f"Loss Lipschitz function: {loss_lipschitz_func}")
 
+    def save_parameter_distribution(distribution: DistributionProtocol) -> None:
+        if isinstance(distribution, NormalizingFlowDistribution):
+            print("Save normalizing flow parameter distribution ...")
+            normalizing_flow = distribution.normalizing_flow
+            model_saver = PytorchModelSaver(project_directory)
+            model_saver.save(
+                cast(Module, normalizing_flow),
+                file_name_model_parameters_nf,
+                output_subdirectory,
+                device,
+            )
+
     distribution = create_parameter_distribution(
         distribution_type=distribution_type,
         is_mean_trainable=is_mean_trainable,
@@ -251,8 +271,37 @@ def extract_gp_inducing_parameter_distribution(
         config=history_plotter_config,
     )
 
-    ############################################################
     distribution.print_hyperparameters()
-    ############################################################
+    _distribution = distribution.get_distribution()
+    save_parameter_distribution(_distribution)
+    return _distribution
 
-    return distribution.get_distribution()
+
+def load_normalizing_flow_parameter_distribution(
+    model: ModelProtocol,
+    output_subdirectory: str,
+    project_directory: ProjectDirectory,
+    device: Device,
+) -> NormalizingFlowDistribution:
+    print("Load normalizing flow parameter distribution ...")
+    model_loader = PytorchModelLoader(project_directory)
+    _distribution = cast(
+        NormalizingFlowParameterDistribution,
+        create_parameter_distribution(
+            distribution_type="normalizing flow",
+            is_mean_trainable=True,
+            model=model,
+            device=device,
+        ),
+    )
+    distribution = cast(NormalizingFlowDistribution, _distribution.get_distribution())
+    normalizing_flow = distribution.normalizing_flow
+    loaded_normalizing_flow = model_loader.load(
+        cast(Module, normalizing_flow),
+        file_name_model_parameters_nf,
+        output_subdirectory,
+    )
+    distribution.normalizing_flow = cast(
+        NormalizingFlowProtocol, loaded_normalizing_flow
+    )
+    return distribution
