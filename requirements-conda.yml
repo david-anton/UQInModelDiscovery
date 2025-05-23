@@ -15,6 +15,7 @@ dependencies:
   - scikit-learn=1.6.1
   - openpyxl=3.1.5
   - pytest=8.3.3
+  - salib=1.5.1
   - pip
   - pip:
     - normflows==1.7.3

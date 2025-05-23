@@ -34,9 +34,13 @@ from bayesianmdisc.models import (
     ModelProtocol,
     OrthotropicCANN,
     save_model_state,
-    select_model_through_backward_elimination,
+    load_model_state,
+    select_model_through_sensitivity_analysis,
 )
-from bayesianmdisc.parameterextraction import extract_gp_inducing_parameter_distribution
+from bayesianmdisc.parameterextraction import (
+    extract_gp_inducing_parameter_distribution,
+    load_normalizing_flow_parameter_distribution,
+)
 from bayesianmdisc.postprocessing.plot import (
     plot_gp_stresses_treloar,
     plot_histograms,
@@ -47,7 +51,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
 data_set_label = data_set_label_treloar
-retrain_posterior = True
+retrain_posterior = False
 
 # Settings
 settings = Settings()
@@ -75,15 +79,14 @@ elif data_set_label == data_set_label_linka:
 
 relative_noise_stddevs = 5e-2
 min_absolute_noise_stddev = 5e-2
-num_calibration_steps = 2
 list_num_wasserstein_iterations = [50_000, 50_000]
-selection_metric = "mae"
-list_relative_selection_thressholds = [0.1]
-num_samples_posterior = 4096
-preslect_terms = True
+num_samples_parameter_distribution = 4096
+num_samples_sensitivity_analysis = 4096
+threshold_sensitivities = 0.01
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs32_moreepochs_rmsprop"
+# output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs32_moreepochs_rmsprop"
+output_directory = "20250523_treloar_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs32"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
 
@@ -193,14 +196,12 @@ noise_stddevs = determine_heteroscedastic_noise(
     relative_noise_stddevs, min_absolute_noise_stddev, outputs
 )
 validate_data(inputs, test_cases, outputs, noise_stddevs)
-
+num_discovery_steps = len(list_num_wasserstein_iterations)
 
 if retrain_posterior:
-    for step in range(num_calibration_steps):
-        is_last_step = step == num_calibration_steps - 1
-        output_directory_step = os.path.join(
-            output_directory, f"calibration_step_{step}"
-        )
+    for step in range(num_discovery_steps):
+        is_first_step = step == 0
+        output_directory_step = os.path.join(output_directory, f"discovery_step_{step}")
         output_subdirectory_gp = os.path.join(
             output_directory_step, output_subdirectory_name_gp
         )
@@ -337,7 +338,7 @@ if retrain_posterior:
         parameter_distribution = extract_parameter_distribution()
 
         parameter_moments, parameter_samples = sample_and_analyse_distribution(
-            parameter_distribution, num_samples_posterior
+            parameter_distribution, num_samples_parameter_distribution
         )
 
         plot_histograms(
@@ -356,14 +357,12 @@ if retrain_posterior:
             output_directory=output_directory_step,
         )
 
-        if not is_last_step:
-            select_model_through_backward_elimination(
+        if is_first_step:
+            select_model_through_sensitivity_analysis(
                 model=model,
-                metric=selection_metric,
-                relative_thresshold=list_relative_selection_thressholds[step],
-                parameter_samples=torch.from_numpy(parameter_samples)
-                .type(torch.get_default_dtype())
-                .to(device),
+                parameter_distribution=parameter_distribution,
+                thresshold=threshold_sensitivities,
+                num_samples=num_samples_sensitivity_analysis,
                 inputs=inputs,
                 test_cases=test_cases,
                 outputs=outputs,
@@ -379,78 +378,71 @@ if retrain_posterior:
             model.reduce_to_activated_parameters()
 
         save_model_state(model, output_directory_step, project_directory)
-# else:
-#     for step in range(num_calibration_steps):
-#         is_first_step = step == 0
-#         is_last_step = step == num_calibration_steps - 1
-#         output_directory_step = os.path.join(
-#             output_directory, f"calibration_step_{step}"
-#         )
-#         if is_first_step:
-#             input_directory_step = output_directory_step
-#         else:
-#             input_step = step - 1
-#             input_directory_step = os.path.join(
-#                 output_directory, f"calibration_step_{input_step}"
-#             )
+else:
+    for step in range(num_discovery_steps):
+        is_first_step = step == 0
+        output_directory_step = os.path.join(output_directory, f"discovery_step_{step}")
+        output_subdirectory_parameters = os.path.join(
+            output_directory_step, output_subdirectory_name_parameters
+        )
+        if is_first_step:
+            input_directory_step = output_directory_step
+        else:
+            input_step = 0
+            input_directory_step = os.path.join(
+                output_directory, f"discovery_step_{input_step}"
+            )
 
-#         if not is_first_step:
-#             load_model_state(model, input_directory_step, project_directory, device)
+        if not is_first_step:
+            load_model_state(model, input_directory_step, project_directory, device)
 
-#         num_parameters = determine_number_of_parameters(model)
-#         parameter_names = determine_parameter_names(model)
+        num_parameters = model.num_parameters
+        parameter_names = model.parameter_names
 
-#         load_normalizing_flow_config = LoadNormalizingFlowConfig(
-#             num_parameters=num_parameters,
-#             num_flows=num_flows,
-#             relative_width_flow_layers=relative_width_flow_layers,
-#             output_subdirectory=output_directory_step,
-#             project_directory=project_directory,
-#         )
-#         normalizing_flow = load_normalizing_flow(load_normalizing_flow_config, device)
-#         posterior_moments, posterior_samples = sample_from_normalizing_flow(
-#             normalizing_flow, num_samples_posterior
-#         )
-#         _, model_posterior_samples = reduce_to_model_posterior(
-#             posterior_moments, posterior_samples
-#         )
+        def load_parameter_distribution() -> DistributionProtocol:
+            return load_normalizing_flow_parameter_distribution(
+                model=model,
+                output_subdirectory=output_directory_step,
+                project_directory=project_directory,
+                device=device,
+            )
 
-#         output_subdirectory_posterior = os.path.join(
-#             output_directory_step, output_subdirectory_name_posterior
-#         )
-#         plot_histograms(
-#             parameter_names=parameter_names,
-#             true_parameters=tuple(None for _ in range(num_parameters)),
-#             moments=posterior_moments,
-#             samples=posterior_samples,
-#             algorithm_name="nf",
-#             output_subdirectory=output_subdirectory_posterior,
-#             project_directory=project_directory,
-#         )
-#         plot_stresses(
-#             model=model,
-#             model_parameter_samples=model_posterior_samples,
-#             subdirectory_name="posterior_model",
-#             output_directory=output_directory_step,
-#         )
+        parameter_distribution = load_parameter_distribution()
+        parameter_moments, parameter_samples = sample_and_analyse_distribution(
+            parameter_distribution, num_samples_parameter_distribution
+        )
 
-#         if not is_last_step:
-#             trim_model(
-#                 model=model,
-#                 metric=selection_metric,
-#                 relative_thresshold=list_relative_selection_thressholds[step],
-#                 parameter_samples=torch.from_numpy(model_posterior_samples)
-#                 .type(torch.get_default_dtype())
-#                 .to(device),
-#                 inputs=inputs,
-#                 test_cases=test_cases,
-#                 outputs=outputs,
-#                 output_subdirectory=output_directory_step,
-#                 project_directory=project_directory,
-#             )
-#             plot_stresses(
-#                 model=model,
-#                 model_parameter_samples=model_posterior_samples,
-#                 subdirectory_name="posterior_model_trimmed",
-#                 output_directory=output_directory_step,
-#             )
+        plot_histograms(
+            parameter_names=parameter_names,
+            true_parameters=tuple(None for _ in range(num_parameters)),
+            moments=parameter_moments,
+            samples=parameter_samples,
+            algorithm_name="nf",
+            output_subdirectory=output_subdirectory_parameters,
+            project_directory=project_directory,
+        )
+        plot_model_stresses(
+            model=model,
+            model_parameter_samples=parameter_samples,
+            subdirectory_name="model_full",
+            output_directory=output_directory_step,
+        )
+
+        if is_first_step:
+            select_model_through_sensitivity_analysis(
+                model=model,
+                parameter_distribution=parameter_distribution,
+                thresshold=threshold_sensitivities,
+                num_samples=num_samples_sensitivity_analysis,
+                inputs=inputs,
+                test_cases=test_cases,
+                outputs=outputs,
+                output_subdirectory=output_directory_step,
+                project_directory=project_directory,
+            )
+            plot_model_stresses(
+                model=model,
+                model_parameter_samples=parameter_samples,
+                subdirectory_name="model_selected",
+                output_directory=output_directory_step,
+            )
