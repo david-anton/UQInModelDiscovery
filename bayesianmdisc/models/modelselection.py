@@ -25,7 +25,7 @@ ModelAccuracies: TypeAlias = list[float]
 file_name_parameters = "relevant_parameters.txt"
 
 
-def select_model(
+def select_model_through_backward_elimination(
     model: ModelProtocol,
     metric: str,
     relative_thresshold: float,

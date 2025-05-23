@@ -34,7 +34,7 @@ from bayesianmdisc.models import (
     ModelProtocol,
     OrthotropicCANN,
     save_model_state,
-    select_model,
+    select_model_through_backward_elimination,
 )
 from bayesianmdisc.parameterextraction import extract_gp_inducing_parameter_distribution
 from bayesianmdisc.postprocessing.plot import (
@@ -328,24 +328,6 @@ if retrain_posterior:
             #     device=device,
             # )
 
-        # if step == 0 and preslect_terms:
-        #     activae_parameter_names = [
-        #         "C_1_0 (NH)",
-        #         "C_3_0",
-        #         "Ogden (1.0)",
-        #         "Ogden (-1.0)",
-        #     ]
-        #     num_parameters = model.num_parameters
-        #     parameter_names = model.parameter_names
-        #     for parameter_index, parameter_name in zip(
-        #         range(num_parameters), parameter_names
-        #     ):
-        #         if not parameter_name in activae_parameter_names:
-        #             model.deactivate_parameters([parameter_index])
-        #     model.reduce_to_activated_parameters()
-        #     print("Preselected parameters:")
-        #     print(model.parameter_names)
-
         num_parameters = model.num_parameters
         parameter_names = model.parameter_names
 
@@ -375,7 +357,7 @@ if retrain_posterior:
         )
 
         if not is_last_step:
-            select_model(
+            select_model_through_backward_elimination(
                 model=model,
                 metric=selection_metric,
                 relative_thresshold=list_relative_selection_thressholds[step],
