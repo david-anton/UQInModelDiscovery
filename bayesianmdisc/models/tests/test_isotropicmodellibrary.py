@@ -25,8 +25,8 @@ def get_expected_parameter_names() -> tuple[str, ...]:
         parameter_names = []
         num_negative_terms = 4
         num_positive_terms = 4
-        min_exponent = torch.tensor(-2.0)
-        max_exponent = torch.tensor(2.0)
+        min_exponent = torch.tensor(-1.0)
+        max_exponent = torch.tensor(1.0)
         negative_exponents = torch.linspace(min_exponent, 0.0, num_negative_terms + 1)[
             :-1
         ].tolist()
@@ -35,7 +35,7 @@ def get_expected_parameter_names() -> tuple[str, ...]:
         ].tolist()
         exponents = negative_exponents + positive_exponents
         for index, exponent in zip(range(1, len(exponents) + 1), exponents):
-            parameter_names += [f"O_{index} ({round(exponent,2)})"]
+            parameter_names += [f"Ogden ({round(exponent,2)})"]
         return tuple(parameter_names)
 
     def get_expected_ln_feature_parameter_names() -> tuple[str, ...]:

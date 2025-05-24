@@ -343,7 +343,7 @@ class IsotropicModelLibrary:
             return tuple(parameter_names)
 
         def compose_ln_feature_parameter_name() -> ParameterNames:
-            return ("ln(I2)",)
+            return ("ln_I2",)
 
         mr_parameter_names = compose_mr_parameter_names()
         ogden_parameter_names = compose_ogden_parameter_names()
