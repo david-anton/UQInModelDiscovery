@@ -56,6 +56,7 @@ class LinkaHeartDataSet:
         self._test_case_identifier_ss_31 = test_case_identifier_simple_shear_31
         self._test_case_identifier_ss_23 = test_case_identifier_simple_shear_23
         self._test_case_identifier_ss_32 = test_case_identifier_simple_shear_32
+        self._irrelevant_stress_components = [4]
         self._data_frame = self._init_data_frame()
 
     def read_data(self) -> Data:
@@ -213,14 +214,21 @@ class LinkaHeartDataSet:
         flattened_deformation_gradients = flatten_and_stack_arrays(
             deformation_gradients
         )
-        test_case_identifier = self._find_shear_test_case_identifier(stress_component)
+        test_case_identifier = self._map_to_shear_test_case_identifier(stress_component)
         test_cases = assemble_test_case_identifiers(
             test_case_identifier, flattened_deformation_gradients
         )
         flattened_stress_tensors = flatten_and_stack_arrays(stress_tensors)
-        return flattened_deformation_gradients, test_cases, flattened_stress_tensors
+        reduced_flattened_stress_tensors = self._reduce_to_relevant_stresses(
+            flattened_stress_tensors
+        )
+        return (
+            flattened_deformation_gradients,
+            test_cases,
+            reduced_flattened_stress_tensors,
+        )
 
-    def _find_shear_test_case_identifier(self, stress_component: Component) -> int:
+    def _map_to_shear_test_case_identifier(self, stress_component: Component) -> int:
         if stress_component == (0, 1):
             return self._test_case_identifier_ss_12
         elif stress_component == (1, 0):
@@ -235,6 +243,9 @@ class LinkaHeartDataSet:
             return self._test_case_identifier_ss_32
         else:
             raise DataError(f"Unvalid stress component: {stress_component}")
+
+    def _reduce_to_relevant_stresses(self, flattened_stress_tensor: NPArray) -> NPArray:
+        return np.delete(flattened_stress_tensor, self._irrelevant_stress_components, 1)
 
     def _read_biaxial_data(self, start_column: int) -> tuple[NPArray, NPArray, NPArray]:
         deformation_gradients: NPArrayList = []

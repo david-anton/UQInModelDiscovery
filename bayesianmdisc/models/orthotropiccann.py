@@ -72,12 +72,13 @@ class OrthotropicCANN:
         self._sheet_direction_reference = torch.tensor([0.0, 1.0, 0.0], device=device)
         self._normal_direction_reference = torch.tensor([1.0, 0.0, 0.0], device=device)
         self._zero_principal_stress_index = 1
+        self._irrelevant_stress_component = 4
         self._initial_num_parameters = self._determine_number_of_parameters()
         self._initial_num_parameters_per_invariant = (
             self._determine_number_of_parameters_per_invariant()
         )
         self._initial_parameter_names = self._init_parameter_names()
-        self.output_dim = 9
+        self.output_dim = 8
         self.num_parameters = self._initial_num_parameters
         self.parameter_names = self._initial_parameter_names
         self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
@@ -115,7 +116,12 @@ class OrthotropicCANN:
         def vmap_func(inputs_: FlattenedDeformationGradient) -> FlattenedCauchyStresses:
             return self._calculate_stresses(inputs_, parameters)
 
-        return vmap(vmap_func)(inputs)
+        flattened_stresses = vmap(vmap_func)(inputs)
+        reduced_flattened_stresses = self._reduce_to_relevant_stresses(
+            flattened_stresses
+        )
+
+        return reduced_flattened_stresses
 
     def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None:
         expanded_parameter_indices = self._expand_parameter_indices_by_coupled_indices(
@@ -489,6 +495,17 @@ class OrthotropicCANN:
 
     def _flatten_cauchy_stress_tensor(self, stresses: CauchyStresses) -> CauchyStresses:
         return stresses.reshape((-1))
+
+    def _reduce_to_relevant_stresses(
+        self, flattened_stresses: CauchyStresses
+    ) -> CauchyStresses:
+        return torch.concat(
+            (
+                flattened_stresses[:, : self._irrelevant_stress_component],
+                flattened_stresses[:, self._irrelevant_stress_component + 1 :],
+            ),
+            dim=1,
+        )
 
     def _determine_linear_parameter_indices(self) -> ParameterIndices:
         linear_parameter_indices = []

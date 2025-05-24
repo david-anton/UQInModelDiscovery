@@ -799,10 +799,10 @@ def plot_model_stresses_linka(
     index_shear_stress_fs = 1
     index_shear_stress_fn = 2
     index_shear_stress_sf = 3
-    index_shear_stress_sn = 5
-    index_shear_stress_nf = 6
-    index_shear_stress_ns = 7
-    index_principal_stress_n = 8
+    index_shear_stress_sn = 4
+    index_shear_stress_nf = 5
+    index_shear_stress_ns = 6
+    index_principal_stress_n = 7
     principal_stress_indices = [index_principal_stress_f, index_principal_stress_n]
     shear_stress_indices_plots = [
         [index_shear_stress_fs],
