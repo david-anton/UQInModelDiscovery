@@ -3,8 +3,8 @@ import numpy as np
 from bayesianmdisc.customtypes import Device, NPArray
 from bayesianmdisc.data.base import (
     Data,
-    convert_to_torch,
     assemble_test_case_identifiers,
+    convert_to_torch,
     numpy_data_type,
 )
 from bayesianmdisc.data.testcases import test_case_identifier_biaxial_tension

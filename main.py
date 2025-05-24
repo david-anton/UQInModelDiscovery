@@ -33,8 +33,8 @@ from bayesianmdisc.models import (
     IsotropicModelLibrary,
     ModelProtocol,
     OrthotropicCANN,
-    save_model_state,
     load_model_state,
+    save_model_state,
     select_model_through_sobol_sensitivity_analysis,
 )
 from bayesianmdisc.parameterextraction import (

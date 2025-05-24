@@ -1,4 +1,5 @@
 from typing import cast
+
 import torch
 import torch.nn as nn
 from torch.func import grad, vmap
@@ -11,21 +12,21 @@ from bayesianmdisc.customtypes import (
     TorchLRScheduler,
     TorchOptimizer,
 )
-from bayesianmdisc.io.loaderssavers import PytorchModelSaver, PytorchModelLoader
 from bayesianmdisc.data import DeformationInputs, TestCases
 from bayesianmdisc.gps import GaussianProcess
 from bayesianmdisc.gps.base import GPMultivariateNormal
 from bayesianmdisc.gps.multioutputgp import flatten_outputs
 from bayesianmdisc.io import ProjectDirectory
+from bayesianmdisc.io.loaderssavers import PytorchModelLoader, PytorchModelSaver
 from bayesianmdisc.models import ModelProtocol
 from bayesianmdisc.networks.ffnn import FFNN
-from bayesianmdisc.parameterextraction.parameterdistributions import (
-    create_parameter_distribution,
-    NormalizingFlowParameterDistribution,
-)
 from bayesianmdisc.normalizingflows import (
     NormalizingFlowDistribution,
     NormalizingFlowProtocol,
+)
+from bayesianmdisc.parameterextraction.parameterdistributions import (
+    NormalizingFlowParameterDistribution,
+    create_parameter_distribution,
 )
 from bayesianmdisc.postprocessing.plot import (
     HistoryPlotterConfig,

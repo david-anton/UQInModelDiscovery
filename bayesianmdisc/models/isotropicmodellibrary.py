@@ -1,11 +1,11 @@
 from typing import TypeAlias
 
+import numpy as np
 import torch
 from torch import vmap
 from torch.func import grad
-import numpy as np
 
-from bayesianmdisc.customtypes import Device, Tensor, NPArray
+from bayesianmdisc.customtypes import Device, NPArray, Tensor
 from bayesianmdisc.data import (
     AllowedTestCases,
     DeformationInputs,
@@ -21,6 +21,8 @@ from bayesianmdisc.data.testcases import (
 from bayesianmdisc.models.base import (
     DeformationGradient,
     Invariants,
+    LSDesignMatrix,
+    LSTargets,
     ParameterIndices,
     ParameterNames,
     ParameterPopulationMatrix,
@@ -31,8 +33,6 @@ from bayesianmdisc.models.base import (
     StrainEnergy,
     Stretch,
     Stretches,
-    LSDesignMatrix,
-    LSTargets,
     assemble_stretches_from_factors,
     assemble_stretches_from_incompressibility_assumption,
     calculate_pressure_from_incompressibility_constraint,

@@ -1,9 +1,9 @@
-from typing import TypeAlias, Protocol
+from typing import Protocol, TypeAlias
 
 import numpy as np
 import torch
 
-from bayesianmdisc.customtypes import NPArray, Tensor, Device
+from bayesianmdisc.customtypes import Device, NPArray, Tensor
 from bayesianmdisc.data.testcases import TestCases
 
 NPArrayList = list[NPArray]

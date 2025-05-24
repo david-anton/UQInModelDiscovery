@@ -1,17 +1,17 @@
 from .base import (
-    data_set_label_kawabata,
-    data_set_label_linka,
-    data_set_label_treloar,
-    zero_stress_inputs_treloar,
-    zero_stress_inputs_linka,
     DataSetProtocol,
     DeformationInputs,
     StressOutputs,
+    data_set_label_kawabata,
+    data_set_label_linka,
+    data_set_label_treloar,
+    zero_stress_inputs_linka,
+    zero_stress_inputs_treloar,
 )
-from .treloardataset import TreloarDataSet
 from .kawabatadataset import KawabataDataSet
 from .linkaheartdataset import LinkaHeartDataSet
 from .testcases import AllowedTestCases, TestCase, TestCases
+from .treloardataset import TreloarDataSet
 from .utility import determine_heteroscedastic_noise, split_data, validate_data
 
 __all__ = [

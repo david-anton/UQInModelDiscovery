@@ -1,27 +1,26 @@
 from typing import TypeAlias
 
-import torch
-from torch import vmap
 import numpy as np
 import pandas as pd
+import torch
+from SALib import ProblemSpec
+from torch import vmap
 
-from bayesianmdisc.customtypes import Tensor, NPArray, Device
+from bayesianmdisc.bayes.distributions import DistributionProtocol
+from bayesianmdisc.customtypes import Device, NPArray, Tensor
 from bayesianmdisc.data import (
     DeformationInputs,
     StressOutputs,
     TestCases,
-)
-from bayesianmdisc.data.testcases import map_test_case_identifiers_to_labels
-from bayesianmdisc.data import (
     data_set_label_linka,
     data_set_label_treloar,
     zero_stress_inputs_linka,
     zero_stress_inputs_treloar,
 )
-from SALib import ProblemSpec
-from bayesianmdisc.io.readerswriters import PandasDataWriter
+from bayesianmdisc.data.testcases import map_test_case_identifiers_to_labels
 from bayesianmdisc.errors import ModelSelectionError
 from bayesianmdisc.io import ProjectDirectory
+from bayesianmdisc.io.readerswriters import PandasDataWriter
 from bayesianmdisc.models import ModelProtocol
 from bayesianmdisc.models.base import ParameterIndex, ParameterIndices
 from bayesianmdisc.statistics.metrics import (
@@ -29,7 +28,6 @@ from bayesianmdisc.statistics.metrics import (
     mean_absolute_error,
     root_mean_squared_error,
 )
-from bayesianmdisc.bayes.distributions import DistributionProtocol
 
 ModelAccuracies: TypeAlias = list[float]
 Problem: TypeAlias = ProblemSpec

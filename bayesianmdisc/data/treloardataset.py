@@ -6,10 +6,10 @@ from bayesianmdisc.customtypes import Device, NPArray
 from bayesianmdisc.data.base import (
     Data,
     DeformationInputs,
+    assemble_test_case_identifiers,
+    convert_to_torch,
     numpy_data_type,
     stack_arrays,
-    convert_to_torch,
-    assemble_test_case_identifiers,
 )
 from bayesianmdisc.data.testcases import (
     TestCases,

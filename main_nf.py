@@ -9,6 +9,7 @@ from bayesianmdisc.bayes.distributions import (
     create_independent_multivariate_inverse_gamma_distribution,
     sample_and_analyse_distribution,
 )
+from bayesianmdisc.bayes.likelihood import LikelihoodProtocol, create_likelihood
 from bayesianmdisc.customtypes import NPArray
 from bayesianmdisc.data import (
     DataSetProtocol,
@@ -29,17 +30,16 @@ from bayesianmdisc.models import (
     save_model_state,
     select_model_through_backward_elimination,
 )
-from bayesianmdisc.bayes.likelihood import LikelihoodProtocol, create_likelihood
+from bayesianmdisc.normalizingflows import (
+    FitNormalizingFlowConfig,
+    NormalizingFlowDistribution,
+    fit_normalizing_flow,
+)
 from bayesianmdisc.postprocessing.plot import (
     plot_histograms,
     plot_model_stresses_kawabata,
     plot_model_stresses_linka,
     plot_model_stresses_treloar,
-)
-from bayesianmdisc.normalizingflows import (
-    FitNormalizingFlowConfig,
-    fit_normalizing_flow,
-    NormalizingFlowDistribution,
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 

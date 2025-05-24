@@ -1,19 +1,19 @@
 from typing import TypeAlias
 
+import numpy as np
 import torch
 from torch import vmap
 from torch.func import grad
-import numpy as np
 
 from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
 from bayesianmdisc.data.testcases import (
     test_case_identifier_biaxial_tension,
     test_case_identifier_simple_shear_12,
-    test_case_identifier_simple_shear_21,
     test_case_identifier_simple_shear_13,
-    test_case_identifier_simple_shear_31,
+    test_case_identifier_simple_shear_21,
     test_case_identifier_simple_shear_23,
+    test_case_identifier_simple_shear_31,
     test_case_identifier_simple_shear_32,
 )
 from bayesianmdisc.models.base import (
@@ -24,14 +24,14 @@ from bayesianmdisc.models.base import (
     FlattenedDeformationGradient,
     Invariant,
     Invariants,
+    LSDesignMatrix,
+    LSTargets,
     ParameterIndices,
     ParameterNames,
     ParameterPopulationMatrix,
     Parameters,
     SplittedParameters,
     StrainEnergy,
-    LSDesignMatrix,
-    LSTargets,
     calculate_pressure_from_incompressibility_constraint,
     count_active_parameters,
     determine_initial_parameter_mask,

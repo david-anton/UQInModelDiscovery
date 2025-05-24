@@ -6,20 +6,20 @@ import pandas as pd
 from bayesianmdisc.customtypes import Device, NPArray, PDDataFrame
 from bayesianmdisc.data.base import (
     Data,
-    stack_arrays,
-    convert_to_torch,
-    assemble_test_case_identifiers,
-    flatten_and_stack_arrays,
     NPArrayList,
+    assemble_test_case_identifiers,
+    convert_to_torch,
+    flatten_and_stack_arrays,
     numpy_data_type,
+    stack_arrays,
 )
 from bayesianmdisc.data.testcases import (
     test_case_identifier_biaxial_tension,
     test_case_identifier_simple_shear_12,
-    test_case_identifier_simple_shear_21,
     test_case_identifier_simple_shear_13,
-    test_case_identifier_simple_shear_31,
+    test_case_identifier_simple_shear_21,
     test_case_identifier_simple_shear_23,
+    test_case_identifier_simple_shear_31,
     test_case_identifier_simple_shear_32,
 )
 from bayesianmdisc.errors import DataError

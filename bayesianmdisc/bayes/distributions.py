@@ -2,7 +2,7 @@ from typing import Protocol, TypeAlias, Union
 
 import torch
 
-from bayesianmdisc.customtypes import Device, Tensor, NPArray
+from bayesianmdisc.customtypes import Device, NPArray, Tensor
 from bayesianmdisc.statistics.distributions import (
     IndependentMultivariateGammaDistribution as _IndependentMultivariateGammaDistribution,
 )
