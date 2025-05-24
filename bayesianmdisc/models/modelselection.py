@@ -1,17 +1,26 @@
-from typing import TypeAlias, Any
+from typing import TypeAlias
 
 import torch
 from torch import vmap
 import numpy as np
+import pandas as pd
 
-from bayesianmdisc.customtypes import Tensor, NPArray
+from bayesianmdisc.customtypes import Tensor, NPArray, Device
 from bayesianmdisc.data import (
     DeformationInputs,
     StressOutputs,
     TestCases,
 )
+from bayesianmdisc.data.testcases import map_test_case_identifiers_to_labels
+from bayesianmdisc.data import (
+    data_set_label_linka,
+    data_set_label_treloar,
+    zero_stress_inputs_linka,
+    zero_stress_inputs_treloar,
+)
 from SALib import ProblemSpec
-from bayesianmdisc.errors import ModelTrimmingError
+from bayesianmdisc.io.readerswriters import PandasDataWriter
+from bayesianmdisc.errors import ModelSelectionError
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import ModelProtocol
 from bayesianmdisc.models.base import ParameterIndex, ParameterIndices
@@ -23,7 +32,9 @@ from bayesianmdisc.statistics.metrics import (
 from bayesianmdisc.bayes.distributions import DistributionProtocol
 
 ModelAccuracies: TypeAlias = list[float]
-
+Problem: TypeAlias = ProblemSpec
+SIndices: TypeAlias = NPArray
+SIndicesList: TypeAlias = list[SIndices]
 
 file_name_parameters = "relevant_parameters.txt"
 
@@ -55,7 +66,7 @@ def select_model_through_backward_elimination(
         metric_func = coefficient_of_determination
         sort_metric_descending = True
     else:
-        raise ModelTrimmingError(
+        raise ModelSelectionError(
             f"No implementation for requested error metric: {metric}"
         )
 
@@ -137,78 +148,190 @@ def select_model_through_backward_elimination(
     print_relevant_parameter_names(model)
 
 
-def select_model_through_sensitivity_analysis(
+def select_model_through_sobol_sensitivity_analysis(
     model: ModelProtocol,
     parameter_distribution: DistributionProtocol,
-    thresshold: float,
-    num_samples: int,
+    first_sobol_index_thresshold: float,
+    num_samples_factor: int,
+    data_set_label: str,
     inputs: DeformationInputs,
     test_cases: TestCases,
     outputs: StressOutputs,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
+    device: Device,
 ) -> None:
-    num_parameters = model.num_parameters
-    parameter_names = model.parameter_names
-    num_inputs = len(inputs)
-    output_dim = outputs.shape[1]
     calc_second_order = False
     num_samples_bounds = 8192
+    num_parameters = model.num_parameters
+    parameter_names = model.parameter_names
+    num_outputs = model.output_dim
 
-    # Correct the number of samples as required to calculate Sobol indices
-    # num_samples = num_samples * (2 * num_parameters)
+    data_writer = PandasDataWriter(project_directory)
+    file_name_prefix_first_indices = "first_sobol_indices"
+    file_name_prefix_total_indices = "total_sobol_indices"
 
-    parameter_samples = parameter_distribution.sample(num_samples_bounds)
+    if data_set_label == data_set_label_treloar:
+        skipped_input_indices = zero_stress_inputs_treloar
+    elif data_set_label == data_set_label_linka:
+        skipped_input_indices = zero_stress_inputs_linka
+    else:
+        raise ModelSelectionError(
+            """There is no implementation for the specified data set."""
+        )
 
     def print_initial_info() -> None:
         print("Start sensitivity analysis ...")
 
-    def determine_parameter_bounds(parameter_samples: NPArray) -> Any:
+    def remove_skipped_inputs(
+        inputs: DeformationInputs, test_cases: TestCases
+    ) -> tuple[DeformationInputs, TestCases]:
+        _inputs = inputs
+        _test_cases = test_cases
+        for input_index in sorted(skipped_input_indices, reverse=True):
+            _inputs = torch.concat(
+                (_inputs[:input_index, :], _inputs[input_index + 1 :, :])
+            )
+            _test_cases = torch.concat(
+                (_test_cases[:input_index], _test_cases[input_index + 1 :])
+            )
+        return _inputs, _test_cases
+
+    def determine_parameter_bounds() -> NPArray:
+        parameter_samples_torch = parameter_distribution.sample(num_samples_bounds)
+        parameter_samples = from_torch_to_numpy(parameter_samples_torch)
         parameter_samples = parameter_samples.transpose((1, 0))
         lower_bound = np.amin(parameter_samples, axis=1, keepdims=True)
         upper_bound = np.amax(parameter_samples, axis=1, keepdims=True)
-        return np.hstack((lower_bound, upper_bound)).tolist()
-
-    def evaluate_model(parameter_samples: Tensor) -> StressOutputs:
-        vmap_model_func = lambda _parameter_sample: model(
-            inputs, test_cases, _parameter_sample
-        )
-        return vmap(vmap_model_func)(parameter_samples)
-
-    def reshape_model_outputs(model_outputs: StressOutputs) -> StressOutputs:
-        model_outputs = torch.transpose(model_outputs, 0, 1)
-        model_outputs = torch.transpose(model_outputs, 1, 2)
-        return model_outputs
+        return np.hstack((lower_bound, upper_bound))
 
     print_initial_info()
+    inputs, test_cases = remove_skipped_inputs(inputs, test_cases)
+    num_inputs = len(inputs)
+    test_case_labels = map_test_case_identifiers_to_labels(test_cases)
+    parameter_bounds = determine_parameter_bounds().tolist()
 
-    parameter_samples_spec = parameter_samples.detach().cpu().numpy()
-    parameter_bounds_spec = determine_parameter_bounds(parameter_samples_spec)
+    first_indices_outputs_list: SIndicesList = []
+    total_indices_outputs_list: SIndicesList = []
 
-    problem = ProblemSpec(
-        {
-            "num_vars": num_parameters,
-            "names": parameter_names,
-            "bounds": parameter_bounds_spec,
-            "outputs": ["P1"],
-        }
-    )
-    problem.sample_saltelli(num_samples, calc_second_order=calc_second_order)
-    parameter_samples = torch.from_numpy(problem.samples)
+    for output_index in range(num_outputs):
 
-    model_outputs = evaluate_model(parameter_samples)
-    model_outputs = reshape_model_outputs(model_outputs)
-    one_model_output = model_outputs[14, 0, :].detach().cpu().numpy()
+        def define_problem() -> Problem:
+            output_name = f"output_{output_index}"
+            return ProblemSpec(
+                {
+                    "num_vars": num_parameters,
+                    "names": parameter_names,
+                    "bounds": parameter_bounds,
+                    "outputs": [output_name],
+                }
+            )
 
-    # problem.set_samples(parameter_samples_spec)
-    problem.set_results(one_model_output)
-    sobol_indices = problem.analyze_sobol(calc_second_order=calc_second_order)
+        def sample(problem: Problem) -> NPArray:
+            problem.sample_saltelli(
+                num_samples_factor, calc_second_order=calc_second_order
+            )
+            return problem.samples
 
-    print(sobol_indices.analysis["S1"])
-    print(np.sum(sobol_indices.analysis["S1"]))
-    print(sobol_indices.analysis["ST"])
-    print(np.sum(sobol_indices.analysis["ST"]))
+        def evaluate_model(parameter_samples: NPArray) -> NPArray:
+            parameter_samples_torch = from_numpy_to_torch(parameter_samples, device)
+            vmap_model_func = lambda parameter_sample: model(
+                inputs, test_cases, parameter_sample
+            )
+            outputs_torch = vmap(vmap_model_func)(parameter_samples_torch)
+            return from_torch_to_numpy(outputs_torch)
 
+        def reshape_model_outputs(outputs: NPArray) -> NPArray:
+            return np.transpose(outputs, (1, 2, 0))
+
+        problem = define_problem()
+        parameter_samples = sample(problem)
+        model_outputs = evaluate_model(parameter_samples)
+        model_outputs = reshape_model_outputs(model_outputs)
+
+        first_indices_inputs_list: SIndicesList = []
+        total_indices_inputs_list: SIndicesList = []
+
+        for input_index in range(num_inputs):
+
+            def print_info() -> None:
+                print(
+                    f"Analyze sensitivities of output {output_index} at input {input_index} ..."
+                )
+
+            def analyze_sobol_indices(problem: Problem) -> None:
+                model_output = model_outputs[input_index, output_index, :]
+                problem.set_results(model_output)
+                problem.analyze_sobol(calc_second_order=calc_second_order)
+
+            def get_indices(problem: Problem) -> tuple[SIndices, SIndices]:
+                first_indices = problem.analysis["S1"]
+                total_indices = problem.analysis["ST"]
+                return first_indices, total_indices
+
+            print_info()
+            analyze_sobol_indices(problem)
+            first_indices, total_indices = get_indices(problem)
+            first_indices_inputs_list += [first_indices]
+            total_indices_inputs_list += [total_indices]
+
+        first_indices_inputs = np.vstack(first_indices_inputs_list)
+        total_indices_inputs = np.vstack(total_indices_inputs_list)
+        mean_first_indices_inputs = np.mean(first_indices_inputs, axis=0)
+        mean_total_indices_inputs = np.mean(total_indices_inputs, axis=0)
+
+        def save_analysis_results(
+            first_indices_inputs: NPArray, total_indices_inputs: NPArray
+        ) -> None:
+            # first indices
+            file_name_first_indices = (
+                f"{file_name_prefix_first_indices}_output_{output_index}"
+            )
+            data_frame_first_indices = pd.DataFrame(
+                first_indices_inputs, columns=parameter_names
+            )
+            data_frame_first_indices.insert(0, "test case", test_case_labels)
+            data_writer.write(
+                data_frame_first_indices,
+                file_name_first_indices,
+                output_subdirectory,
+                header=True,
+            )
+            # total indices
+            file_name_total_indices = (
+                f"{file_name_prefix_total_indices}_output_{output_index}"
+            )
+            data_frame_total_indices = pd.DataFrame(
+                total_indices_inputs, columns=parameter_names
+            )
+            data_frame_total_indices.insert(0, "test case", test_case_labels)
+            data_writer.write(
+                data_frame_total_indices,
+                file_name_total_indices,
+                output_subdirectory,
+                header=True,
+            )
+
+        save_analysis_results(first_indices_inputs, total_indices_inputs)
+        first_indices_outputs_list += [mean_first_indices_inputs]
+        total_indices_outputs_list += [mean_total_indices_inputs]
+
+    def deactivate_irrelevant_model_parameters(
+        mean_first_indices_outputs: SIndices,
+    ) -> None:
+        irrelevant_parameter_indices = (
+            np.where(mean_first_indices_outputs < first_sobol_index_thresshold)[0]
+            .reshape((-1,))
+            .tolist()
+        )
+        model.deactivate_parameters(irrelevant_parameter_indices)
+
+    first_indices_outputs = np.vstack(first_indices_outputs_list)
+    total_indices_outputs = np.vstack(total_indices_outputs_list)
+    mean_first_indices_outputs = np.mean(first_indices_outputs, axis=0)
+    _ = np.mean(total_indices_outputs, axis=0)
+
+    deactivate_irrelevant_model_parameters(mean_first_indices_outputs)
     save_relevant_parameter_names(model, output_subdirectory, project_directory)
     print_relevant_parameter_names(model)
 
@@ -232,3 +355,11 @@ def print_relevant_parameter_names(model: ModelProtocol) -> None:
 
     for parameter_name in relevant_parameter_names:
         print(parameter_name)
+
+
+def from_numpy_to_torch(array: NPArray, device: Device) -> Tensor:
+    return torch.from_numpy(array).type(torch.get_default_dtype()).to(device)
+
+
+def from_torch_to_numpy(tensor: Tensor) -> NPArray:
+    return tensor.detach().cpu().numpy()

@@ -11,6 +11,8 @@ from bayesianmdisc.data import (
     data_set_label_kawabata,
     data_set_label_linka,
     data_set_label_treloar,
+)
+from bayesianmdisc.data.testcases import (
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_uniaxial_tension,
 )

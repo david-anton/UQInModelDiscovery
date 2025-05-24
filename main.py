@@ -35,7 +35,7 @@ from bayesianmdisc.models import (
     OrthotropicCANN,
     save_model_state,
     load_model_state,
-    select_model_through_sensitivity_analysis,
+    select_model_through_sobol_sensitivity_analysis,
 )
 from bayesianmdisc.parameterextraction import (
     extract_gp_inducing_parameter_distribution,
@@ -81,14 +81,15 @@ relative_noise_stddevs = 5e-2
 min_absolute_noise_stddev = 5e-2
 list_num_wasserstein_iterations = [50_000, 50_000]
 num_samples_parameter_distribution = 4096
-num_samples_sensitivity_analysis = 4096
-threshold_sensitivities = 0.01
+num_samples_factor_sensitivity_analysis = 4096
+first_sobol_index_thresshold = 1e-5
 
 
 # output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs32_moreepochs_rmsprop"
 output_directory = "20250523_treloar_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs32"
-output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_gp = "gp"
+output_subdirectory_name_parameters = "parameters"
+output_subdirectory_name_sensitivities = "sensitivity_analysis"
 
 
 def plot_gp_stresses(
@@ -208,6 +209,9 @@ if retrain_posterior:
         output_subdirectory_parameters = os.path.join(
             output_directory_step, output_subdirectory_name_parameters
         )
+        output_subdirectory_sensitivities = os.path.join(
+            output_directory_step, output_subdirectory_name_sensitivities
+        )
 
         def create_gp() -> GaussianProcess:
             min_inputs = torch.amin(inputs, dim=0)
@@ -311,23 +315,6 @@ if retrain_posterior:
                 project_directory=project_directory,
                 device=device,
             )
-            # return extract_gp_inducing_parameter_distribution(
-            #     gp=gaussian_process,
-            #     model=model,
-            #     distribution_type="normalizing flow",
-            #     is_mean_trainable=True,
-            #     inputs=inputs,
-            #     test_cases=test_cases,
-            #     num_func_samples=32,
-            #     resample=True,
-            #     num_iters_wasserstein=list_num_wasserstein_iterations[step],
-            #     hiden_layer_size_lipschitz_nn=512,  # 256,
-            #     num_iters_lipschitz=10,
-            #     lipschitz_func_pretraining=False,
-            #     output_subdirectory=output_subdirectory_parameters,
-            #     project_directory=project_directory,
-            #     device=device,
-            # )
 
         num_parameters = model.num_parameters
         parameter_names = model.parameter_names
@@ -358,16 +345,18 @@ if retrain_posterior:
         )
 
         if is_first_step:
-            select_model_through_sensitivity_analysis(
+            select_model_through_sobol_sensitivity_analysis(
                 model=model,
                 parameter_distribution=parameter_distribution,
-                thresshold=threshold_sensitivities,
-                num_samples=num_samples_sensitivity_analysis,
+                first_sobol_index_thresshold=first_sobol_index_thresshold,
+                num_samples_factor=num_samples_factor_sensitivity_analysis,
+                data_set_label=data_set_label,
                 inputs=inputs,
                 test_cases=test_cases,
                 outputs=outputs,
-                output_subdirectory=output_directory_step,
+                output_subdirectory=output_subdirectory_sensitivities,
                 project_directory=project_directory,
+                device=device,
             )
             plot_model_stresses(
                 model=model,
@@ -384,6 +373,9 @@ else:
         output_directory_step = os.path.join(output_directory, f"discovery_step_{step}")
         output_subdirectory_parameters = os.path.join(
             output_directory_step, output_subdirectory_name_parameters
+        )
+        output_subdirectory_sensitivities = os.path.join(
+            output_directory_step, output_subdirectory_name_sensitivities
         )
         if is_first_step:
             input_directory_step = output_directory_step
@@ -429,16 +421,18 @@ else:
         )
 
         if is_first_step:
-            select_model_through_sensitivity_analysis(
+            select_model_through_sobol_sensitivity_analysis(
                 model=model,
                 parameter_distribution=parameter_distribution,
-                thresshold=threshold_sensitivities,
-                num_samples=num_samples_sensitivity_analysis,
+                first_sobol_index_thresshold=first_sobol_index_thresshold,
+                num_samples_factor=num_samples_factor_sensitivity_analysis,
+                data_set_label=data_set_label,
                 inputs=inputs,
                 test_cases=test_cases,
                 outputs=outputs,
-                output_subdirectory=output_directory_step,
+                output_subdirectory=output_subdirectory_sensitivities,
                 project_directory=project_directory,
+                device=device,
             )
             plot_model_stresses(
                 model=model,
