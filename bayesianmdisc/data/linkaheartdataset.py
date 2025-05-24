@@ -15,7 +15,12 @@ from bayesianmdisc.data.base import (
 )
 from bayesianmdisc.data.testcases import (
     test_case_identifier_biaxial_tension,
-    test_case_identifier_simple_shear,
+    test_case_identifier_simple_shear_12,
+    test_case_identifier_simple_shear_21,
+    test_case_identifier_simple_shear_13,
+    test_case_identifier_simple_shear_31,
+    test_case_identifier_simple_shear_23,
+    test_case_identifier_simple_shear_32,
 )
 from bayesianmdisc.errors import DataError
 from bayesianmdisc.io import ProjectDirectory
@@ -45,7 +50,12 @@ class LinkaHeartDataSet:
         self._start_column_biaxial = 15
         self._np_data_type = numpy_data_type
         self._test_case_identifier_bt = test_case_identifier_biaxial_tension
-        self._test_case_identifier_ss = test_case_identifier_simple_shear
+        self._test_case_identifier_ss_12 = test_case_identifier_simple_shear_12
+        self._test_case_identifier_ss_21 = test_case_identifier_simple_shear_21
+        self._test_case_identifier_ss_13 = test_case_identifier_simple_shear_13
+        self._test_case_identifier_ss_31 = test_case_identifier_simple_shear_31
+        self._test_case_identifier_ss_23 = test_case_identifier_simple_shear_23
+        self._test_case_identifier_ss_32 = test_case_identifier_simple_shear_32
         self._data_frame = self._init_data_frame()
 
     def read_data(self) -> Data:
@@ -203,11 +213,28 @@ class LinkaHeartDataSet:
         flattened_deformation_gradients = flatten_and_stack_arrays(
             deformation_gradients
         )
+        test_case_identifier = self._find_shear_test_case_identifier(stress_component)
         test_cases = assemble_test_case_identifiers(
-            self._test_case_identifier_ss, flattened_deformation_gradients
+            test_case_identifier, flattened_deformation_gradients
         )
         flattened_stress_tensors = flatten_and_stack_arrays(stress_tensors)
         return flattened_deformation_gradients, test_cases, flattened_stress_tensors
+
+    def _find_shear_test_case_identifier(self, stress_component: Component) -> int:
+        if stress_component == (0, 1):
+            return self._test_case_identifier_ss_12
+        elif stress_component == (1, 0):
+            return self._test_case_identifier_ss_21
+        elif stress_component == (0, 2):
+            return self._test_case_identifier_ss_13
+        elif stress_component == (2, 0):
+            return self._test_case_identifier_ss_31
+        elif stress_component == (1, 2):
+            return self._test_case_identifier_ss_23
+        elif stress_component == (2, 1):
+            return self._test_case_identifier_ss_32
+        else:
+            raise DataError(f"Unvalid stress component: {stress_component}")
 
     def _read_biaxial_data(self, start_column: int) -> tuple[NPArray, NPArray, NPArray]:
         deformation_gradients: NPArrayList = []

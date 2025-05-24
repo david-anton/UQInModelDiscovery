@@ -12,7 +12,12 @@ from bayesianmdisc.data.testcases import (
     test_case_identifier_biaxial_tension,
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_pure_shear,
-    test_case_identifier_simple_shear,
+    test_case_identifier_simple_shear_12,
+    test_case_identifier_simple_shear_21,
+    test_case_identifier_simple_shear_13,
+    test_case_identifier_simple_shear_31,
+    test_case_identifier_simple_shear_23,
+    test_case_identifier_simple_shear_32,
     test_case_identifier_uniaxial_tension,
 )
 from bayesianmdisc.errors import StressPlotterError
@@ -808,8 +813,7 @@ def plot_model_stresses_linka(
         [index_shear_stress_ns],
     ]
     principal_stress_indices_plots = [
-        [index_principal_stress_f, index_principal_stress_n]
-        for _ in range(num_data_sets_biaxial_tension)
+        principal_stress_indices for _ in range(num_data_sets_biaxial_tension)
     ]
     stress_indices_list = shear_stress_indices_plots + principal_stress_indices_plots
     num_model_inputs = 256
@@ -876,7 +880,22 @@ def plot_model_stresses_linka(
             else:
                 min_input = min_shear_strain
                 max_input = max_shear_strain
-                test_case_identifier = test_case_identifier_simple_shear
+
+                if stress_index == index_shear_stress_fs:
+                    test_case_identifier = test_case_identifier_simple_shear_12
+                elif stress_index == index_shear_stress_fn:
+                    test_case_identifier = test_case_identifier_simple_shear_13
+                elif stress_index == index_shear_stress_sf:
+                    test_case_identifier = test_case_identifier_simple_shear_21
+                elif stress_index == index_shear_stress_sn:
+                    test_case_identifier = test_case_identifier_simple_shear_23
+                elif stress_index == index_shear_stress_nf:
+                    test_case_identifier = test_case_identifier_simple_shear_31
+                elif stress_index == index_shear_stress_ns:
+                    test_case_identifier = test_case_identifier_simple_shear_32
+                else:
+                    raise StressPlotterError(f"Unvalid stress index: {stress_index}")
+
                 file_name = f"shearstress_{stress_file_name_label}.pdf"
 
             # data points

@@ -9,7 +9,12 @@ from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
 from bayesianmdisc.data.testcases import (
     test_case_identifier_biaxial_tension,
-    test_case_identifier_simple_shear,
+    test_case_identifier_simple_shear_12,
+    test_case_identifier_simple_shear_21,
+    test_case_identifier_simple_shear_13,
+    test_case_identifier_simple_shear_31,
+    test_case_identifier_simple_shear_23,
+    test_case_identifier_simple_shear_32,
 )
 from bayesianmdisc.models.base import (
     AllowedTestCases,
@@ -55,7 +60,12 @@ class OrthotropicCANN:
         self._num_invariant_power_terms = 2
         self._num_activation_functions = 2
         self._test_case_identifier_bt = test_case_identifier_biaxial_tension
-        self._test_case_identifier_ss = test_case_identifier_simple_shear
+        self._test_case_identifier_ss_12 = test_case_identifier_simple_shear_12
+        self._test_case_identifier_ss_21 = test_case_identifier_simple_shear_21
+        self._test_case_identifier_ss_13 = test_case_identifier_simple_shear_13
+        self._test_case_identifier_ss_31 = test_case_identifier_simple_shear_31
+        self._test_case_identifier_ss_23 = test_case_identifier_simple_shear_23
+        self._test_case_identifier_ss_32 = test_case_identifier_simple_shear_32
         self._allowed_test_cases = self._determine_allowed_test_cases()
         self._allowed_input_dimensions = [9]
         self._fiber_direction_reference = torch.tensor([1.0, 0.0, 0.0], device=device)
@@ -230,7 +240,15 @@ class OrthotropicCANN:
 
     def _determine_allowed_test_cases(self) -> AllowedTestCases:
         return torch.tensor(
-            [self._test_case_identifier_bt, self._test_case_identifier_ss],
+            [
+                self._test_case_identifier_bt,
+                self._test_case_identifier_ss_12,
+                self._test_case_identifier_ss_21,
+                self._test_case_identifier_ss_13,
+                self._test_case_identifier_ss_31,
+                self._test_case_identifier_ss_23,
+                self._test_case_identifier_ss_32,
+            ],
             device=self._device,
         )
 

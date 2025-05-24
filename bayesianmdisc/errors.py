@@ -57,7 +57,7 @@ class StressPlotterError(Error):
         super().__init__(message)
 
 
-class ModelTrimmingError(Error):
+class ModelSelectionError(Error):
     def __init__(self, message: str) -> None:
         super().__init__(message)
 
