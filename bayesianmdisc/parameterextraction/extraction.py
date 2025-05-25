@@ -178,18 +178,6 @@ def extract_gp_inducing_parameter_distribution(
             print(f"Loss Wasserstein distance: {loss_wasserstein}")
             print(f"Loss Lipschitz function: {loss_lipschitz_func}")
 
-    def save_parameter_distribution(distribution: DistributionProtocol) -> None:
-        if isinstance(distribution, NormalizingFlowDistribution):
-            print("Save normalizing flow parameter distribution ...")
-            normalizing_flow = distribution.normalizing_flow
-            model_saver = PytorchModelSaver(project_directory)
-            model_saver.save(
-                cast(Module, normalizing_flow),
-                file_name_model_parameters_nf,
-                output_subdirectory,
-                device,
-            )
-
     distribution = create_parameter_distribution(
         distribution_type=distribution_type,
         is_mean_trainable=is_mean_trainable,
@@ -273,9 +261,24 @@ def extract_gp_inducing_parameter_distribution(
     )
 
     distribution.print_hyperparameters()
-    _distribution = distribution.get_distribution()
-    save_parameter_distribution(_distribution)
-    return _distribution
+    return distribution.get_distribution()
+
+
+def save_normalizing_flow_parameter_distribution(
+    distribution: NormalizingFlowDistribution,
+    output_subdirectory: str,
+    project_directory: ProjectDirectory,
+    device: Device,
+) -> None:
+    print("Save normalizing flow parameter distribution ...")
+    normalizing_flow = distribution.normalizing_flow
+    model_saver = PytorchModelSaver(project_directory)
+    model_saver.save(
+        cast(Module, normalizing_flow),
+        file_name_model_parameters_nf,
+        output_subdirectory,
+        device,
+    )
 
 
 def load_normalizing_flow_parameter_distribution(
