@@ -85,7 +85,7 @@ num_samples_factor_sensitivity_analysis = 4096
 first_sobol_index_thresshold = 1e-6
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters5_lambda10_lr1_samples16_layer2_width512_numinputs32_sobolsensitivities"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters5_lambda10_lr1_samples16_layer2_width256_numinputs32_sobolsensitivities"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -307,7 +307,7 @@ if retrain_posterior:
                 num_func_samples=32,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
-                hiden_layer_size_lipschitz_nn=512,
+                hiden_layer_size_lipschitz_nn=256,
                 num_iters_lipschitz=5,
                 lipschitz_func_pretraining=False,
                 output_subdirectory=output_subdirectory_parameters,
