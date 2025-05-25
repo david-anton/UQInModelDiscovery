@@ -116,7 +116,7 @@ class TreloarDataSet:
         return stretches, test_cases
 
     def _read_csv_file(self, file_name: str) -> NPArray:
-        return self._csv_reader.read(
+        return self._csv_reader.read_as_numpy_array(
             file_name=file_name, subdir_name=self._input_directory, seperator=";"
         )
 

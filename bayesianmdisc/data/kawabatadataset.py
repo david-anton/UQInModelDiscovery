@@ -47,7 +47,7 @@ class KawabataDataSet:
         return stretches, test_cases, stresses
 
     def _read_csv_file(self) -> NPArray:
-        return self._csv_reader.read(
+        return self._csv_reader.read_as_numpy_array(
             file_name=self._file_name, subdir_name=self._input_directory, seperator=";"
         )
 

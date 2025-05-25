@@ -7,7 +7,7 @@ from SALib import ProblemSpec
 from torch import vmap
 
 from bayesianmdisc.bayes.distributions import DistributionProtocol
-from bayesianmdisc.customtypes import Device, NPArray, Tensor
+from bayesianmdisc.customtypes import Device, NPArray, Tensor, PDDataFrame
 from bayesianmdisc.data import (
     DeformationInputs,
     StressOutputs,
@@ -17,12 +17,16 @@ from bayesianmdisc.data import (
     zero_stress_inputs_linka,
     zero_stress_inputs_treloar,
 )
-from bayesianmdisc.data.testcases import map_test_case_identifiers_to_labels
+from bayesianmdisc.data.testcases import (
+    map_test_case_identifiers_to_labels,
+    labels as all_test_case_labels,
+    TestCaseLabels,
+)
 from bayesianmdisc.errors import ModelSelectionError
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.io.readerswriters import PandasDataWriter
+from bayesianmdisc.io.readerswriters import PandasDataWriter, CSVDataReader
 from bayesianmdisc.models import ModelProtocol
-from bayesianmdisc.models.base import ParameterIndex, ParameterIndices
+from bayesianmdisc.models.base import ParameterIndex, ParameterIndices, ParameterNames
 from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
     mean_absolute_error,
@@ -146,6 +150,11 @@ def select_model_through_backward_elimination(
     print_relevant_parameter_names(model)
 
 
+file_name_prefix_first_indices = "first_sobol_indices"
+file_name_prefix_total_indices = "total_sobol_indices"
+pd_column_lable_test_cases = "test cases"
+
+
 def select_model_through_sobol_sensitivity_analysis(
     model: ModelProtocol,
     parameter_distribution: DistributionProtocol,
@@ -154,7 +163,6 @@ def select_model_through_sobol_sensitivity_analysis(
     data_set_label: str,
     inputs: DeformationInputs,
     test_cases: TestCases,
-    outputs: StressOutputs,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
     device: Device,
@@ -166,8 +174,6 @@ def select_model_through_sobol_sensitivity_analysis(
     num_outputs = model.output_dim
 
     data_writer = PandasDataWriter(project_directory)
-    file_name_prefix_first_indices = "first_sobol_indices"
-    file_name_prefix_total_indices = "total_sobol_indices"
 
     if data_set_label == data_set_label_treloar:
         skipped_input_indices = zero_stress_inputs_treloar
@@ -267,6 +273,11 @@ def select_model_through_sobol_sensitivity_analysis(
                 total_indices = problem.analysis["ST"]
                 return first_indices, total_indices
 
+            def calculate_statistics(indices: SIndices) -> tuple[NPArray, NPArray]:
+                means = np.mean(indices, axis=0)
+                stdes = np.std(indices, axis=0) / np.sqrt(num_inputs)
+                return means, stdes
+
             print_info()
             analyze_sobol_indices(problem)
             first_indices, total_indices = get_indices(problem)
@@ -275,63 +286,101 @@ def select_model_through_sobol_sensitivity_analysis(
 
         first_indices_inputs = np.vstack(first_indices_inputs_list)
         total_indices_inputs = np.vstack(total_indices_inputs_list)
-        mean_first_indices_inputs = np.mean(first_indices_inputs, axis=0)
-        mean_total_indices_inputs = np.mean(total_indices_inputs, axis=0)
+        mean_first_indices_inputs, stde_first_indices_inputs = calculate_statistics(
+            first_indices_inputs
+        )
+        mean_total_indices_inputs, stde_total_indices_inputs = calculate_statistics(
+            total_indices_inputs
+        )
 
         def save_analysis_results(
-            first_indices_inputs: NPArray, total_indices_inputs: NPArray
+            indices_inputs: SIndices, file_name_prefix: str
         ) -> None:
-            # first indices
-            file_name_first_indices = (
-                f"{file_name_prefix_first_indices}_output_{output_index}"
-            )
-            data_frame_first_indices = pd.DataFrame(
-                first_indices_inputs, columns=parameter_names
-            )
-            data_frame_first_indices.insert(0, "test case", test_case_labels)
+            file_name = join_analysis_results_file_name(file_name_prefix, output_index)
+            data_frame = pd.DataFrame(indices_inputs, columns=parameter_names)
+            data_frame.insert(0, pd_column_lable_test_cases, test_case_labels)
             data_writer.write(
-                data_frame_first_indices,
-                file_name_first_indices,
-                output_subdirectory,
-                header=True,
-            )
-            # total indices
-            file_name_total_indices = (
-                f"{file_name_prefix_total_indices}_output_{output_index}"
-            )
-            data_frame_total_indices = pd.DataFrame(
-                total_indices_inputs, columns=parameter_names
-            )
-            data_frame_total_indices.insert(0, "test case", test_case_labels)
-            data_writer.write(
-                data_frame_total_indices,
-                file_name_total_indices,
+                data_frame,
+                file_name,
                 output_subdirectory,
                 header=True,
             )
 
-        save_analysis_results(first_indices_inputs, total_indices_inputs)
+        def save_analysis_results_statistics(
+            mean_indices_inputs: NPArray,
+            stde_indices_inputs: NPArray,
+            file_name_prefix: str,
+        ) -> None:
+            statistics = np.vstack((mean_indices_inputs, stde_indices_inputs))
+            statistics_lables = ["mean", "standard error"]
+            file_name = f"{file_name_prefix}_statistics_output_{output_index}"
+            data_frame = pd.DataFrame(statistics, columns=parameter_names)
+            data_frame.insert(0, "", statistics_lables)
+            data_writer.write(
+                data_frame,
+                file_name,
+                output_subdirectory,
+                header=True,
+            )
+
+        save_analysis_results(first_indices_inputs, file_name_prefix_first_indices)
+        save_analysis_results(total_indices_inputs, file_name_prefix_total_indices)
+        save_analysis_results_statistics(
+            mean_first_indices_inputs,
+            stde_first_indices_inputs,
+            file_name_prefix_first_indices,
+        )
+        save_analysis_results_statistics(
+            mean_total_indices_inputs,
+            stde_total_indices_inputs,
+            file_name_prefix_total_indices,
+        )
         first_indices_outputs_list += [mean_first_indices_inputs]
         total_indices_outputs_list += [mean_total_indices_inputs]
 
-    def deactivate_irrelevant_model_parameters(
+    def select_relevant_parameter_indices(
         mean_first_indices_outputs: SIndices,
-    ) -> None:
-        irrelevant_parameter_indices = (
-            np.where(mean_first_indices_outputs < first_sobol_index_thresshold)[0]
+    ) -> ParameterIndices:
+        return (
+            np.where(mean_first_indices_outputs >= first_sobol_index_thresshold)[0]
             .reshape((-1,))
             .tolist()
         )
-        model.deactivate_parameters(irrelevant_parameter_indices)
+
+    def deactivate_irrelevant_parameters(
+        relevant_parameter_indices: ParameterIndices,
+    ) -> None:
+        model.deactivate_parameters([_ for _ in range(num_parameters)])
+        model.activate_parameters(relevant_parameter_indices)
+        save_relevant_parameter_names(model, output_subdirectory, project_directory)
+        print_relevant_parameter_names(model)
+
+    def plot_results() -> None:
+        plot_relevenat_sobol_indices_development(
+            relevant_parameter_indices=relevant_parameter_indices,
+            file_name_prefix=file_name_prefix_first_indices,
+            num_outputs=num_outputs,
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+        )
+        plot_relevenat_sobol_indices_development(
+            relevant_parameter_indices=relevant_parameter_indices,
+            file_name_prefix=file_name_prefix_total_indices,
+            num_outputs=num_outputs,
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+        )
 
     first_indices_outputs = np.vstack(first_indices_outputs_list)
     total_indices_outputs = np.vstack(total_indices_outputs_list)
     mean_first_indices_outputs = np.mean(first_indices_outputs, axis=0)
     _ = np.mean(total_indices_outputs, axis=0)
 
-    deactivate_irrelevant_model_parameters(mean_first_indices_outputs)
-    save_relevant_parameter_names(model, output_subdirectory, project_directory)
-    print_relevant_parameter_names(model)
+    relevant_parameter_indices = select_relevant_parameter_indices(
+        mean_first_indices_outputs
+    )
+    deactivate_irrelevant_parameters(relevant_parameter_indices)
+    # plot_results()
 
 
 def save_relevant_parameter_names(
@@ -361,3 +410,75 @@ def from_numpy_to_torch(array: NPArray, device: Device) -> Tensor:
 
 def from_torch_to_numpy(tensor: Tensor) -> NPArray:
     return tensor.detach().cpu().numpy()
+
+
+def join_analysis_results_file_name(file_name_prefix: str, output_index: int) -> str:
+    return f"{file_name_prefix}_output_{output_index}"
+
+
+def plot_relevenat_sobol_indices_development(
+    relevant_parameter_indices: ParameterIndices,
+    file_name_prefix: str,
+    num_outputs: int,
+    output_subdirectory: str,
+    project_directory: ProjectDirectory,
+):
+    data_reader = CSVDataReader(project_directory)
+
+    for output_index in range(num_outputs):
+        file_name = join_analysis_results_file_name(file_name_prefix, output_index)
+        data_frame = data_reader.read_as_pandas_data_frame(
+            file_name, output_subdirectory, read_from_output_dir=True
+        )
+
+        def reduce_to_relevant_parameters(data_frame: PDDataFrame) -> PDDataFrame:
+            columns_to_drop = data_frame.columns[relevant_parameter_indices]
+            return data_frame.drop(columns_to_drop, axis=1)
+
+        def extract_parameter_names(data_frame: PDDataFrame) -> ParameterNames:
+            column_labels = data_frame.columns.values
+            parameter_names = tuple(column_labels[1:])
+            return parameter_names
+
+        def split_in_test_cases(data_frame) -> tuple[list[str], list[NPArray]]:
+            test_case_labels_list: TestCaseLabels = []
+            indices_list: SIndicesList = []
+
+            for test_case_label in all_test_case_labels:
+                if test_case_label in data_frame[pd_column_lable_test_cases]:
+                    filtered_data_frame = data_frame[
+                        data_frame[pd_column_lable_test_cases] == test_case_label
+                    ]
+                    test_case_labels_list += [test_case_label]
+                    indices_list += [
+                        filtered_data_frame.iloc[:, 1:].to_numpy(dtype=np.float64)
+                    ]
+            return test_case_labels_list, indices_list
+
+        reduced_data_frame = reduce_to_relevant_parameters(data_frame)
+        parameter_names = extract_parameter_names(reduced_data_frame)
+        splitted_test_case_labels, splitted_indices = split_in_test_cases(
+            reduced_data_frame
+        )
+        print(splitted_test_case_labels)
+        print(splitted_indices)
+
+    # def reduce_to_relevant_sobol_indices(
+
+    # ) -> tuple[ParameterNames, SIndices, SIndices]:
+    #     relevant_parameter_names = tuple(
+    #         parameter_names[i] for i in relevant_parameter_indices
+    #     )
+    #     relevant_first_indices = first_indices[relevant_parameter_indices]
+    #     relevant_total_indices = total_indices[relevant_parameter_indices]
+    #     return (
+    #         relevant_parameter_names,
+    #         relevant_first_indices,
+    #         relevant_total_indices,
+    #     )
+
+    # (
+    #     relevant_parameter_names,
+    #     relevant_first_indices,
+    #     relevant_total_indices,
+    # ) = reduce_to_relevant_sobol_indices()

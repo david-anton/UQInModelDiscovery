@@ -24,7 +24,7 @@ def join_output_file_path(
 
 def join_input_file_path(
     file_name: str,
-    subdir_name: str,
+    subdir_name: str | None,
     project_directory: ProjectDirectory,
     read_from_output_dir: bool,
 ) -> Path:

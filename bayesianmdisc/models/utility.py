@@ -29,7 +29,7 @@ def load_model_state(
     device: Device,
 ) -> None:
     data_reader = CSVDataReader(project_directory)
-    population_matrix = data_reader.read(
+    population_matrix = data_reader.read_as_numpy_array(
         file_name_parameter_population_indices,
         output_directory,
         header=None,
