@@ -85,7 +85,7 @@ num_samples_factor_sensitivity_analysis = 4096
 first_sobol_index_thresshold = 1e-6
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters5_lambda10_lr1_samples16_layer2_width256_numinputs32_sobolsensitivities_higherlrdecay"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs32_sobolsensitivities"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -295,7 +295,7 @@ if retrain_posterior:
         def extract_parameter_distribution() -> DistributionProtocol:
             _data_set = cast(TreloarDataSet, data_set)
             inputs_extraction, test_cases_extraction = (
-                _data_set.generate_uniform_inputs(num_points_per_test_case=16)
+                _data_set.generate_uniform_inputs(num_points_per_test_case=32)
             )
             return extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
@@ -307,8 +307,8 @@ if retrain_posterior:
                 num_func_samples=32,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
-                hiden_layer_size_lipschitz_nn=256,
-                num_iters_lipschitz=5,
+                hiden_layer_size_lipschitz_nn=512,
+                num_iters_lipschitz=10,
                 lipschitz_func_pretraining=False,
                 output_subdirectory=output_subdirectory_parameters,
                 project_directory=project_directory,
