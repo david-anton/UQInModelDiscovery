@@ -9,18 +9,10 @@ from torch import vmap
 
 from bayesianmdisc.customtypes import Device, NPArray, Tensor
 from bayesianmdisc.data.testcases import (
-    test_case_identifier_biaxial_tension,
     test_case_identifier_equibiaxial_tension,
-    test_case_identifier_pure_shear,
-    test_case_identifier_simple_shear_12,
-    test_case_identifier_simple_shear_13,
-    test_case_identifier_simple_shear_21,
-    test_case_identifier_simple_shear_23,
-    test_case_identifier_simple_shear_31,
-    test_case_identifier_simple_shear_32,
     test_case_identifier_uniaxial_tension,
 )
-from bayesianmdisc.errors import StressPlotterError
+from bayesianmdisc.errors import PlotterError
 from bayesianmdisc.gps.base import GPMultivariateNormal
 from bayesianmdisc.gps.gp import GP
 from bayesianmdisc.gps.multioutputgp import IndependentMultiOutputGP
@@ -31,6 +23,11 @@ from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
     coverage_test,
     root_mean_squared_error,
+)
+from bayesianmdisc.postprocessing.plot.utility import (
+    split_treloar_inputs_and_outputs,
+    split_linka_inputs_and_outputs,
+    split_kawabata_inputs_and_outputs,
 )
 from bayesianmdisc.statistics.utility import determine_quantiles
 
@@ -118,9 +115,9 @@ def plot_model_stresses_treloar(
     figure_all, axes_all = plt.subplots()
 
     def plot_one_input_output_set(
-        inputs: NPArray, test_case: int, outputs: NPArray
+        inputs: NPArray, test_case_identifier: int, outputs: NPArray
     ) -> None:
-        if test_case == test_case_identifier_uniaxial_tension:
+        if test_case_identifier == test_case_identifier_uniaxial_tension:
             test_case_label = "uniaxial_tension"
             data_marker = config.data_marker_ut
             data_color = config.data_color_ut
@@ -129,7 +126,7 @@ def plot_model_stresses_treloar(
             model_color_credible_interval = config.model_color_ut
             model_label_mean = config.model_label_mean_ut
             model_label_samples = config.model_label_samples_ut
-        elif test_case == test_case_identifier_equibiaxial_tension:
+        elif test_case_identifier == test_case_identifier_equibiaxial_tension:
             test_case_label = "equibiaxial_tension"
             data_marker = config.data_marker_ebt
             data_color = config.data_color_ebt
@@ -181,7 +178,7 @@ def plot_model_stresses_treloar(
         model_stretches = np.linspace(
             min_stretch, max_stretch, num_model_inputs
         ).reshape((-1, 1))
-        model_test_cases = np.full((num_model_inputs,), test_case)
+        model_test_cases = np.full((num_model_inputs,), test_case_identifier)
         means, _ = calculate_model_mean_and_stddev(
             model,
             parameter_samples,
@@ -274,7 +271,7 @@ def plot_model_stresses_treloar(
 
         # text box metrics
         num_data_inputs = len(inputs)
-        metrics_test_cases = np.full((num_data_inputs,), test_case)
+        metrics_test_cases = np.full((num_data_inputs,), test_case_identifier)
         coverage = calclulate_coverage(
             model,
             parameter_samples,
@@ -388,14 +385,14 @@ def plot_model_stresses_treloar(
         )
         figure_all.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
 
-    input_sets, test_case_sets, output_sets = split_treloar_inputs_and_outputs(
+    input_sets, test_case_identifiers, output_sets = split_treloar_inputs_and_outputs(
         inputs, test_cases, outputs
     )
 
-    for input_set, test_case, output_set in zip(
-        input_sets, test_case_sets, output_sets
+    for input_set, test_case_identifier, output_set in zip(
+        input_sets, test_case_identifiers, output_sets
     ):
-        plot_one_input_output_set(input_set, test_case, output_set)
+        plot_one_input_output_set(input_set, test_case_identifier, output_set)
 
     plot_all_input_and_output_sets()
     plt.clf()
@@ -452,7 +449,6 @@ def plot_model_stresses_kawabata(
     device: Device,
 ) -> None:
     config = ModelStressPlotterConfigKawabata()
-    num_data_points = 76
     set_sizes = [1, 6, 6, 8, 8, 8, 8, 8, 7, 7, 6, 3]
     num_sets = len(set_sizes)
     num_model_inputs_per_set = 128
@@ -461,49 +457,10 @@ def plot_model_stresses_kawabata(
     min_stretch_2 = np.amin(stretches_2)
     max_stretch_2 = np.amax(stretches_2)
 
-    def split_inputs_and_outputs(
-        inputs: NPArray, test_cases: NPArray, outputs: NPArray
-    ) -> tuple[list[NPArray], list[NPArray], list[NPArray]]:
-
-        def validate_data() -> None:
-            num_inputs = len(inputs)
-            num_test_cases = len(test_cases)
-            num_outputs = len(outputs)
-            valid_data = (
-                num_inputs == num_data_points
-                and num_test_cases == num_data_points
-                and num_outputs == num_data_points
-            )
-
-            if not valid_data:
-                raise StressPlotterError(
-                    f"""The input and/or output do not comprise the expected number of data points 
-                    (input comprises {num_inputs} points, test cases {num_test_cases} points and 
-                    output {num_outputs} but {num_data_points} data points are expected)."""
-                )
-
-        def determine_split_indices() -> list[int]:
-            split_indices = [set_sizes[0]]
-            for i in range(1, num_sets):
-                split_indices += [split_indices[-1] + set_sizes[i]]
-            return split_indices
-
-        def split_data_sets(
-            split_indices: list[int],
-        ) -> tuple[list[NPArray], list[NPArray], list[NPArray]]:
-            input_sets = np.split(inputs, split_indices)
-            test_case_sets = np.split(test_cases, split_indices)
-            output_sets = np.split(outputs, split_indices)
-            return input_sets, test_case_sets, output_sets
-
-        validate_data()
-        split_indices = determine_split_indices()
-        return split_data_sets(split_indices)
-
     def plot_one_stress_dimension(
         input_sets: list[NPArray],
+        test_case_identifiers: list[int],
         output_sets: list[NPArray],
-        test_case_sets: list[NPArray],
         stress_dim: int,
     ) -> None:
         file_name = f"kawabata_data_stress_{stress_dim}.png"
@@ -512,11 +469,10 @@ def plot_model_stresses_kawabata(
         color_map = plt.get_cmap(config.color_map, num_sets)
         colors = color_map(np.linspace(0, 1, num_sets))
 
-        for set_index, input_set, test_case_set, output_set in zip(
-            range(num_sets), input_sets, test_case_sets, output_sets
+        for set_index, input_set, test_case_identifier, output_set in zip(
+            range(num_sets), input_sets, test_case_identifiers, output_sets
         ):
             data_stretches = input_set
-            test_case = test_case_set[0]
             data_stresses = output_set[:, stress_dim]
 
             data_set_stretch_1 = data_stretches[0, 0]
@@ -545,7 +501,9 @@ def plot_model_stresses_kawabata(
                 min_data_set_stretch_2, max_data_set_stretch_2, num_model_inputs_per_set
             ).reshape((-1, 1))
             model_stretches = np.hstack((model_stretches_1, model_stretches_2))
-            model_test_cases = np.full((num_model_inputs_per_set,), test_case)
+            model_test_cases = np.full(
+                (num_model_inputs_per_set,), test_case_identifier
+            )
 
             means, _ = calculate_model_mean_and_stddev(
                 model,
@@ -632,11 +590,13 @@ def plot_model_stresses_kawabata(
         )
 
         # text box metrics
+        num_data_inputs = len(inputs)
+        metrics_test_cases = np.full((num_data_inputs,), test_case_identifier)
         coverage = calclulate_coverage(
             model,
             parameter_samples,
             inputs,
-            test_cases,
+            metrics_test_cases,
             outputs,
             device,
             output_dim=stress_dim,
@@ -645,7 +605,7 @@ def plot_model_stresses_kawabata(
             model,
             parameter_samples,
             inputs,
-            test_cases,
+            metrics_test_cases,
             outputs,
             device,
             output_dim=stress_dim,
@@ -654,7 +614,7 @@ def plot_model_stresses_kawabata(
             model,
             parameter_samples,
             inputs,
-            test_cases,
+            metrics_test_cases,
             outputs,
             device,
             output_dim=stress_dim,
@@ -682,11 +642,15 @@ def plot_model_stresses_kawabata(
         )
         figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
 
-    input_sets, output_sets, test_case_sets = split_inputs_and_outputs(
-        inputs, outputs, test_cases
+    input_sets, test_case_identifiers, output_sets = split_kawabata_inputs_and_outputs(
+        inputs, test_cases, outputs
     )
-    plot_one_stress_dimension(input_sets, output_sets, test_case_sets, stress_dim=0)
-    plot_one_stress_dimension(input_sets, output_sets, test_case_sets, stress_dim=1)
+    plot_one_stress_dimension(
+        input_sets, test_case_identifiers, output_sets, stress_dim=0
+    )
+    plot_one_stress_dimension(
+        input_sets, test_case_identifiers, output_sets, stress_dim=1
+    )
     plt.clf()
 
 
@@ -746,7 +710,6 @@ def plot_model_stresses_linka(
     num_data_sets_biaxial_tension = 5
     num_data_sets = num_data_sets_simple_shear + num_data_sets_biaxial_tension
     num_points_per_data_set = 11
-    num_data_points = num_data_sets * num_points_per_data_set
     min_principal_stretch = 1.0
     max_principal_stretch = 1.1
     min_shear_strain = 0.0
@@ -818,43 +781,9 @@ def plot_model_stresses_linka(
     stress_indices_list = shear_stress_indices_plots + principal_stress_indices_plots
     num_model_inputs = 256
 
-    def split_inputs_and_outputs(
-        inputs: NPArray, test_cases: NPArray, outputs: NPArray
-    ) -> tuple[
-        list[NPArray],
-        list[NPArray],
-        list[NPArray],
-    ]:
-
-        def validate_data() -> None:
-            num_inputs = len(inputs)
-            num_test_cases = len(test_cases)
-            num_outputs = len(outputs)
-            valid_data = (
-                num_inputs == num_data_points
-                and num_test_cases == num_data_points
-                and num_outputs == num_data_points
-            )
-
-            if not valid_data:
-                raise StressPlotterError(
-                    f"""The input and/or output do not comprise the expected number of data points 
-                    (input comprises {num_inputs} points, test cases {num_test_cases} points and 
-                    output {num_outputs} but {num_data_points} data points are expected)."""
-                )
-
-        def split_data_sets() -> tuple[list[NPArray], list[NPArray], list[NPArray]]:
-            input_sets = np.split(inputs, num_data_sets, axis=0)
-            test_case_sets = np.split(test_cases, num_data_sets, axis=0)
-            output_sets = np.split(outputs, num_data_sets, axis=0)
-            return (input_sets, test_case_sets, output_sets)
-
-        validate_data()
-        return split_data_sets()
-
     def plot_one_data_set(
         inputs: NPArray,
-        test_cases: NPArray,
+        test_case_identifier: int,
         outputs: NPArray,
         stress_indices: list[int],
         data_set_index: int,
@@ -869,7 +798,6 @@ def plot_model_stresses_linka(
             if is_principal_stress:
                 min_input = min_principal_stretch
                 max_input = max_principal_stretch
-                test_case_identifier = test_case_identifier_biaxial_tension
                 principal_stretch_data_set_index = (
                     data_set_index - num_data_sets_simple_shear
                 )
@@ -880,22 +808,6 @@ def plot_model_stresses_linka(
             else:
                 min_input = min_shear_strain
                 max_input = max_shear_strain
-
-                if stress_index == index_shear_stress_fs:
-                    test_case_identifier = test_case_identifier_simple_shear_12
-                elif stress_index == index_shear_stress_fn:
-                    test_case_identifier = test_case_identifier_simple_shear_13
-                elif stress_index == index_shear_stress_sf:
-                    test_case_identifier = test_case_identifier_simple_shear_21
-                elif stress_index == index_shear_stress_sn:
-                    test_case_identifier = test_case_identifier_simple_shear_23
-                elif stress_index == index_shear_stress_nf:
-                    test_case_identifier = test_case_identifier_simple_shear_31
-                elif stress_index == index_shear_stress_ns:
-                    test_case_identifier = test_case_identifier_simple_shear_32
-                else:
-                    raise StressPlotterError(f"Unvalid stress index: {stress_index}")
-
                 file_name = f"shearstress_{stress_file_name_label}.pdf"
 
             # data points
@@ -1012,11 +924,13 @@ def plot_model_stresses_linka(
                 )
 
             # text box metrics
+            num_data_inputs = len(inputs)
+            metrics_test_cases = np.full((num_data_inputs,), test_case_identifier)
             coverage = calclulate_coverage(
                 model,
                 parameter_samples,
                 inputs,
-                test_cases,
+                metrics_test_cases,
                 outputs,
                 device,
                 output_dim=stress_index,
@@ -1025,7 +939,7 @@ def plot_model_stresses_linka(
                 model,
                 parameter_samples,
                 inputs,
-                test_cases,
+                metrics_test_cases,
                 outputs,
                 device,
                 output_dim=stress_index,
@@ -1034,7 +948,7 @@ def plot_model_stresses_linka(
                 model,
                 parameter_samples,
                 inputs,
-                test_cases,
+                metrics_test_cases,
                 outputs,
                 device,
                 output_dim=stress_index,
@@ -1066,19 +980,25 @@ def plot_model_stresses_linka(
         for stress_index in stress_indices:
             plot_one_stress(stress_index)
 
-    input_sets, test_case_sets, output_sets = split_inputs_and_outputs(
+    input_sets, test_case_identifiers, output_sets = split_linka_inputs_and_outputs(
         inputs, test_cases, outputs
     )
 
-    for input_set, test_case_set, output_set, stress_indices, data_set_index in zip(
+    for (
+        input_set,
+        test_case_identifier,
+        output_set,
+        stress_indices,
+        data_set_index,
+    ) in zip(
         input_sets,
-        test_case_sets,
+        test_case_identifiers,
         output_sets,
         stress_indices_list,
         range(num_data_sets),
     ):
         plot_one_data_set(
-            input_set, test_case_set, output_set, stress_indices, data_set_index
+            input_set, test_case_identifier, output_set, stress_indices, data_set_index
         )
 
 
@@ -1579,68 +1499,9 @@ def _validate_gp_and_output_dimension(
     is_multi_output_gp = isinstance(gaussian_process, IndependentMultiOutputGP)
     is_output_dim_defined = not (output_dim == None)
     if is_multi_output_gp and not is_output_dim_defined:
-        raise StressPlotterError(
+        raise PlotterError(
             """For independent multi-output GPs, 
             the output dimension must be defined for the evaluation."""
         )
     elif not is_multi_output_gp and is_output_dim_defined:
-        raise StressPlotterError(
-            "No output dimension can be defined for single-output GPs"
-        )
-
-
-################################################################################
-# Utility
-################################################################################
-
-
-def split_treloar_inputs_and_outputs(
-    inputs: NPArray, test_cases: NPArray, outputs: NPArray
-) -> tuple[list[NPArray], list[int], list[NPArray]]:
-    considered_test_cases = [
-        test_case_identifier_uniaxial_tension,
-        test_case_identifier_equibiaxial_tension,
-        test_case_identifier_pure_shear,
-    ]
-    num_data_points_ut = 25
-    num_data_points_ebt = 14
-    num_data_points_ps = 14
-    expected_set_sizes = [num_data_points_ut, num_data_points_ebt, num_data_points_ps]
-
-    def split_data() -> tuple[list[NPArray], list[int], list[NPArray]]:
-        input_sets = []
-        test_case_sets = []
-        output_sets = []
-
-        for test_case in considered_test_cases:
-            filter = test_cases == test_case
-            input_sets += [inputs[filter]]
-            test_case_sets += [test_case]
-            output_sets += [outputs[filter]]
-
-        return input_sets, test_case_sets, output_sets
-
-    def validate_data_sets(
-        input_sets: list[NPArray],
-        test_case_sets: list[int],
-        output_sets: list[NPArray],
-    ) -> None:
-        input_set_sizes = [len(set) for set in input_sets]
-        output_set_sizes = [len(set) for set in output_sets]
-
-        valid_set_sizes = (
-            input_set_sizes == expected_set_sizes
-            and output_set_sizes == expected_set_sizes
-            and len(test_case_sets) == 3
-        )
-        valid_test_case_sets = test_case_sets == considered_test_cases
-
-        if not valid_set_sizes and valid_test_case_sets:
-            raise StressPlotterError(
-                """The number of data points to be plotted
-                                        does not match the size of the Treloar data set."""
-            )
-
-    input_sets, test_case_sets, output_sets = split_data()
-    validate_data_sets(input_sets, test_case_sets, output_sets)
-    return input_sets, test_case_sets, output_sets
+        raise PlotterError("No output dimension can be defined for single-output GPs")
