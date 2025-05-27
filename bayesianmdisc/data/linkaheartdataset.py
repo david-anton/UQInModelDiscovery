@@ -6,7 +6,6 @@ import pandas as pd
 from bayesianmdisc.customtypes import Device, NPArray, PDDataFrame
 from bayesianmdisc.data.base import (
     Data,
-    NPArrayList,
     assemble_test_case_identifiers,
     convert_to_torch,
     flatten_and_stack_arrays,
@@ -21,11 +20,14 @@ from bayesianmdisc.data.testcases import (
     test_case_identifier_simple_shear_23,
     test_case_identifier_simple_shear_31,
     test_case_identifier_simple_shear_32,
+    TestCaseIdentifier,
 )
 from bayesianmdisc.errors import DataError
 from bayesianmdisc.io import ProjectDirectory
 
 Component: TypeAlias = tuple[int, int]
+
+irrelevant_stress_components = [4]
 
 
 class LinkaHeartDataSet:
@@ -56,7 +58,6 @@ class LinkaHeartDataSet:
         self._test_case_identifier_ss_31 = test_case_identifier_simple_shear_31
         self._test_case_identifier_ss_23 = test_case_identifier_simple_shear_23
         self._test_case_identifier_ss_32 = test_case_identifier_simple_shear_32
-        self._irrelevant_stress_components = [4]
         self._data_frame = self._init_data_frame()
 
     def read_data(self) -> Data:
@@ -66,54 +67,48 @@ class LinkaHeartDataSet:
 
         if self._consider_shear_data:
             column = self._start_column_shear
-            component = (0, 1)
             stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
-                column, component
+                column, self._test_case_identifier_ss_12
             )
             all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
             column = column + 2
-            component = (0, 2)
             stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
-                column, component
+                column, self._test_case_identifier_ss_13
             )
             all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
             column = column + 3
-            component = (1, 0)
             stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
-                column, component
+                column, self._test_case_identifier_ss_21
             )
             all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
             column = column + 2
-            component = (1, 2)
             stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
-                column, component
+                column, self._test_case_identifier_ss_23
             )
             all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
             column = column + 3
-            component = (2, 0)
             stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
-                column, component
+                column, self._test_case_identifier_ss_31
             )
             all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
             column = column + 2
-            component = (2, 1)
             stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
-                column, component
+                column, self._test_case_identifier_ss_32
             )
             all_deformation_gradients.append(stretches_column)
             all_test_cases.append(test_cases_colum)
@@ -190,37 +185,19 @@ class LinkaHeartDataSet:
         return pd.read_excel(input_path, sheet_name=self._excel_sheet_name)
 
     def _read_shear_data(
-        self, start_column: int, stress_component: Component
+        self, start_column: int, shear_test_case_identifier: TestCaseIdentifier
     ) -> tuple[NPArray, NPArray, NPArray]:
-        symmetric_stress_component = tuple(reversed(stress_component))
-        deformation_gradients: NPArrayList = []
-        stress_tensors: NPArrayList = []
         shear_strains = self._read_column(start_column)
         shear_stresses = self._read_column(start_column + 1)
 
-        for shear_strain, shear_stress in zip(shear_strains, shear_stresses):
-            stretches = 1.0
-            deformation_gradient = np.zeros((3, 3), dtype=self._np_data_type)
-            deformation_gradient[0, 0] = stretches
-            deformation_gradient[1, 1] = stretches
-            deformation_gradient[2, 2] = stretches
-            deformation_gradient[symmetric_stress_component] = shear_strain
-            deformation_gradients += [deformation_gradient]
-            stress_tensor = np.zeros((3, 3), dtype=self._np_data_type)
-            stress_tensor[stress_component] = shear_stress
-            stress_tensor[symmetric_stress_component] = shear_stress
-            stress_tensors += [stress_tensor]
-
-        flattened_deformation_gradients = flatten_and_stack_arrays(
-            deformation_gradients
+        flattened_deformation_gradients = assemble_flattened_deformation_gradients(
+            shear_strains, shear_test_case_identifier
         )
-        test_case_identifier = self._map_to_shear_test_case_identifier(stress_component)
         test_cases = assemble_test_case_identifiers(
-            test_case_identifier, flattened_deformation_gradients
+            shear_test_case_identifier, flattened_deformation_gradients
         )
-        flattened_stress_tensors = flatten_and_stack_arrays(stress_tensors)
-        reduced_flattened_stress_tensors = self._reduce_to_relevant_stresses(
-            flattened_stress_tensors
+        reduced_flattened_stress_tensors = assemble_reduced_flattened_stress_tensor(
+            shear_stresses, shear_test_case_identifier
         )
         return (
             flattened_deformation_gradients,
@@ -228,55 +205,28 @@ class LinkaHeartDataSet:
             reduced_flattened_stress_tensors,
         )
 
-    def _map_to_shear_test_case_identifier(self, stress_component: Component) -> int:
-        if stress_component == (0, 1):
-            return self._test_case_identifier_ss_12
-        elif stress_component == (1, 0):
-            return self._test_case_identifier_ss_21
-        elif stress_component == (0, 2):
-            return self._test_case_identifier_ss_13
-        elif stress_component == (2, 0):
-            return self._test_case_identifier_ss_31
-        elif stress_component == (1, 2):
-            return self._test_case_identifier_ss_23
-        elif stress_component == (2, 1):
-            return self._test_case_identifier_ss_32
-        else:
-            raise DataError(f"Unvalid stress component: {stress_component}")
-
-    def _reduce_to_relevant_stresses(self, flattened_stress_tensor: NPArray) -> NPArray:
-        return np.delete(flattened_stress_tensor, self._irrelevant_stress_components, 1)
-
     def _read_biaxial_data(self, start_column: int) -> tuple[NPArray, NPArray, NPArray]:
-        deformation_gradients: NPArrayList = []
-        stress_tensors: NPArrayList = []
-        stretches_f = self._read_column(start_column)
-        stresses_ff = self._read_column(start_column + 1)
-        stretches_n = self._read_column(start_column + 2)
-        stresses_nn = self._read_column(start_column + 3)
+        stretches_f = self._read_column(start_column).reshape((-1, 1))
+        stresses_ff = self._read_column(start_column + 1).reshape((-1, 1))
+        stretches_n = self._read_column(start_column + 2).reshape((-1, 1))
+        stresses_nn = self._read_column(start_column + 3).reshape((-1, 1))
+        stretches = np.hstack((stretches_f, stretches_n))
+        stresses = np.hstack((stresses_ff, stresses_nn))
 
-        for stretch_f, stress_ff, stretch_n, stress_nn in zip(
-            stretches_f, stresses_ff, stretches_n, stresses_nn
-        ):
-            stretch_s = 1.0 / (stretch_f * stretch_n)
-            deformation_gradient = np.zeros((3, 3), dtype=self._np_data_type)
-            deformation_gradient[0, 0] = stretch_f
-            deformation_gradient[1, 1] = stretch_s
-            deformation_gradient[2, 2] = stretch_n
-            deformation_gradients += [deformation_gradient]
-            stress_tensor = np.zeros((3, 3), dtype=self._np_data_type)
-            stress_tensor[0, 0] = stress_ff
-            stress_tensor[2, 2] = stress_nn
-            stress_tensors += [stress_tensor]
-
-        flattened_deformation_gradients = flatten_and_stack_arrays(
-            deformation_gradients
+        flattened_deformation_gradients = assemble_flattened_deformation_gradients(
+            stretches, self._test_case_identifier_bt
         )
         test_cases = assemble_test_case_identifiers(
             self._test_case_identifier_bt, flattened_deformation_gradients
         )
-        flattened_stress_tensors = flatten_and_stack_arrays(stress_tensors)
-        return flattened_deformation_gradients, test_cases, flattened_stress_tensors
+        reduced_flattened_stress_tensors = assemble_reduced_flattened_stress_tensor(
+            stresses, self._test_case_identifier_bt
+        )
+        return (
+            flattened_deformation_gradients,
+            test_cases,
+            reduced_flattened_stress_tensors,
+        )
 
     def _read_column(self, column: int) -> NPArray:
         return (
@@ -285,3 +235,112 @@ class LinkaHeartDataSet:
             .astype(self._np_data_type)
             .values
         )
+
+
+def assemble_flattened_deformation_gradients(
+    deformation_inputs: NPArray, test_case_identifier: TestCaseIdentifier
+) -> NPArray:
+
+    def _assemble_one_biaxial_tension_deformation_gradient(
+        deformation_input: NPArray,
+    ) -> NPArray:
+        stretch_f = deformation_input[0]
+        stretch_n = deformation_input[1]
+        stretch_s = 1.0 / (stretch_f * stretch_n)
+        deformation_gradient = np.zeros((3, 3), dtype=numpy_data_type)
+        deformation_gradient[0, 0] = stretch_f
+        deformation_gradient[1, 1] = stretch_s
+        deformation_gradient[2, 2] = stretch_n
+        return deformation_gradient
+
+    def _assemble_one_simple_shear_deformation_gradient(
+        deformation_input: NPArray, test_case_identifier: TestCaseIdentifier
+    ) -> NPArray:
+        shear_strain = deformation_input
+        shear_component = _map_to_shear_components(test_case_identifier)
+        stretches = 1.0
+        deformation_gradient = np.zeros((3, 3), dtype=numpy_data_type)
+        deformation_gradient[0, 0] = stretches
+        deformation_gradient[1, 1] = stretches
+        deformation_gradient[2, 2] = stretches
+        deformation_gradient[shear_component] = shear_strain
+        return deformation_gradient
+
+    deformation_gradients: list[NPArray] = []
+    for deformation_input in deformation_inputs:
+        if test_case_identifier == test_case_identifier_biaxial_tension:
+            deformation_gradients += [
+                _assemble_one_biaxial_tension_deformation_gradient(deformation_input)
+            ]
+        else:
+            deformation_gradients += [
+                _assemble_one_simple_shear_deformation_gradient(
+                    deformation_input, test_case_identifier
+                )
+            ]
+
+    return flatten_and_stack_arrays(deformation_gradients)
+
+
+def assemble_reduced_flattened_stress_tensor(
+    stress_outputs: NPArray, test_case_identifier: TestCaseIdentifier
+) -> NPArray:
+
+    def _assemble_one_biaxial_tension_stress_tensor(
+        stress_output: NPArray,
+    ) -> NPArray:
+        stress_ff = stress_output[0]
+        stress_nn = stress_output[1]
+        stress_tensor = np.zeros((3, 3), dtype=numpy_data_type)
+        stress_tensor[0, 0] = stress_ff
+        stress_tensor[2, 2] = stress_nn
+        return stress_tensor
+
+    def _assemble_one_simple_shear_stress_tensor(
+        stress_output: NPArray, test_case_identifier: TestCaseIdentifier
+    ) -> NPArray:
+        shear_stress = stress_output
+        shear_component = _map_to_shear_components(test_case_identifier)
+        symmetric_shear_component = tuple(reversed(shear_component))
+        stress_tensor = np.zeros((3, 3), dtype=numpy_data_type)
+        stress_tensor[shear_component] = shear_stress
+        stress_tensor[symmetric_shear_component] = shear_stress
+        return stress_tensor
+
+    def _reduce_to_relevant_stresses(flattened_stress_tensors: NPArray) -> NPArray:
+        return np.delete(flattened_stress_tensors, irrelevant_stress_components, 1)
+
+    stress_tensors: list[NPArray] = []
+    for stress_output in stress_outputs:
+        if test_case_identifier == test_case_identifier_biaxial_tension:
+            stress_tensors += [
+                _assemble_one_biaxial_tension_stress_tensor(stress_output)
+            ]
+        else:
+            stress_tensors += [
+                _assemble_one_simple_shear_stress_tensor(
+                    stress_output, test_case_identifier
+                )
+            ]
+
+    flattened_stress_tensors = flatten_and_stack_arrays(stress_tensors)
+    return _reduce_to_relevant_stresses(flattened_stress_tensors)
+
+
+def _map_to_shear_components(
+    shear_test_case_identifier: TestCaseIdentifier,
+) -> Component:
+    if shear_test_case_identifier == test_case_identifier_simple_shear_12:
+        return (0, 1)
+    elif shear_test_case_identifier == test_case_identifier_simple_shear_21:
+        return (1, 0)
+    elif shear_test_case_identifier == test_case_identifier_simple_shear_13:
+        return (0, 2)
+    elif shear_test_case_identifier == test_case_identifier_simple_shear_31:
+        return (2, 0)
+    elif shear_test_case_identifier == test_case_identifier_simple_shear_23:
+        return (1, 2)
+    elif shear_test_case_identifier == test_case_identifier_simple_shear_32:
+        return (2, 1)
+    else:
+        raise DataError(f"Unvalid test case identifier: {shear_test_case_identifier}")
