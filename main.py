@@ -49,7 +49,8 @@ from bayesianmdisc.postprocessing.plot import (
     plot_model_stresses_kawabata,
     plot_model_stresses_linka,
     plot_model_stresses_treloar,
-    plot_sobol_indices_results_treloar,
+    plot_sobol_indice_paths_treloar,
+    plot_sobol_indice_statistics,
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
@@ -82,14 +83,13 @@ elif data_set_label == data_set_label_linka:
 
 relative_noise_stddevs = 5e-2
 min_absolute_noise_stddev = 5e-2
-list_num_wasserstein_iterations = [50_000, 50_000]
+list_num_wasserstein_iterations = [50_000, 20_000]
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 first_sobol_index_thresshold = 1e-6
 
 
-# output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs32_sobolsensitivities"
-output_directory = "20250524_test"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs32_sobolsensitivities"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -197,29 +197,26 @@ def plot_model_stresses(
 
 def plot_relevenat_sobol_indices_results(
     relevant_parameter_indices: list[int],
-    num_outputs: int,
     data_set_label: str,
+    num_outputs: int,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
 ) -> None:
-    first_indices_label = "first_sobol_indices"
-    total_indices_label = "total_sobol_indices"
-    indices_labels = [first_indices_label, total_indices_label]
-
-    for indices_label in indices_labels:
-        for output_index in range(num_outputs):
-            input_file_name = f"{indices_label}_output_{output_index}"
-            if data_set_label == data_set_label_treloar:
-                plot_sobol_indices_results_treloar(
-                    relevant_parameter_indices=relevant_parameter_indices,
-                    indices_label=indices_label,
-                    input_file_name=input_file_name,
-                    inputs=inputs.detach().cpu().numpy(),
-                    test_cases=test_cases.detach().cpu().numpy(),
-                    outputs=outputs.detach().cpu().numpy(),
-                    output_subdirectory=output_subdirectory,
-                    project_directory=project_directory,
-                )
+    plot_sobol_indice_statistics(
+        relevant_parameter_indices=relevant_parameter_indices,
+        num_outputs=num_outputs,
+        output_subdirectory=output_subdirectory,
+        project_directory=project_directory,
+    )
+    if data_set_label == data_set_label_treloar:
+        plot_sobol_indice_paths_treloar(
+            relevant_parameter_indices=relevant_parameter_indices,
+            inputs=inputs.detach().cpu().numpy(),
+            test_cases=test_cases.detach().cpu().numpy(),
+            outputs=outputs.detach().cpu().numpy(),
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+        )
 
 
 inputs, test_cases, outputs = data_set.read_data()
@@ -394,8 +391,8 @@ if retrain_posterior:
             )
             plot_relevenat_sobol_indices_results(
                 relevant_parameter_indices=model.get_active_parameter_indices(),
-                num_outputs=model.output_dim,
                 data_set_label=data_set_label,
+                num_outputs=model.output_dim,
                 output_subdirectory=output_subdirectory_sensitivities,
                 project_directory=project_directory,
             )
@@ -476,8 +473,8 @@ else:
             )
             plot_relevenat_sobol_indices_results(
                 relevant_parameter_indices=model.get_active_parameter_indices(),
-                num_outputs=model.output_dim,
                 data_set_label=data_set_label,
+                num_outputs=model.output_dim,
                 output_subdirectory=output_subdirectory_sensitivities,
                 project_directory=project_directory,
             )

@@ -10,7 +10,10 @@ from .plot_stress import (
     plot_model_stresses_linka,
     plot_model_stresses_treloar,
 )
-from .plot_sobol_indices import plot_sobol_indices_results_treloar
+from .plot_sobol_indices import (
+    plot_sobol_indice_paths_treloar,
+    plot_sobol_indice_statistics,
+)
 
 __all__ = [
     "plot_histograms",
@@ -21,5 +24,6 @@ __all__ = [
     "plot_model_stresses_treloar",
     "plot_model_stresses_kawabata",
     "plot_gp_stresses_treloar",
-    "plot_sobol_indices_results_treloar",
+    "plot_sobol_indice_paths_treloar",
+    "plot_sobol_indice_statistics",
 ]
