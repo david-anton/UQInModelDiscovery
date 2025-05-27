@@ -8,7 +8,14 @@ from bayesianmdisc.bayes.distributions import (
     DistributionProtocol,
     sample_and_analyse_distribution,
 )
-from bayesianmdisc.normalizingflows import NormalizingFlowDistribution
+from bayesianmdisc.normalizingflows import (
+    FitNormalizingFlowConfig,
+    LoadNormalizingFlowConfig,
+    NormalizingFlowDistribution,
+    fit_normalizing_flow,
+    load_normalizing_flow,
+)
+from bayesianmdisc.bayes.likelihood import create_likelihood
 from bayesianmdisc.customtypes import NPArray
 from bayesianmdisc.data import (
     DataSetProtocol,
@@ -55,7 +62,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
 data_set_label = data_set_label_treloar
-retrain_posterior = False  # True
+retrain_models = False  # True
 
 # Settings
 settings = Settings()
@@ -86,7 +93,7 @@ min_absolute_noise_stddev = 5e-2
 list_num_wasserstein_iterations = [50_000, 20_000]
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
-first_sobol_index_thresshold = 1e-6
+first_sobol_index_thresshold = 1e-5
 
 
 output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs32_sobolsensitivities"
@@ -97,6 +104,7 @@ output_subdirectory_name_sensitivities = "sensitivity_analysis"
 
 def plot_gp_stresses(
     gaussian_process: GaussianProcess,
+    data_set_label: str,
     output_subdirectory: str,
 ) -> None:
 
@@ -118,6 +126,7 @@ def plot_gp_stresses(
 def plot_model_stresses(
     model: ModelProtocol,
     model_parameter_samples: NPArray,
+    data_set_label: str,
     subdirectory_name: str,
     output_directory: str,
 ) -> None:
@@ -219,6 +228,98 @@ def plot_relevenat_sobol_indices_results(
         )
 
 
+def perform_baysian_inference_on_kawabata_data(
+    model: ModelProtocol,
+    parameter_distribution: DistributionProtocol,
+    output_directory_step: str,
+) -> None:
+    data_set_label = data_set_label_kawabata
+    input_directory = data_set_label_kawabata
+    output_directory_name = "bayesian_inference_kawabata"
+    output_subdirectory_name_parameters = "parameters"
+    output_directory = os.path.join(output_directory_step, output_directory_name)
+    output_subdirectory_parameters = os.path.join(
+        output_directory, output_subdirectory_name_parameters
+    )
+
+    relative_noise_stddevs = 5e-2
+    min_absolute_noise_stddev = 5e-2
+
+    data_set_kawabata = KawabataDataSet(input_directory, project_directory, device)
+    inputs, test_cases, outputs = data_set_kawabata.read_data()
+    noise_stddevs = determine_heteroscedastic_noise(
+        relative_noise_stddevs,
+        min_absolute_noise_stddev,
+        outputs,
+    )
+    validate_data(inputs, test_cases, outputs, noise_stddevs)
+
+    num_parameters = model.num_parameters
+    parameter_names = model.parameter_names
+
+    num_flows = 16
+    relative_width_flow_layers = 4
+    if retrain_models:
+        likelihood = create_likelihood(
+            model=model,
+            relative_noise_stddev=relative_noise_stddevs,
+            min_noise_stddev=min_absolute_noise_stddev,
+            inputs=inputs,
+            test_cases=test_cases,
+            outputs=outputs,
+            device=device,
+        )
+        prior = parameter_distribution
+
+        fit_normalizing_flow_config = FitNormalizingFlowConfig(
+            likelihood=likelihood,
+            prior=prior,
+            num_flows=num_flows,
+            relative_width_flow_layers=relative_width_flow_layers,
+            num_samples=32,
+            initial_learning_rate=1e-3,
+            final_learning_rate=5e-5,
+            num_iterations=100_000,
+            output_subdirectory=output_directory,
+            project_directory=project_directory,
+        )
+
+        normalizing_flow = fit_normalizing_flow(fit_normalizing_flow_config, device)
+    else:
+        load_normalizing_flow_config = LoadNormalizingFlowConfig(
+            num_parameters=num_parameters,
+            num_flows=num_flows,
+            relative_width_flow_layers=relative_width_flow_layers,
+            output_subdirectory=output_directory,
+            project_directory=project_directory,
+        )
+        normalizing_flow = load_normalizing_flow(load_normalizing_flow_config, device)
+
+    normalizing_flow_distribution = NormalizingFlowDistribution(
+        normalizing_flow, device
+    )
+    parameter_moments, parameter_samples = sample_and_analyse_distribution(
+        normalizing_flow_distribution, num_samples_parameter_distribution
+    )
+
+    plot_histograms(
+        parameter_names=parameter_names,
+        true_parameters=tuple(None for _ in range(num_parameters)),
+        moments=parameter_moments,
+        samples=parameter_samples,
+        algorithm_name="nf",
+        output_subdirectory=output_subdirectory_parameters,
+        project_directory=project_directory,
+    )
+    plot_model_stresses(
+        model=model,
+        model_parameter_samples=parameter_samples,
+        data_set_label=data_set_label,
+        subdirectory_name="model",
+        output_directory=output_directory_step,
+    )
+
+
 inputs, test_cases, outputs = data_set.read_data()
 noise_stddevs = determine_heteroscedastic_noise(
     relative_noise_stddevs, min_absolute_noise_stddev, outputs
@@ -226,7 +327,7 @@ noise_stddevs = determine_heteroscedastic_noise(
 validate_data(inputs, test_cases, outputs, noise_stddevs)
 num_discovery_steps = len(list_num_wasserstein_iterations)
 
-if retrain_posterior:
+if retrain_models:
     for step in range(num_discovery_steps):
         is_first_step = step == 0
         output_directory_step = os.path.join(output_directory, f"discovery_step_{step}")
@@ -317,6 +418,7 @@ if retrain_posterior:
             )
             plot_gp_stresses(
                 gaussian_process=gaussian_process,
+                data_set_label=data_set_label,
                 output_subdirectory=output_subdirectory_gp,
             )
 
@@ -372,6 +474,7 @@ if retrain_posterior:
         plot_model_stresses(
             model=model,
             model_parameter_samples=parameter_samples,
+            data_set_label=data_set_label,
             subdirectory_name="model_full",
             output_directory=output_directory_step,
         )
@@ -399,10 +502,18 @@ if retrain_posterior:
             plot_model_stresses(
                 model=model,
                 model_parameter_samples=parameter_samples,
+                data_set_label=data_set_label,
                 subdirectory_name="model_selected",
                 output_directory=output_directory_step,
             )
             model.reduce_to_activated_parameters()
+
+        if not is_first_step and data_set_label == data_set_label_treloar:
+            perform_baysian_inference_on_kawabata_data(
+                model=model,
+                parameter_distribution=parameter_distribution,
+                output_directory_step=output_directory_step,
+            )
 
         save_model_state(model, output_directory_step, project_directory)
 else:
@@ -454,6 +565,7 @@ else:
         plot_model_stresses(
             model=model,
             model_parameter_samples=parameter_samples,
+            data_set_label=data_set_label,
             subdirectory_name="model_full",
             output_directory=output_directory_step,
         )
@@ -481,6 +593,14 @@ else:
             plot_model_stresses(
                 model=model,
                 model_parameter_samples=parameter_samples,
+                data_set_label=data_set_label,
                 subdirectory_name="model_selected",
                 output_directory=output_directory_step,
+            )
+
+        if not is_first_step and data_set_label == data_set_label_treloar:
+            perform_baysian_inference_on_kawabata_data(
+                model=model,
+                parameter_distribution=parameter_distribution,
+                output_directory_step=output_directory_step,
             )
