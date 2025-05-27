@@ -106,9 +106,7 @@ def _fit_normalizing_flow(
     target_distribution = TargetDistributionWrapper(likelihood, prior, device)
 
     def create_optimizer(parameters: Iterator[Tensor]) -> TorchOptimizer:
-        return torch.optim.AdamW(
-            params=parameters, lr=initial_learning_rate  # , betas=(0.9, 0.999)
-        )
+        return torch.optim.RMSprop(params=parameters, lr=initial_learning_rate)
 
     def create_exponential_learning_rate_scheduler(
         optimizer: TorchOptimizer,

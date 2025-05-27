@@ -229,7 +229,7 @@ def plot_relevenat_sobol_indices_results(
 
 
 def perform_baysian_inference_on_kawabata_data(
-    model: ModelProtocol,
+    model: IsotropicModelLibrary,
     parameter_distribution: DistributionProtocol,
     output_directory_step: str,
 ) -> None:
@@ -242,6 +242,8 @@ def perform_baysian_inference_on_kawabata_data(
         output_directory, output_subdirectory_name_parameters
     )
 
+    output_dim = 2
+    model.set_output_dimension(output_dim)
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 5e-2
 
@@ -277,9 +279,9 @@ def perform_baysian_inference_on_kawabata_data(
             num_flows=num_flows,
             relative_width_flow_layers=relative_width_flow_layers,
             num_samples=32,
-            initial_learning_rate=1e-3,
-            final_learning_rate=5e-5,
-            num_iterations=100_000,
+            initial_learning_rate=5e-4,
+            final_learning_rate=1e-6,
+            num_iterations=200_000,
             output_subdirectory=output_directory,
             project_directory=project_directory,
         )
@@ -510,7 +512,7 @@ if retrain_models:
 
         if not is_first_step and data_set_label == data_set_label_treloar:
             perform_baysian_inference_on_kawabata_data(
-                model=model,
+                model=cast(IsotropicModelLibrary, model),
                 parameter_distribution=parameter_distribution,
                 output_directory_step=output_directory_step,
             )
@@ -600,7 +602,7 @@ else:
 
         if not is_first_step and data_set_label == data_set_label_treloar:
             perform_baysian_inference_on_kawabata_data(
-                model=model,
+                model=cast(IsotropicModelLibrary, model),
                 parameter_distribution=parameter_distribution,
                 output_directory_step=output_directory_step,
             )
