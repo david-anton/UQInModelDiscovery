@@ -42,7 +42,7 @@ class KawabataDataSet:
         stretches = self._calculate_stretches(biaxial_stretches)
         test_cases = assemble_test_case_identifiers(
             self._test_case_identifier_bt, stretches
-        )
+        ).reshape((-1,))
         stresses = data[:, self._slice_stresses]
         return stretches, test_cases, stresses
 

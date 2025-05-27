@@ -88,7 +88,7 @@ def split_kawabata_inputs_and_outputs(
 
     def determine_split_indices() -> list[int]:
         split_indices = [set_sizes[0]]
-        for i in range(1, num_sets):
+        for i in range(1, num_sets - 1):
             split_indices += [split_indices[-1] + set_sizes[i]]
         return split_indices
 
@@ -97,9 +97,6 @@ def split_kawabata_inputs_and_outputs(
     ) -> tuple[list[NPArray], list[int], list[NPArray]]:
         input_sets = np.split(inputs, split_indices)
         test_case_sets = np.split(test_cases, split_indices)
-        test_case_sets = [
-            expand_dim_if_necessary(test_case_set) for test_case_set in test_case_sets
-        ]
         test_case_identifiers = [
             int(test_case_set[0]) for test_case_set in test_case_sets
         ]
@@ -141,9 +138,6 @@ def split_linka_inputs_and_outputs(
     def split_data_sets() -> tuple[list[NPArray], list[int], list[NPArray]]:
         input_sets = np.split(inputs, num_data_sets, axis=0)
         test_case_sets = np.split(test_cases, num_data_sets, axis=0)
-        test_case_sets = [
-            expand_dim_if_necessary(test_case_set) for test_case_set in test_case_sets
-        ]
         test_case_identifiers = [
             int(test_case_set[0]) for test_case_set in test_case_sets
         ]
@@ -152,10 +146,3 @@ def split_linka_inputs_and_outputs(
 
     validate_data()
     return split_data_sets()
-
-
-def expand_dim_if_necessary(array: NPArray) -> NPArray:
-    if array.ndim == 0:
-        return np.expand_dims(array, axis=0)
-    else:
-        return array
