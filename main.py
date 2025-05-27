@@ -61,7 +61,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_treloar
+data_set_label = data_set_label_linka
 retrain_models = True
 
 # Settings
@@ -189,8 +189,8 @@ def plot_model_stresses(
             model=cast(OrthotropicCANN, model),
             parameter_samples=model_parameter_samples,
             inputs=inputs.detach().cpu().numpy(),
-            outputs=outputs.detach().cpu().numpy(),
             test_cases=test_cases.detach().cpu().numpy(),
+            outputs=outputs.detach().cpu().numpy(),
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
             device=device,
@@ -398,13 +398,20 @@ if retrain_models:
                 return create_independent_multi_output_gp()
 
         def select_gp_prior() -> None:
+            if data_set_label == data_set_label_treloar:
+                num_iterations = int(5e4)
+                learning_rate = 1e-3
+            elif data_set_label == data_set_label_linka:
+                num_iterations = int(5e4)
+                learning_rate = 5e-3
+
             optimize_gp_hyperparameters(
                 gaussian_process=gaussian_process,
                 inputs=inputs,
                 outputs=outputs,
                 initial_noise_stddevs=noise_stddevs,
-                num_iterations=int(5e4),
-                learning_rate=1e-3,
+                num_iterations=num_iterations,
+                learning_rate=learning_rate,
                 output_subdirectory=output_subdirectory_gp,
                 project_directory=project_directory,
                 device=device,
