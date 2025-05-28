@@ -6,6 +6,8 @@ import pandas as pd
 from bayesianmdisc.customtypes import Device, NPArray, PDDataFrame
 from bayesianmdisc.data.base import (
     Data,
+    DeformationInputs,
+    TestCases,
     assemble_test_case_identifiers,
     convert_to_torch,
     flatten_and_stack_arrays,
@@ -27,6 +29,8 @@ from bayesianmdisc.io import ProjectDirectory
 
 Component: TypeAlias = tuple[int, int]
 
+min_shear_strain = 0.0
+max_shear_strain = 0.5
 min_nominal_principel_stretch = 1.0
 max_nominal_principal_stretch = 1.1
 irrelevant_stress_components = [4]
@@ -60,6 +64,21 @@ class LinkaHeartDataSet:
         self._test_case_identifier_ss_31 = test_case_identifier_simple_shear_31
         self._test_case_identifier_ss_23 = test_case_identifier_simple_shear_23
         self._test_case_identifier_ss_32 = test_case_identifier_simple_shear_32
+        self._test_case_identifiers_ss = [
+            self._test_case_identifier_ss_12,
+            self._test_case_identifier_ss_21,
+            self._test_case_identifier_ss_13,
+            self._test_case_identifier_ss_31,
+            self._test_case_identifier_ss_23,
+            self._test_case_identifier_ss_32,
+        ]
+        self._stretch_ratios = [
+            (1.0, 1.0),
+            (1.0, 0.75),
+            (0.75, 1.0),
+            (1.0, 0.5),
+            (0.5, 1.0),
+        ]
         self._data_frame = self._init_data_frame()
 
     def read_data(self) -> Data:
@@ -169,6 +188,52 @@ class LinkaHeartDataSet:
         stresse_tensors_torch = convert_to_torch(stress_tensors, self._device)
 
         return deformation_gradients_torch, test_cases_torch, stresse_tensors_torch
+
+    def generate_uniform_inputs(
+        self, num_points_per_test_case: int
+    ) -> tuple[DeformationInputs, TestCases]:
+        all_deformation_gradients = []
+        all_test_cases = []
+
+        if self._consider_shear_data:
+            shear_strains = generate_shear_strains(num_points_per_test_case)
+
+            for test_case_identifier in self._test_case_identifiers_ss:
+                all_deformation_gradients += [
+                    assemble_flattened_deformation_gradients(
+                        shear_strains, test_case_identifier
+                    )
+                ]
+                all_test_cases += [
+                    assemble_test_case_identifiers(test_case_identifier, shear_strains)
+                ]
+
+        if self._consider_biaxial_data:
+            for stretch_ratio in self._stretch_ratios:
+                test_case_identifier = self._test_case_identifier_bt
+                principal_stretches = generate_principal_stretches(
+                    stretch_ratio, num_points_per_test_case
+                )
+                all_deformation_gradients += [
+                    assemble_flattened_deformation_gradients(
+                        principal_stretches, test_case_identifier
+                    )
+                ]
+                all_test_cases += [
+                    assemble_test_case_identifiers(
+                        test_case_identifier, principal_stretches
+                    )
+                ]
+
+        deformation_gradients = stack_arrays(all_deformation_gradients)
+        test_cases = stack_arrays(all_test_cases)
+        test_cases = test_cases.reshape((-1,))
+
+        deformation_gradients_torch = convert_to_torch(
+            deformation_gradients, self._device
+        )
+        test_cases_torch = convert_to_torch(test_cases, self._device)
+        return deformation_gradients_torch, test_cases_torch
 
     def _validate_data_configuration(
         self, consider_shear_data: bool, consider_biaxial_data: bool
@@ -327,6 +392,12 @@ def assemble_reduced_flattened_stress_tensor(
 
     flattened_stress_tensors = flatten_and_stack_arrays(stress_tensors)
     return _reduce_to_relevant_stresses(flattened_stress_tensors)
+
+
+def generate_shear_strains(num_points: int) -> NPArray:
+    return np.linspace(min_shear_strain, max_shear_strain, num=num_points).reshape(
+        (-1, 1)
+    )
 
 
 def generate_principal_stretches(

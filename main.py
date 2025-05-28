@@ -26,6 +26,7 @@ from bayesianmdisc.data import (
     data_set_label_linka,
     data_set_label_treloar,
     determine_heteroscedastic_noise,
+    add_noise_to_data,
     validate_data,
 )
 from bayesianmdisc.gps import (
@@ -340,6 +341,9 @@ inputs, test_cases, outputs = data_set.read_data()
 noise_stddevs = determine_heteroscedastic_noise(
     relative_noise_stddevs, min_absolute_noise_stddev, outputs
 )
+if data_set_label == data_set_label_linka:
+    outputs = add_noise_to_data(noise_stddevs, outputs, device)
+
 validate_data(inputs, test_cases, outputs, noise_stddevs)
 num_discovery_steps = len(list_num_wasserstein_iterations)
 
@@ -446,10 +450,18 @@ if retrain_models:
             )
 
         def extract_parameter_distribution() -> DistributionProtocol:
-            _data_set = cast(TreloarDataSet, data_set)
-            inputs_extraction, test_cases_extraction = (
-                _data_set.generate_uniform_inputs(num_points_per_test_case=32)
-            )
+            if data_set_label == data_set_label_treloar:
+                data_set_treloar = cast(TreloarDataSet, data_set)
+                inputs_extraction, test_cases_extraction = (
+                    data_set_treloar.generate_uniform_inputs(
+                        num_points_per_test_case=32
+                    )
+                )
+            elif data_set_label == data_set_label_linka:
+                data_set_linka = cast(LinkaHeartDataSet, data_set)
+                inputs_extraction, test_cases_extraction = (
+                    data_set_linka.generate_uniform_inputs(num_points_per_test_case=16)
+                )
             distribution = extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
                 model=model,
