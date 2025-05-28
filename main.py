@@ -52,6 +52,7 @@ from bayesianmdisc.parameterextraction import (
 )
 from bayesianmdisc.postprocessing.plot import (
     plot_gp_stresses_treloar,
+    plot_gp_stresses_linka,
     plot_histograms,
     plot_model_stresses_kawabata,
     plot_model_stresses_linka,
@@ -119,8 +120,21 @@ def plot_gp_stresses(
             device=device,
         )
 
+    def plot_linka() -> None:
+        plot_gp_stresses_linka(
+            gaussian_process=gaussian_process,
+            inputs=inputs.detach().cpu().numpy(),
+            outputs=outputs.detach().cpu().numpy(),
+            test_cases=test_cases.detach().cpu().numpy(),
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+            device=device,
+        )
+
     if data_set_label == data_set_label_treloar:
         plot_treloar()
+    elif data_set_label == data_set_label_linka:
+        plot_linka()
 
 
 def plot_model_stresses(
