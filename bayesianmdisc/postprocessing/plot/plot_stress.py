@@ -1615,7 +1615,6 @@ def plot_gp_stresses_linka(
             gp_inputs_axis = np.linspace(min_input, max_input, num_gp_inputs)
             if is_principal_stress:
                 _gp_inputs = generate_principal_stretches(stretch_ratio, num_gp_inputs)
-                print(_gp_inputs)
             else:
                 _gp_inputs = gp_inputs_axis.reshape((-1, 1))
             gp_inputs = assemble_flattened_deformation_gradients(

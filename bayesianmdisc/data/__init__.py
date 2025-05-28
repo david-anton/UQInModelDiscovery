@@ -12,7 +12,12 @@ from .kawabatadataset import KawabataDataSet
 from .linkaheartdataset import LinkaHeartDataSet
 from .testcases import AllowedTestCases, TestCase, TestCases
 from .treloardataset import TreloarDataSet
-from .utility import determine_heteroscedastic_noise, split_data, validate_data
+from .utility import (
+    determine_heteroscedastic_noise,
+    split_data,
+    validate_data,
+    add_noise_to_data,
+)
 
 __all__ = [
     "DeformationInputs",
@@ -32,4 +37,5 @@ __all__ = [
     "data_set_label_treloar",
     "zero_stress_inputs_treloar",
     "zero_stress_inputs_linka",
+    "add_noise_to_data",
 ]

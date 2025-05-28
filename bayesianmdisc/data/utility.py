@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import torch
 
-from bayesianmdisc.customtypes import Tensor
+from bayesianmdisc.customtypes import Tensor, Device
 from bayesianmdisc.data import (
     DeformationInputs,
     StressOutputs,
@@ -256,3 +256,24 @@ def determine_heteroscedastic_noise(
         min_absolute_noise_stddev,
         noise_stddevs,
     )
+
+
+def add_noise_to_data(
+    noise_stddevs: Tensor, outputs: StressOutputs, device: Device
+) -> StressOutputs:
+
+    def validate_inputs(noise_stddevs: Tensor, outputs: StressOutputs) -> None:
+        size_noise_stddevs = noise_stddevs.size
+        size_outupts = outputs.size
+
+        if not size_noise_stddevs == size_outupts:
+            raise DataError(
+                f"""The standard deviations and outputs are expected to be of the same size
+                but are {size_noise_stddevs} and {size_outupts}."""
+            )
+
+    validate_inputs(noise_stddevs, outputs)
+
+    mean_noise = torch.zeros_like(outputs, device=device)
+    noise = torch.normal(mean=mean_noise, std=noise_stddevs).to(device)
+    return outputs + noise
