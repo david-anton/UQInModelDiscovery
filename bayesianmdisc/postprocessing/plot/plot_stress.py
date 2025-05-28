@@ -80,16 +80,16 @@ class ModelStressPlotterConfigTreloar:
         self.model_color_ebt = "tab:purple"
         self.model_color_ps = "tab:green"
         # mean
-        self.model_label_mean_ut = "mean ut"
-        self.model_label_mean_ebt = "mean ebt"
-        self.model_label_mean_ps = "mean ps"
+        self.model_mean_label_ut = "mean ut"
+        self.model_mean_label_ebt = "mean ebt"
+        self.model_mean_label_ps = "mean ps"
         self.model_mean_linewidth = 1.0
         # credible interval
         self.model_credible_interval_alpha = 0.4
         # samples
-        self.model_label_samples_ut = "samples ut"
-        self.model_label_samples_ebt = "samples ebt"
-        self.model_label_samples_ps = "samples ps"
+        self.model_samples_label_ut = "samples ut"
+        self.model_samples_label_ebt = "samples ebt"
+        self.model_samples_label_ps = "samples ps"
         self.model_samples_color = "tab:gray"
         self.model_samples_linewidth = 1.0
         self.model_samples_alpha = 0.2
@@ -127,8 +127,8 @@ def plot_model_stresses_treloar(
             data_label = config.data_label_ut
             model_color_mean = config.model_color_ut
             model_color_credible_interval = config.model_color_ut
-            model_label_mean = config.model_label_mean_ut
-            model_label_samples = config.model_label_samples_ut
+            model_label_mean = config.model_mean_label_ut
+            model_label_samples = config.model_samples_label_ut
         elif test_case_identifier == test_case_identifier_equibiaxial_tension:
             test_case_label = "equibiaxial_tension"
             data_marker = config.data_marker_ebt
@@ -136,8 +136,8 @@ def plot_model_stresses_treloar(
             data_label = config.data_label_ebt
             model_color_mean = config.model_color_ebt
             model_color_credible_interval = config.model_color_ebt
-            model_label_mean = config.model_label_mean_ebt
-            model_label_samples = config.model_label_samples_ebt
+            model_label_mean = config.model_mean_label_ebt
+            model_label_samples = config.model_samples_label_ebt
         else:
             test_case_label = "pure_shear"
             data_marker = config.data_marker_ps
@@ -145,8 +145,8 @@ def plot_model_stresses_treloar(
             data_label = config.data_label_ps
             model_color_mean = config.model_color_ps
             model_color_credible_interval = config.model_color_ps
-            model_label_mean = config.model_label_mean_ps
-            model_label_samples = config.model_label_samples_ps
+            model_label_mean = config.model_mean_label_ps
+            model_label_samples = config.model_samples_label_ps
 
         file_name = f"treloar_data_{test_case_label}.png"
 
@@ -182,21 +182,23 @@ def plot_model_stresses_treloar(
             min_stretch, max_stretch, num_model_inputs
         ).reshape((-1, 1))
         model_test_cases = np.full((num_model_inputs,), test_case_identifier)
-        means, _ = calculate_model_mean_and_stddev(
+        mean_model_stresses, _ = calculate_model_mean_and_stddev(
             model,
             parameter_samples,
             model_stretches,
             model_test_cases,
             device,
         )
-        min_quantiles, max_quantiles = calculate_model_quantiles(
-            model, parameter_samples, model_stretches, model_test_cases, device
+        min_quantile_model_stresses, max_quantile_model_stresses = (
+            calculate_model_quantiles(
+                model, parameter_samples, model_stretches, model_test_cases, device
+            )
         )
 
         model_stretches_plot = model_stretches.reshape((-1,))
-        means_plot = means.reshape((-1,))
-        min_quantiles_plot = min_quantiles.reshape((-1,))
-        max_quantiles_plot = max_quantiles.reshape((-1,))
+        means_plot = mean_model_stresses.reshape((-1,))
+        min_quantiles_plot = min_quantile_model_stresses.reshape((-1,))
+        max_quantiles_plot = max_quantile_model_stresses.reshape((-1,))
 
         axes.plot(
             model_stretches_plot,
@@ -429,7 +431,7 @@ class ModelStressPlotterConfigKawabata:
         # model
         self.model_label = "model"
         # credible interval
-        self.model_credible_interval_alpha = 0.2
+        self.model_credible_interval_alpha = 0.4
 
         # legend
         self.legend_color = "gray"
@@ -508,7 +510,7 @@ def plot_model_stresses_kawabata(
                 (num_model_inputs_per_set,), test_case_identifier
             )
 
-            means, _ = calculate_model_mean_and_stddev(
+            mean_model_stresses, _ = calculate_model_mean_and_stddev(
                 model,
                 parameter_samples,
                 model_stretches,
@@ -516,18 +518,20 @@ def plot_model_stresses_kawabata(
                 device,
                 output_dim=stress_dim,
             )
-            min_quantiles, max_quantiles = calculate_model_quantiles(
-                model,
-                parameter_samples,
-                model_stretches,
-                model_test_cases,
-                device,
-                output_dim=stress_dim,
+            min_quantile_model_stresses, max_quantile_model_stresses = (
+                calculate_model_quantiles(
+                    model,
+                    parameter_samples,
+                    model_stretches,
+                    model_test_cases,
+                    device,
+                    output_dim=stress_dim,
+                )
             )
             model_stretches_plot = model_stretches_2.reshape((-1,))
-            means_plot = means.reshape((-1,))
-            min_quantiles_plot = min_quantiles.reshape((-1,))
-            max_quantiles_plot = max_quantiles.reshape((-1,))
+            means_plot = mean_model_stresses.reshape((-1,))
+            min_quantiles_plot = min_quantile_model_stresses.reshape((-1,))
+            max_quantiles_plot = max_quantile_model_stresses.reshape((-1,))
 
             axes.plot(
                 model_stretches_plot,
@@ -771,9 +775,9 @@ class ModelStressPlotterConfigLinka:
         # model
         self.model_label = "model"
         # mean
-        self.model_color_mean = "tab:blue"
+        self.model_mean_color = "tab:blue"
         # credible interval
-        self.model_credible_interval_alpha = 0.2
+        self.model_credible_interval_alpha = 0.4
         self.model_color_credible_interval = "tab:blue"
 
         # scientific notation
@@ -783,249 +787,255 @@ class ModelStressPlotterConfigLinka:
         self.dpi = 300
 
 
-# def plot_model_stresses_linka(
-#     model: OrthotropicCANN,
-#     parameter_samples: NPArray,
-#     inputs: NPArray,
-#     test_cases: NPArray,
-#     outputs: NPArray,
-#     output_subdirectory: str,
-#     project_directory: ProjectDirectory,
-#     device: Device,
-# ) -> None:
-#     plotter_config = ModelStressPlotterConfigLinka()
-#     data_config = LinkaDataConfig()
-#     num_model_inputs = 256
+def plot_model_stresses_linka(
+    model: OrthotropicCANN,
+    parameter_samples: NPArray,
+    inputs: NPArray,
+    test_cases: NPArray,
+    outputs: NPArray,
+    output_subdirectory: str,
+    project_directory: ProjectDirectory,
+    device: Device,
+) -> None:
+    plotter_config = ModelStressPlotterConfigLinka()
+    data_config = LinkaDataConfig()
+    num_model_inputs = 256
 
-#     def plot_one_data_set(
-#         inputs: NPArray,
-#         test_case_identifier: int,
-#         outputs: NPArray,
-#         stress_indices: list[int],
-#         data_set_index: int,
-#     ) -> None:
+    def plot_one_data_set(
+        inputs: NPArray,
+        test_case_identifier: int,
+        outputs: NPArray,
+        stress_indices: list[int],
+        data_set_index: int,
+    ) -> None:
 
-#         def plot_one_stress(stress_index: int) -> None:
-#             is_principal_stress = stress_index in data_config.principal_stress_indices
-#             stress_file_name_label = data_config.stress_file_name_labels[stress_index]
+        def plot_one_stress(stress_index: int) -> None:
+            is_principal_stress = stress_index in data_config.principal_stress_indices
+            stress_file_name_label = data_config.stress_file_name_labels[stress_index]
 
-#             figure, axes = plt.subplots()
+            figure, axes = plt.subplots()
 
-#             if is_principal_stress:
-#                 min_input = data_config.min_principal_stretch
-#                 max_input = data_config.max_principal_stretch
-#                 principal_stretch_data_set_index = (
-#                     data_set_index - data_config.num_data_sets_simple_shear
-#                 )
-#                 stretch_ratio = data_config.stretch_ratios[
-#                     principal_stretch_data_set_index
-#                 ]
-#                 stretch_ratio_fiber = stretch_ratio[
-#                     data_config.stretch_ratio_index_fiber
-#                 ]
-#                 stretch_ratio_normal = stretch_ratio[
-#                     data_config.stretch_ratio_index_normal
-#                 ]
-#                 file_name = f"principalstress_{stress_file_name_label}_stretchratio_{stretch_ratio_fiber}_{stretch_ratio_normal}.pdf"
-#             else:
-#                 min_input = data_config.min_shear_strain
-#                 max_input = data_config.max_shear_strain
-#                 file_name = f"shearstress_{stress_file_name_label}.pdf"
+            if is_principal_stress:
+                min_input = data_config.min_principal_stretch
+                max_input = data_config.max_principal_stretch
+                principal_stretch_data_set_index = (
+                    data_set_index - data_config.num_data_sets_simple_shear
+                )
+                stretch_ratio = data_config.stretch_ratios[
+                    principal_stretch_data_set_index
+                ]
+                stretch_ratio_fiber = stretch_ratio[
+                    data_config.stretch_ratio_index_fiber
+                ]
+                stretch_ratio_normal = stretch_ratio[
+                    data_config.stretch_ratio_index_normal
+                ]
+                file_name = f"principalstress_{stress_file_name_label}_stretchratio_{stretch_ratio_fiber}_{stretch_ratio_normal}.pdf"
+            else:
+                min_input = data_config.min_shear_strain
+                max_input = data_config.max_shear_strain
+                file_name = f"shearstress_{stress_file_name_label}.pdf"
 
-#             # data points
-#             data_inputs_axis = np.linspace(
-#                 min_input, max_input, data_config.num_points_per_data_set
-#             )
-#             data_stresses = outputs[:, stress_index]
-#             axes.plot(
-#                 data_inputs_axis,
-#                 data_stresses,
-#                 marker=plotter_config.data_marker,
-#                 color=plotter_config.data_color,
-#                 markersize=plotter_config.data_marker_size,
-#                 linestyle="None",
-#                 label=plotter_config.data_label,
-#             )
+            # data points
+            data_inputs_axis = np.linspace(
+                min_input, max_input, data_config.num_points_per_data_set
+            )
+            data_stresses = outputs[:, stress_index]
+            axes.plot(
+                data_inputs_axis,
+                data_stresses,
+                marker=plotter_config.data_marker,
+                color=plotter_config.data_color,
+                markersize=plotter_config.data_marker_size,
+                linestyle="None",
+                label=plotter_config.data_label,
+            )
 
-#             # model
-#             model_inputs_axis = np.linspace(min_input, max_input, num_model_inputs)
-#             min_model_inputs = np.min(inputs, axis=0)
-#             max_model_inputs = np.max(inputs, axis=0)
-#             model_inputs = np.linspace(
-#                 min_model_inputs, max_model_inputs, num_model_inputs
-#             )
-#             model_test_cases = np.full((num_model_inputs,), test_case_identifier)
+            # model
+            model_inputs_axis = np.linspace(min_input, max_input, num_model_inputs)
+            if is_principal_stress:
+                _model_inputs = np.array(stretch_ratio) * model_inputs_axis.reshape(
+                    (-1, 1)
+                )
+            else:
+                _model_inputs = model_inputs_axis.reshape((-1, 1))
+            model_inputs = assemble_flattened_deformation_gradients(
+                _model_inputs, test_case_identifier
+            )
+            model_test_cases = np.full((num_model_inputs,), test_case_identifier)
 
-#             means, _ = calculate_model_mean_and_stddev(
-#                 model,
-#                 parameter_samples,
-#                 model_inputs,
-#                 model_test_cases,
-#                 device,
-#                 output_dim=stress_index,
-#             )
-#             min_quantiles, max_quantiles = calculate_model_quantiles(
-#                 model,
-#                 parameter_samples,
-#                 model_inputs,
-#                 model_test_cases,
-#                 device,
-#                 output_dim=stress_index,
-#             )
-#             means = means.reshape((-1,))
-#             min_quantiles = min_quantiles.reshape((-1,))
-#             max_quantiles = max_quantiles.reshape((-1,))
+            mean_model_stresses, _ = calculate_model_mean_and_stddev(
+                model,
+                parameter_samples,
+                model_inputs,
+                model_test_cases,
+                device,
+                output_dim=stress_index,
+            )
+            min_quantile_model_stresses, max_quantile_model_stresses = (
+                calculate_model_quantiles(
+                    model,
+                    parameter_samples,
+                    model_inputs,
+                    model_test_cases,
+                    device,
+                    output_dim=stress_index,
+                )
+            )
+            mean_model_stresses = mean_model_stresses.reshape((-1,))
+            min_quantile_model_stresses = min_quantile_model_stresses.reshape((-1,))
+            max_quantile_model_stresses = max_quantile_model_stresses.reshape((-1,))
 
-#             axes.plot(
-#                 model_inputs_axis,
-#                 means,
-#                 color=plotter_config.model_color_mean,
-#                 label=plotter_config.model_label,
-#             )
-#             axes.fill_between(
-#                 model_inputs_axis,
-#                 min_quantiles,
-#                 max_quantiles,
-#                 color=plotter_config.model_color_credible_interval,
-#                 alpha=plotter_config.model_credible_interval_alpha,
-#             )
+            axes.plot(
+                model_inputs_axis,
+                mean_model_stresses,
+                color=plotter_config.model_mean_color,
+                label=plotter_config.model_label,
+            )
+            axes.fill_between(
+                model_inputs_axis,
+                min_quantile_model_stresses,
+                max_quantile_model_stresses,
+                color=plotter_config.model_color_credible_interval,
+                alpha=plotter_config.model_credible_interval_alpha,
+            )
 
-#             # axis ticks
-#             x_ticks = np.linspace(
-#                 min_input,
-#                 max_input,
-#                 num=plotter_config.num_x_tick_labels,
-#             )
-#             x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
-#             axes.set_xticks(x_ticks)
-#             axes.set_xticklabels(x_tick_labels)
+            # axis ticks
+            x_ticks = np.linspace(
+                min_input,
+                max_input,
+                num=plotter_config.num_x_tick_labels,
+            )
+            x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
+            axes.set_xticks(x_ticks)
+            axes.set_xticklabels(x_tick_labels)
 
-#             # axis labels
-#             input_label = data_config.input_labels[data_set_index]
-#             axes.set_xlabel(input_label, **plotter_config.font)
-#             stress_label = data_config.stress_labels[stress_index]
-#             axes.set_ylabel(stress_label, **plotter_config.font)
-#             axes.tick_params(
-#                 axis="both",
-#                 which="minor",
-#                 labelsize=plotter_config.minor_tick_label_size,
-#             )
-#             axes.tick_params(
-#                 axis="both",
-#                 which="major",
-#                 labelsize=plotter_config.major_tick_label_size,
-#             )
+            # axis labels
+            input_label = data_config.input_labels[data_set_index]
+            axes.set_xlabel(input_label, **plotter_config.font)
+            stress_label = data_config.stress_labels[stress_index]
+            axes.set_ylabel(stress_label, **plotter_config.font)
+            axes.tick_params(
+                axis="both",
+                which="minor",
+                labelsize=plotter_config.minor_tick_label_size,
+            )
+            axes.tick_params(
+                axis="both",
+                which="major",
+                labelsize=plotter_config.major_tick_label_size,
+            )
 
-#             # legend
-#             model_credible_interval = Patch(
-#                 facecolor=plotter_config.model_color_credible_interval,
-#                 alpha=plotter_config.model_credible_interval_alpha,
-#                 label="95%-credible interval",
-#             )
-#             data_legend_handles, _ = axes.get_legend_handles_labels()
-#             legend_handles = data_legend_handles + [model_credible_interval]
-#             axes.legend(
-#                 handles=legend_handles,
-#                 fontsize=plotter_config.font_size,
-#                 loc="upper left",
-#             )
+            # legend
+            model_credible_interval = Patch(
+                facecolor=plotter_config.model_color_credible_interval,
+                alpha=plotter_config.model_credible_interval_alpha,
+                label="95%-credible interval",
+            )
+            data_legend_handles, _ = axes.get_legend_handles_labels()
+            legend_handles = data_legend_handles + [model_credible_interval]
+            axes.legend(
+                handles=legend_handles,
+                fontsize=plotter_config.font_size,
+                loc="upper left",
+            )
 
-#             # text box ratios
-#             if is_principal_stress:
-#                 text = "\n".join(
-#                     (
-#                         r"$\lambda_{f}=%.2f \, \lambda$" % (stretch_ratio_fiber,),
-#                         r"$\lambda_{n}=%.2f \, \lambda$" % (stretch_ratio_normal,),
-#                     )
-#                 )
-#                 text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
-#                 axes.text(
-#                     0.55,
-#                     0.96,
-#                     text,
-#                     transform=axes.transAxes,
-#                     fontsize=plotter_config.font_size,
-#                     verticalalignment="top",
-#                     bbox=text_properties,
-#                 )
+            # text box ratios
+            if is_principal_stress:
+                text = "\n".join(
+                    (
+                        r"$\lambda_{f}=%.2f \, \lambda$" % (stretch_ratio_fiber,),
+                        r"$\lambda_{n}=%.2f \, \lambda$" % (stretch_ratio_normal,),
+                    )
+                )
+                text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+                axes.text(
+                    0.55,
+                    0.96,
+                    text,
+                    transform=axes.transAxes,
+                    fontsize=plotter_config.font_size,
+                    verticalalignment="top",
+                    bbox=text_properties,
+                )
 
-#             # text box metrics
-#             num_data_inputs = len(inputs)
-#             metrics_test_cases = np.full((num_data_inputs,), test_case_identifier)
-#             coverage = calclulate_coverage(
-#                 model,
-#                 parameter_samples,
-#                 inputs,
-#                 metrics_test_cases,
-#                 outputs,
-#                 device,
-#                 output_dim=stress_index,
-#             )
-#             r_squared = calculate_coefficient_of_determinant(
-#                 model,
-#                 parameter_samples,
-#                 inputs,
-#                 metrics_test_cases,
-#                 outputs,
-#                 device,
-#                 output_dim=stress_index,
-#             )
-#             rmse = calculate_root_mean_squared_error(
-#                 model,
-#                 parameter_samples,
-#                 inputs,
-#                 metrics_test_cases,
-#                 outputs,
-#                 device,
-#                 output_dim=stress_index,
-#             )
-#             text = "\n".join(
-#                 (
-#                     r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
-#                     r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
-#                     r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
-#                 )
-#             )
-#             text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
-#             axes.text(
-#                 0.03,
-#                 0.7,
-#                 text,
-#                 transform=axes.transAxes,
-#                 fontsize=plotter_config.font_size,
-#                 verticalalignment="top",
-#                 bbox=text_properties,
-#             )
+            # text box metrics
+            num_data_inputs = len(inputs)
+            metrics_test_cases = np.full((num_data_inputs,), test_case_identifier)
+            coverage = calclulate_coverage(
+                model,
+                parameter_samples,
+                inputs,
+                metrics_test_cases,
+                outputs,
+                device,
+                output_dim=stress_index,
+            )
+            r_squared = calculate_coefficient_of_determinant(
+                model,
+                parameter_samples,
+                inputs,
+                metrics_test_cases,
+                outputs,
+                device,
+                output_dim=stress_index,
+            )
+            rmse = calculate_root_mean_squared_error(
+                model,
+                parameter_samples,
+                inputs,
+                metrics_test_cases,
+                outputs,
+                device,
+                output_dim=stress_index,
+            )
+            text = "\n".join(
+                (
+                    r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
+                    r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
+                    r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
+                )
+            )
+            text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+            axes.text(
+                0.03,
+                0.7,
+                text,
+                transform=axes.transAxes,
+                fontsize=plotter_config.font_size,
+                verticalalignment="top",
+                bbox=text_properties,
+            )
 
-#             output_path = project_directory.create_output_file_path(
-#                 file_name=file_name, subdir_name=output_subdirectory
-#             )
-#             figure.savefig(output_path, bbox_inches="tight", dpi=plotter_config.dpi)
-#             plt.clf()
+            output_path = project_directory.create_output_file_path(
+                file_name=file_name, subdir_name=output_subdirectory
+            )
+            figure.savefig(output_path, bbox_inches="tight", dpi=plotter_config.dpi)
+            plt.clf()
 
-#         for stress_index in stress_indices:
-#             plot_one_stress(stress_index)
+        for stress_index in stress_indices:
+            plot_one_stress(stress_index)
 
-#     input_sets, test_case_identifiers, output_sets = split_linka_inputs_and_outputs(
-#         inputs, test_cases, outputs
-#     )
+    input_sets, test_case_identifiers, output_sets = split_linka_inputs_and_outputs(
+        inputs, test_cases, outputs
+    )
 
-#     for (
-#         input_set,
-#         test_case_identifier,
-#         output_set,
-#         stress_indices,
-#         data_set_index,
-#     ) in zip(
-#         input_sets,
-#         test_case_identifiers,
-#         output_sets,
-#         data_config.stress_indices_list,
-#         range(data_config.num_data_sets),
-#     ):
-#         plot_one_data_set(
-#             input_set, test_case_identifier, output_set, stress_indices, data_set_index
-#         )
+    for (
+        input_set,
+        test_case_identifier,
+        output_set,
+        stress_indices,
+        data_set_index,
+    ) in zip(
+        input_sets,
+        test_case_identifiers,
+        output_sets,
+        data_config.stress_indices_list,
+        range(data_config.num_data_sets),
+    ):
+        plot_one_data_set(
+            input_set, test_case_identifier, output_set, stress_indices, data_set_index
+        )
 
 
 def calculate_model_predictions(
@@ -1218,21 +1228,21 @@ class GPStressPlotterConfigTreloar:
         self.data_color_ebt = "tab:purple"
         self.data_color_ps = "tab:green"
         self.data_marker_size = 5
-        # gp
+        ### gp
         self.gp_color_ut = "tab:blue"
         self.gp_color_ebt = "tab:purple"
         self.gp_color_ps = "tab:green"
         # mean
-        self.gp_label_mean_ut = "mean ut"
-        self.gp_label_mean_ebt = "mean ebt"
-        self.gp_label_mean_ps = "mean ps"
+        self.gp_mean_label_ut = "mean ut"
+        self.gp_mean_label_ebt = "mean ebt"
+        self.gp_mean_label_ps = "mean ps"
         self.gp_mean_linewidth = 1.0
         # credible interval
         self.gp_credible_interval_alpha = 0.4
         # samples
-        self.gp_label_samples_ut = "samples ut"
-        self.gp_label_samples_ebt = "samples ebt"
-        self.gp_label_samples_ps = "samples ps"
+        self.gp_samples_label_ut = "samples ut"
+        self.gp_samples_label_ebt = "samples ebt"
+        self.gp_samples_label_ps = "samples ps"
         self.gp_samples_color = "tab:gray"
         self.gp_samples_linewidth = 1.0
         self.gp_samples_alpha = 0.2
@@ -1269,8 +1279,8 @@ def plot_gp_stresses_treloar(
             data_label = config.data_label_ut
             gp_color = config.gp_color_ut
             gp_color_credible_interval = config.gp_color_ut
-            gp_label_mean = config.gp_label_mean_ut
-            gp_label_samples = config.gp_label_samples_ut
+            gp_label_mean = config.gp_mean_label_ut
+            gp_label_samples = config.gp_samples_label_ut
         elif test_case == test_case_identifier_equibiaxial_tension:
             test_case_label = "equibiaxial_tension"
             data_marker = config.data_marker_ebt
@@ -1278,8 +1288,8 @@ def plot_gp_stresses_treloar(
             data_label = config.data_label_ebt
             gp_color = config.gp_color_ebt
             gp_color_credible_interval = config.gp_color_ebt
-            gp_label_mean = config.gp_label_mean_ebt
-            gp_label_samples = config.gp_label_samples_ebt
+            gp_label_mean = config.gp_mean_label_ebt
+            gp_label_samples = config.gp_samples_label_ebt
         else:
             test_case_label = "pure_shear"
             data_marker = config.data_marker_ps
@@ -1287,8 +1297,8 @@ def plot_gp_stresses_treloar(
             data_label = config.data_label_ps
             gp_color = config.gp_color_ps
             gp_color_credible_interval = config.gp_color_ps
-            gp_label_mean = config.gp_label_mean_ps
-            gp_label_samples = config.gp_label_samples_ps
+            gp_label_mean = config.gp_mean_label_ps
+            gp_label_samples = config.gp_samples_label_ps
 
         file_name = f"treloar_data_{test_case_label}.png"
 
@@ -1329,16 +1339,19 @@ def plot_gp_stresses_treloar(
             .to(device)
         )
         gp_test_cases = torch.full((num_gp_inputs,), test_case, device=device)
-        gp_inputs = assemble_stretches_from_factors(gp_stretches, gp_test_cases, device)
+        _gp_inputs = assemble_stretches_from_factors(
+            gp_stretches, gp_test_cases, device
+        )
+        gp_inputs = _gp_inputs.detach().cpu().numpy()
 
-        means = calculate_gp_means(gaussian_process, gp_inputs)
-        min_quantiles, max_quantiles = calculate_gp_quantiles(
-            gaussian_process, gp_inputs
+        mean_gp_stresses = calculate_gp_means(gaussian_process, gp_inputs, device)
+        min_quantile_gp_stresses, max_quantile_gp_stresses = calculate_gp_quantiles(
+            gaussian_process, gp_inputs, device
         )
 
-        means_plot = means.reshape((-1,))
-        min_quantiles_plot = min_quantiles.reshape((-1,))
-        max_quantiles_plot = max_quantiles.reshape((-1,))
+        means_plot = mean_gp_stresses.reshape((-1,))
+        min_quantiles_plot = min_quantile_gp_stresses.reshape((-1,))
+        max_quantiles_plot = max_quantile_gp_stresses.reshape((-1,))
 
         axes.plot(
             gp_stretches_plot,
@@ -1369,7 +1382,7 @@ def plot_gp_stresses_treloar(
             alpha=config.gp_credible_interval_alpha,
         )
 
-        samples = sample_from_gp(gaussian_process, gp_inputs, num_gp_samples)
+        samples = sample_from_gp(gaussian_process, gp_inputs, num_gp_samples, device)
         for sample_counter, sample in enumerate(samples):
             if sample_counter == (num_gp_samples - 1):
                 axes.plot(
@@ -1484,13 +1497,17 @@ class GPStressPlotterConfigLinka:
         self.data_marker = "x"
         self.data_color = "tab:blue"
         self.data_marker_size = 5
-        # model
-        self.model_label = "model"
+        ### gp
+        self.gp_color = "tab:blue"
         # mean
-        self.model_color_mean = "tab:blue"
+        self.gp_mean_label = "mean"
         # credible interval
-        self.model_credible_interval_alpha = 0.2
-        self.model_color_credible_interval = "tab:blue"
+        self.gp_credible_interval_alpha = 0.4
+        # samples
+        self.gp_samples_label = "samples"
+        self.gp_samples_color = "tab:gray"
+        self.gp_samples_linewidth = 1.0
+        self.gp_samples_alpha = 0.2
 
         # scientific notation
         self.scientific_notation_size = self.font_size
@@ -1499,312 +1516,239 @@ class GPStressPlotterConfigLinka:
         self.dpi = 300
 
 
-# def plot_gp_stresses_linka(
-#     gaussian_process: GaussianProcess,
-#     inputs: NPArray,
-#     test_cases: NPArray,
-#     outputs: NPArray,
-#     output_subdirectory: str,
-#     project_directory: ProjectDirectory,
-#     device: Device,
-# ) -> None:
-#     plotter_config = GPStressPlotterConfigLinka()
-#     data_config = LinkaDataConfig()
-#     num_gp_samples = 16
-#     num_gp_inputs = 256
+def plot_gp_stresses_linka(
+    gaussian_process: GaussianProcess,
+    inputs: NPArray,
+    test_cases: NPArray,
+    outputs: NPArray,
+    output_subdirectory: str,
+    project_directory: ProjectDirectory,
+    device: Device,
+) -> None:
+    plotter_config = GPStressPlotterConfigLinka()
+    data_config = LinkaDataConfig()
+    num_model_inputs = 256
 
-#     def plot_one_data_set(
-#         inputs: NPArray,
-#         test_case_identifier: int,
-#         outputs: NPArray,
-#         stress_indices: list[int],
-#         data_set_index: int,
-#     ) -> None:
+    def plot_one_data_set(
+        inputs: NPArray,
+        test_case_identifier: int,
+        outputs: NPArray,
+        stress_indices: list[int],
+        data_set_index: int,
+    ) -> None:
 
-#         def plot_one_stress(stress_index: int) -> None:
-#             is_principal_stress = stress_index in data_config.principal_stress_indices
-#             stress_file_name_label = data_config.stress_file_name_labels[stress_index]
+        def plot_one_stress(stress_index: int) -> None:
+            is_principal_stress = stress_index in data_config.principal_stress_indices
+            stress_file_name_label = data_config.stress_file_name_labels[stress_index]
 
-#             figure, axes = plt.subplots()
+            figure, axes = plt.subplots()
 
-#             if is_principal_stress:
-#                 min_input = data_config.min_principal_stretch
-#                 max_input = data_config.max_principal_stretch
-#                 principal_stretch_data_set_index = (
-#                     data_set_index - data_config.num_data_sets_simple_shear
-#                 )
-#                 stretch_ratio = data_config.stretch_ratios[
-#                     principal_stretch_data_set_index
-#                 ]
-#                 stretch_ratio_fiber = stretch_ratio[
-#                     data_config.stretch_ratio_index_fiber
-#                 ]
-#                 stretch_ratio_normal = stretch_ratio[
-#                     data_config.stretch_ratio_index_normal
-#                 ]
-#                 file_name = f"principalstress_{stress_file_name_label}_stretchratio_{stretch_ratio_fiber}_{stretch_ratio_normal}.pdf"
-#             else:
-#                 min_input = data_config.min_shear_strain
-#                 max_input = data_config.max_shear_strain
-#                 file_name = f"shearstress_{stress_file_name_label}.pdf"
+            if is_principal_stress:
+                min_input = data_config.min_principal_stretch
+                max_input = data_config.max_principal_stretch
+                principal_stretch_data_set_index = (
+                    data_set_index - data_config.num_data_sets_simple_shear
+                )
+                stretch_ratio = data_config.stretch_ratios[
+                    principal_stretch_data_set_index
+                ]
+                stretch_ratio_fiber = stretch_ratio[
+                    data_config.stretch_ratio_index_fiber
+                ]
+                stretch_ratio_normal = stretch_ratio[
+                    data_config.stretch_ratio_index_normal
+                ]
+                file_name = f"principalstress_{stress_file_name_label}_stretchratio_{stretch_ratio_fiber}_{stretch_ratio_normal}.pdf"
+            else:
+                min_input = data_config.min_shear_strain
+                max_input = data_config.max_shear_strain
+                file_name = f"shearstress_{stress_file_name_label}.pdf"
 
-#             # data points
-#             data_inputs_axis = np.linspace(
-#                 min_input, max_input, data_config.num_points_per_data_set
-#             )
-#             data_stresses = outputs[:, stress_index]
-#             axes.plot(
-#                 data_inputs_axis,
-#                 data_stresses,
-#                 marker=plotter_config.data_marker,
-#                 color=plotter_config.data_color,
-#                 markersize=plotter_config.data_marker_size,
-#                 linestyle="None",
-#                 label=plotter_config.data_label,
-#             )
+            # data points
+            data_inputs_axis = np.linspace(
+                min_input, max_input, data_config.num_points_per_data_set
+            )
+            data_stresses = outputs[:, stress_index]
+            axes.plot(
+                data_inputs_axis,
+                data_stresses,
+                marker=plotter_config.data_marker,
+                color=plotter_config.data_color,
+                markersize=plotter_config.data_marker_size,
+                linestyle="None",
+                label=plotter_config.data_label,
+            )
 
-#             # gp
-#             # model_inputs_axis = np.linspace(min_input, max_input, num_gp_inputs)
+            # GP
+            gp_inputs_axis = np.linspace(min_input, max_input, num_model_inputs)
+            if is_principal_stress:
+                _gp_inputs = np.array(stretch_ratio) * gp_inputs_axis.reshape((-1, 1))
+            else:
+                _gp_inputs = gp_inputs_axis.reshape((-1, 1))
+            gp_inputs = assemble_flattened_deformation_gradients(
+                _gp_inputs, test_case_identifier
+            )
 
-#             gp_stretches_plot = np.linspace(min_stretch, max_stretch, num_gp_inputs)
+            mean_gp_stresses = calculate_gp_means(
+                gaussian_process, gp_inputs, device, output_dim=stress_index
+            )
+            min_quantile_gp_stresses, max_quantile_gp_stresses = calculate_gp_quantiles(
+                gaussian_process, gp_inputs, device, output_dim=stress_index
+            )
 
-#             gp_stretches = (
-#                 torch.from_numpy(gp_stretches_plot.reshape((-1, 1)))
-#                 .type(torch.get_default_dtype())
-#                 .to(device)
-#             )
-#             gp_test_cases = torch.full((num_gp_inputs,), test_case, device=device)
-#             gp_inputs = assemble_stretches_from_factors(
-#                 gp_stretches, gp_test_cases, device
-#             )
+            means_plot = mean_gp_stresses.reshape((-1,))
+            min_quantiles_plot = min_quantile_gp_stresses.reshape((-1,))
+            max_quantiles_plot = max_quantile_gp_stresses.reshape((-1,))
 
-#             means = calculate_gp_means(gaussian_process, gp_inputs)
-#             min_quantiles, max_quantiles = calculate_gp_quantiles(
-#                 gaussian_process, gp_inputs
-#             )
+            axes.plot(
+                gp_inputs_axis,
+                means_plot,
+                color=plotter_config.gp_color,
+                label=plotter_config.gp_mean_label,
+            )
+            axes.fill_between(
+                gp_inputs_axis,
+                min_quantiles_plot,
+                max_quantiles_plot,
+                color=plotter_config.gp_color,
+                alpha=plotter_config.gp_credible_interval_alpha,
+            )
 
-#             means_plot = means.reshape((-1,))
-#             min_quantiles_plot = min_quantiles.reshape((-1,))
-#             max_quantiles_plot = max_quantiles.reshape((-1,))
+            # axis ticks
+            x_ticks = np.linspace(
+                min_input,
+                max_input,
+                num=plotter_config.num_x_tick_labels,
+            )
+            x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
+            axes.set_xticks(x_ticks)
+            axes.set_xticklabels(x_tick_labels)
 
-#             axes.plot(
-#                 gp_stretches_plot,
-#                 means_plot,
-#                 color=gp_color,
-#                 linewidth=config.gp_mean_linewidth,
-#                 label=gp_label_mean,
-#             )
-#             axes.fill_between(
-#                 gp_stretches_plot,
-#                 min_quantiles_plot,
-#                 max_quantiles_plot,
-#                 color=gp_color_credible_interval,
-#                 alpha=config.gp_credible_interval_alpha,
-#             )
-#             axes_all.plot(
-#                 gp_stretches_plot,
-#                 means_plot,
-#                 color=gp_color,
-#                 linewidth=config.gp_mean_linewidth,
-#                 label=gp_label_mean,
-#             )
-#             axes_all.fill_between(
-#                 gp_stretches_plot,
-#                 min_quantiles_plot,
-#                 max_quantiles_plot,
-#                 color=gp_color_credible_interval,
-#                 alpha=config.gp_credible_interval_alpha,
-#             )
+            # axis labels
+            input_label = data_config.input_labels[data_set_index]
+            axes.set_xlabel(input_label, **plotter_config.font)
+            stress_label = data_config.stress_labels[stress_index]
+            axes.set_ylabel(stress_label, **plotter_config.font)
+            axes.tick_params(
+                axis="both",
+                which="minor",
+                labelsize=plotter_config.minor_tick_label_size,
+            )
+            axes.tick_params(
+                axis="both",
+                which="major",
+                labelsize=plotter_config.major_tick_label_size,
+            )
 
-#             samples = sample_from_gp(gaussian_process, gp_inputs, num_gp_samples)
-#             for sample_counter, sample in enumerate(samples):
-#                 if sample_counter == (num_gp_samples - 1):
-#                     axes.plot(
-#                         gp_stretches_plot,
-#                         sample,
-#                         color=config.gp_samples_color,
-#                         linewidth=config.gp_samples_linewidth,
-#                         alpha=config.gp_samples_alpha,
-#                         label=gp_label_samples,
-#                     )
-#                 axes.plot(
-#                     gp_stretches_plot,
-#                     sample,
-#                     color=config.gp_samples_color,
-#                     linewidth=config.gp_samples_linewidth,
-#                     alpha=config.gp_samples_alpha,
-#                 )
-#             #
-#             # min_model_inputs = np.min(inputs, axis=0)
-#             # max_model_inputs = np.max(inputs, axis=0)
-#             # model_inputs = np.linspace(
-#             #     min_model_inputs, max_model_inputs, num_model_inputs
-#             # )
-#             # model_test_cases = np.full((num_model_inputs,), test_case_identifier)
+            # legend
+            model_credible_interval = Patch(
+                facecolor=plotter_config.gp_color,
+                alpha=plotter_config.gp_credible_interval_alpha,
+                label="95%-credible interval",
+            )
+            data_legend_handles, _ = axes.get_legend_handles_labels()
+            legend_handles = data_legend_handles + [model_credible_interval]
+            axes.legend(
+                handles=legend_handles,
+                fontsize=plotter_config.font_size,
+                loc="upper left",
+            )
 
-#             # means, _ = calculate_model_mean_and_stddev(
-#             #     model,
-#             #     parameter_samples,
-#             #     model_inputs,
-#             #     model_test_cases,
-#             #     device,
-#             #     output_dim=stress_index,
-#             # )
-#             # min_quantiles, max_quantiles = calculate_model_quantiles(
-#             #     model,
-#             #     parameter_samples,
-#             #     model_inputs,
-#             #     model_test_cases,
-#             #     device,
-#             #     output_dim=stress_index,
-#             # )
-#             # means = means.reshape((-1,))
-#             # min_quantiles = min_quantiles.reshape((-1,))
-#             # max_quantiles = max_quantiles.reshape((-1,))
+            # text box ratios
+            if is_principal_stress:
+                text = "\n".join(
+                    (
+                        r"$\lambda_{f}=%.2f \, \lambda$" % (stretch_ratio_fiber,),
+                        r"$\lambda_{n}=%.2f \, \lambda$" % (stretch_ratio_normal,),
+                    )
+                )
+                text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+                axes.text(
+                    0.55,
+                    0.96,
+                    text,
+                    transform=axes.transAxes,
+                    fontsize=plotter_config.font_size,
+                    verticalalignment="top",
+                    bbox=text_properties,
+                )
 
-#             # axes.plot(
-#             #     model_inputs_axis,
-#             #     means,
-#             #     color=plotter_config.model_color_mean,
-#             #     label=plotter_config.model_label,
-#             # )
-#             # axes.fill_between(
-#             #     model_inputs_axis,
-#             #     min_quantiles,
-#             #     max_quantiles,
-#             #     color=plotter_config.model_color_credible_interval,
-#             #     alpha=plotter_config.model_credible_interval_alpha,
-#             # )
+            output_path = project_directory.create_output_file_path(
+                file_name=file_name, subdir_name=output_subdirectory
+            )
+            figure.savefig(output_path, bbox_inches="tight", dpi=plotter_config.dpi)
+            plt.clf()
 
-#             # axis ticks
-#             x_ticks = np.linspace(
-#                 min_input,
-#                 max_input,
-#                 num=plotter_config.num_x_tick_labels,
-#             )
-#             x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
-#             axes.set_xticks(x_ticks)
-#             axes.set_xticklabels(x_tick_labels)
+        for stress_index in stress_indices:
+            plot_one_stress(stress_index)
 
-#             # axis labels
-#             input_label = data_config.input_labels[data_set_index]
-#             axes.set_xlabel(input_label, **plotter_config.font)
-#             stress_label = data_config.stress_labels[stress_index]
-#             axes.set_ylabel(stress_label, **plotter_config.font)
-#             axes.tick_params(
-#                 axis="both",
-#                 which="minor",
-#                 labelsize=plotter_config.minor_tick_label_size,
-#             )
-#             axes.tick_params(
-#                 axis="both",
-#                 which="major",
-#                 labelsize=plotter_config.major_tick_label_size,
-#             )
+    input_sets, test_case_identifiers, output_sets = split_linka_inputs_and_outputs(
+        inputs, test_cases, outputs
+    )
 
-#             # legend
-#             model_credible_interval = Patch(
-#                 facecolor=plotter_config.model_color_credible_interval,
-#                 alpha=plotter_config.model_credible_interval_alpha,
-#                 label="95%-credible interval",
-#             )
-#             data_legend_handles, _ = axes.get_legend_handles_labels()
-#             legend_handles = data_legend_handles + [model_credible_interval]
-#             axes.legend(
-#                 handles=legend_handles,
-#                 fontsize=plotter_config.font_size,
-#                 loc="upper left",
-#             )
-
-#             # text box ratios
-#             if is_principal_stress:
-#                 text = "\n".join(
-#                     (
-#                         r"$\lambda_{f}=%.2f \, \lambda$" % (stretch_ratio_fiber,),
-#                         r"$\lambda_{n}=%.2f \, \lambda$" % (stretch_ratio_normal,),
-#                     )
-#                 )
-#                 text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
-#                 axes.text(
-#                     0.55,
-#                     0.96,
-#                     text,
-#                     transform=axes.transAxes,
-#                     fontsize=plotter_config.font_size,
-#                     verticalalignment="top",
-#                     bbox=text_properties,
-#                 )
-
-#             output_path = project_directory.create_output_file_path(
-#                 file_name=file_name, subdir_name=output_subdirectory
-#             )
-#             figure.savefig(output_path, bbox_inches="tight", dpi=plotter_config.dpi)
-#             plt.clf()
-
-#         for stress_index in stress_indices:
-#             plot_one_stress(stress_index)
-
-#     input_sets, test_case_identifiers, output_sets = split_linka_inputs_and_outputs(
-#         inputs, test_cases, outputs
-#     )
-
-#     for (
-#         input_set,
-#         test_case_identifier,
-#         output_set,
-#         stress_indices,
-#         data_set_index,
-#     ) in zip(
-#         input_sets,
-#         test_case_identifiers,
-#         output_sets,
-#         stress_indices_list,
-#         range(num_data_sets),
-#     ):
-#         plot_one_data_set(
-#             input_set, test_case_identifier, output_set, stress_indices, data_set_index
-#         )
+    for (
+        input_set,
+        test_case_identifier,
+        output_set,
+        stress_indices,
+        data_set_index,
+    ) in zip(
+        input_sets,
+        test_case_identifiers,
+        output_sets,
+        data_config.stress_indices_list,
+        range(data_config.num_data_sets),
+    ):
+        plot_one_data_set(
+            input_set, test_case_identifier, output_set, stress_indices, data_set_index
+        )
 
 
 def calculate_gp_means(
     gaussian_process: GaussianProcess,
-    inputs: Tensor,
+    inputs: NPArray,
+    device: Device,
     output_dim: Optional[int] = None,
 ) -> NPArray:
+    inputs_torch = torch.from_numpy(inputs).type(torch.get_default_dtype()).to(device)
     gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
-    predictive_distribution = infer_predictive_distribution(gp, inputs)
-    _means = predictive_distribution.mean
-    means = _means.cpu().detach().numpy()
-    return means
+    predictive_distribution = infer_predictive_distribution(gp, inputs_torch)
+    means_torch = predictive_distribution.mean
+    return means_torch.cpu().detach().numpy()
 
 
 def calculate_gp_quantiles(
     gaussian_process: GaussianProcess,
-    inputs: Tensor,
+    inputs: NPArray,
+    device: Device,
     output_dim: Optional[int] = None,
 ) -> tuple[NPArray, NPArray]:
+    inputs_torch = torch.from_numpy(inputs).type(torch.get_default_dtype()).to(device)
     gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
-    predictive_distribution = infer_predictive_distribution(gp, inputs)
-    means = predictive_distribution.mean
-    stddevs = predictive_distribution.stddev
-    _min_quantiles = means - factor_stddev_credible_interval * stddevs
-    _max_quantiles = means + factor_stddev_credible_interval * stddevs
-    min_quantiles = _min_quantiles.cpu().detach().numpy()
-    max_quantiles = _max_quantiles.cpu().detach().numpy()
+    predictive_distribution = infer_predictive_distribution(gp, inputs_torch)
+    means_torch = predictive_distribution.mean
+    stddevs_torch = predictive_distribution.stddev
+    min_quantiles_torch = means_torch - factor_stddev_credible_interval * stddevs_torch
+    max_quantiles_torch = means_torch + factor_stddev_credible_interval * stddevs_torch
+    min_quantiles = min_quantiles_torch.cpu().detach().numpy()
+    max_quantiles = max_quantiles_torch.cpu().detach().numpy()
     return min_quantiles, max_quantiles
 
 
 def sample_from_gp(
     gaussian_process: GaussianProcess,
-    inputs: Tensor,
+    inputs: NPArray,
     num_samples: int,
+    device: Device,
     output_dim: Optional[int] = None,
 ) -> NPArray:
+    inputs_torch = torch.from_numpy(inputs).type(torch.get_default_dtype()).to(device)
     gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
-    predictive_distribution = infer_predictive_distribution(gp, inputs)
-    _samples = predictive_distribution.sample(sample_shape=torch.Size((num_samples,)))
-    samples = _samples.cpu().detach().numpy()
-    return samples
+    predictive_distribution = infer_predictive_distribution(gp, inputs_torch)
+    samples_torch = predictive_distribution.sample(
+        sample_shape=torch.Size((num_samples,))
+    )
+    return samples_torch.cpu().detach().numpy()
 
 
 def infer_predictive_distribution(

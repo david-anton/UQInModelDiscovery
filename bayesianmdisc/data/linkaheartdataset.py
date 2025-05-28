@@ -187,8 +187,8 @@ class LinkaHeartDataSet:
     def _read_shear_data(
         self, start_column: int, shear_test_case_identifier: TestCaseIdentifier
     ) -> tuple[NPArray, NPArray, NPArray]:
-        shear_strains = self._read_column(start_column)
-        shear_stresses = self._read_column(start_column + 1)
+        shear_strains = self._read_column(start_column).reshape((-1, 1))
+        shear_stresses = self._read_column(start_column + 1).reshape((-1, 1))
 
         flattened_deformation_gradients = assemble_flattened_deformation_gradients(
             shear_strains, shear_test_case_identifier
@@ -256,7 +256,7 @@ def assemble_flattened_deformation_gradients(
     def _assemble_one_simple_shear_deformation_gradient(
         deformation_input: NPArray, test_case_identifier: TestCaseIdentifier
     ) -> NPArray:
-        shear_strain = deformation_input
+        shear_strain = deformation_input[0]
         shear_component = _map_to_shear_components(test_case_identifier)
         stretches = 1.0
         deformation_gradient = np.zeros((3, 3), dtype=numpy_data_type)
@@ -299,7 +299,7 @@ def assemble_reduced_flattened_stress_tensor(
     def _assemble_one_simple_shear_stress_tensor(
         stress_output: NPArray, test_case_identifier: TestCaseIdentifier
     ) -> NPArray:
-        shear_stress = stress_output
+        shear_stress = stress_output[0]
         shear_component = _map_to_shear_components(test_case_identifier)
         symmetric_shear_component = tuple(reversed(shear_component))
         stress_tensor = np.zeros((3, 3), dtype=numpy_data_type)
