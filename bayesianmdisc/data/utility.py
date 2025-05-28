@@ -263,8 +263,8 @@ def add_noise_to_data(
 ) -> StressOutputs:
 
     def validate_inputs(noise_stddevs: Tensor, outputs: StressOutputs) -> None:
-        size_noise_stddevs = noise_stddevs.size
-        size_outupts = outputs.size
+        size_noise_stddevs = noise_stddevs.size()
+        size_outupts = outputs.size()
 
         if not size_noise_stddevs == size_outupts:
             raise DataError(
