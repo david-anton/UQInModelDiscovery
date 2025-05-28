@@ -14,6 +14,7 @@ from bayesianmdisc.data.testcases import (
 )
 from bayesianmdisc.data.linkaheartdataset import (
     assemble_flattened_deformation_gradients,
+    generate_principal_stretches,
 )
 from bayesianmdisc.errors import PlotterError
 from bayesianmdisc.gps.base import GPMultivariateNormal
@@ -774,11 +775,14 @@ class ModelStressPlotterConfigLinka:
         self.data_marker_size = 5
         # model
         self.model_label = "model"
-        # mean
-        self.model_mean_color = "tab:blue"
+        self.model_color = "tab:blue"
         # credible interval
         self.model_credible_interval_alpha = 0.4
-        self.model_color_credible_interval = "tab:blue"
+        # samples
+        self.model_samples_label = "samples"
+        self.model_samples_color = "tab:gray"
+        self.model_samples_linewidth = 1.0
+        self.model_samples_alpha = 0.2
 
         # scientific notation
         self.scientific_notation_size = self.font_size
@@ -800,6 +804,7 @@ def plot_model_stresses_linka(
     plotter_config = ModelStressPlotterConfigLinka()
     data_config = LinkaDataConfig()
     num_model_inputs = 256
+    num_model_samples = 16
 
     def plot_one_data_set(
         inputs: NPArray,
@@ -854,8 +859,8 @@ def plot_model_stresses_linka(
             # model
             model_inputs_axis = np.linspace(min_input, max_input, num_model_inputs)
             if is_principal_stress:
-                _model_inputs = np.array(stretch_ratio) * model_inputs_axis.reshape(
-                    (-1, 1)
+                _model_inputs = generate_principal_stretches(
+                    stretch_ratio, num_model_inputs
                 )
             else:
                 _model_inputs = model_inputs_axis.reshape((-1, 1))
@@ -889,16 +894,42 @@ def plot_model_stresses_linka(
             axes.plot(
                 model_inputs_axis,
                 mean_model_stresses,
-                color=plotter_config.model_mean_color,
+                color=plotter_config.model_color,
                 label=plotter_config.model_label,
             )
             axes.fill_between(
                 model_inputs_axis,
                 min_quantile_model_stresses,
                 max_quantile_model_stresses,
-                color=plotter_config.model_color_credible_interval,
+                color=plotter_config.model_color,
                 alpha=plotter_config.model_credible_interval_alpha,
             )
+
+            samples = sample_from_model(
+                model,
+                parameter_samples[:num_model_samples, :],
+                model_inputs,
+                model_test_cases,
+                device,
+            )
+            for sample_counter, sample in enumerate(samples):
+                sample_plot = sample.reshape((-1,))
+                if sample_counter == (num_model_samples - 1):
+                    axes.plot(
+                        model_inputs_axis,
+                        sample_plot,
+                        color=plotter_config.model_samples_color,
+                        linewidth=plotter_config.model_samples_linewidth,
+                        alpha=plotter_config.model_samples_alpha,
+                        label=plotter_config.model_samples_label,
+                    )
+                axes.plot(
+                    model_inputs_axis,
+                    sample,
+                    color=plotter_config.model_samples_color,
+                    linewidth=plotter_config.model_samples_linewidth,
+                    alpha=plotter_config.model_samples_alpha,
+                )
 
             # axis ticks
             x_ticks = np.linspace(
@@ -1527,7 +1558,8 @@ def plot_gp_stresses_linka(
 ) -> None:
     plotter_config = GPStressPlotterConfigLinka()
     data_config = LinkaDataConfig()
-    num_model_inputs = 256
+    num_gp_inputs = 256
+    num_gp_samples = 16
 
     def plot_one_data_set(
         inputs: NPArray,
@@ -1580,9 +1612,10 @@ def plot_gp_stresses_linka(
             )
 
             # GP
-            gp_inputs_axis = np.linspace(min_input, max_input, num_model_inputs)
+            gp_inputs_axis = np.linspace(min_input, max_input, num_gp_inputs)
             if is_principal_stress:
-                _gp_inputs = np.array(stretch_ratio) * gp_inputs_axis.reshape((-1, 1))
+                _gp_inputs = generate_principal_stretches(stretch_ratio, num_gp_inputs)
+                print(_gp_inputs)
             else:
                 _gp_inputs = gp_inputs_axis.reshape((-1, 1))
             gp_inputs = assemble_flattened_deformation_gradients(
@@ -1613,6 +1646,31 @@ def plot_gp_stresses_linka(
                 color=plotter_config.gp_color,
                 alpha=plotter_config.gp_credible_interval_alpha,
             )
+
+            samples = sample_from_gp(
+                gaussian_process,
+                gp_inputs,
+                num_gp_samples,
+                device,
+                output_dim=stress_index,
+            )
+            for sample_counter, sample in enumerate(samples):
+                if sample_counter == (num_gp_samples - 1):
+                    axes.plot(
+                        gp_inputs_axis,
+                        sample,
+                        color=plotter_config.gp_samples_color,
+                        linewidth=plotter_config.gp_samples_linewidth,
+                        alpha=plotter_config.gp_samples_alpha,
+                        label=plotter_config.gp_samples_label,
+                    )
+                axes.plot(
+                    gp_inputs_axis,
+                    sample,
+                    color=plotter_config.gp_samples_color,
+                    linewidth=plotter_config.gp_samples_linewidth,
+                    alpha=plotter_config.gp_samples_alpha,
+                )
 
             # axis ticks
             x_ticks = np.linspace(

@@ -151,7 +151,7 @@ class IndependentMultiOutputGP(gpytorch.models.GP):
         self.likelihood = likelihood_list
 
     def get_gp_for_one_output_dimension(self, output_dim: int) -> GP:
-        return self.gps[output_dim]
+        return self.gps.models[output_dim]
 
     def _prepare_likelihood_list(
         self, likelihoods: GPLikelihoodsTuple

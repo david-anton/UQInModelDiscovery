@@ -27,6 +27,8 @@ from bayesianmdisc.io import ProjectDirectory
 
 Component: TypeAlias = tuple[int, int]
 
+min_nominal_principel_stretch = 1.0
+max_nominal_principal_stretch = 1.1
 irrelevant_stress_components = [4]
 
 
@@ -325,6 +327,17 @@ def assemble_reduced_flattened_stress_tensor(
 
     flattened_stress_tensors = flatten_and_stack_arrays(stress_tensors)
     return _reduce_to_relevant_stresses(flattened_stress_tensors)
+
+
+def generate_principal_stretches(
+    stretch_ratio: tuple[float, float], num_points: int
+) -> NPArray:
+    nominal_principal_stretches = np.linspace(
+        min_nominal_principel_stretch, max_nominal_principal_stretch, num=num_points
+    ).reshape((-1, 1))
+    ones = np.ones_like(nominal_principal_stretches)
+    ratio = np.array(stretch_ratio)
+    return ones + ratio * (nominal_principal_stretches - ones)
 
 
 def _map_to_shear_components(
