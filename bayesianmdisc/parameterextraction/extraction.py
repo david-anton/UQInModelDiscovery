@@ -194,9 +194,11 @@ def extract_gp_inducing_parameter_distribution(
         device=device,
     )
 
-    gp_likelihood = gp.likelihood
-    gp_distribution: GPMultivariateNormal = gp_likelihood(gp(inputs))
-    # gp_distribution: GPMultivariateNormal = gp(inputs)
+    # gp_likelihood = gp.likelihood
+    # gp_distribution: GPMultivariateNormal = gp_likelihood(
+    #     gp.forward_for_optimization(inputs)
+    # )
+    gp_distribution: GPMultivariateNormal = gp(inputs)
 
     if not resample:
         fixed_gp_func_values = gp_distribution.rsample(

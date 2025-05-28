@@ -911,6 +911,7 @@ def plot_model_stresses_linka(
                 model_inputs,
                 model_test_cases,
                 device,
+                output_dim=stress_index,
             )
             for sample_counter, sample in enumerate(samples):
                 sample_plot = sample.reshape((-1,))
@@ -959,7 +960,7 @@ def plot_model_stresses_linka(
 
             # legend
             model_credible_interval = Patch(
-                facecolor=plotter_config.model_color_credible_interval,
+                facecolor=plotter_config.model_color,
                 alpha=plotter_config.model_credible_interval_alpha,
                 label="95%-credible interval",
             )
@@ -1769,7 +1770,7 @@ def calculate_gp_means(
 ) -> NPArray:
     inputs_torch = torch.from_numpy(inputs).type(torch.get_default_dtype()).to(device)
     gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
-    predictive_distribution = infer_predictive_distribution(gp, inputs_torch)
+    predictive_distribution = infer_posterior_distribution(gp, inputs_torch)
     means_torch = predictive_distribution.mean
     return means_torch.cpu().detach().numpy()
 
@@ -1782,7 +1783,7 @@ def calculate_gp_quantiles(
 ) -> tuple[NPArray, NPArray]:
     inputs_torch = torch.from_numpy(inputs).type(torch.get_default_dtype()).to(device)
     gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
-    predictive_distribution = infer_predictive_distribution(gp, inputs_torch)
+    predictive_distribution = infer_posterior_distribution(gp, inputs_torch)
     means_torch = predictive_distribution.mean
     stddevs_torch = predictive_distribution.stddev
     min_quantiles_torch = means_torch - factor_stddev_credible_interval * stddevs_torch
@@ -1801,18 +1802,19 @@ def sample_from_gp(
 ) -> NPArray:
     inputs_torch = torch.from_numpy(inputs).type(torch.get_default_dtype()).to(device)
     gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
-    predictive_distribution = infer_predictive_distribution(gp, inputs_torch)
+    predictive_distribution = infer_posterior_distribution(gp, inputs_torch)
     samples_torch = predictive_distribution.sample(
         sample_shape=torch.Size((num_samples,))
     )
     return samples_torch.cpu().detach().numpy()
 
 
-def infer_predictive_distribution(
+def infer_posterior_distribution(
     gaussian_process: GaussianProcess, inputs: Tensor
 ) -> GPMultivariateNormal:
-    likelihood = gaussian_process.likelihood
-    return likelihood(gaussian_process(inputs))
+    # likelihood = gaussian_process.likelihood
+    # return likelihood(gaussian_process(inputs))
+    return gaussian_process(inputs)
 
 
 def reduce_gp_to_output_dimension(

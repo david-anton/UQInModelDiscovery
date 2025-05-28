@@ -63,7 +63,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -92,13 +92,13 @@ elif data_set_label == data_set_label_linka:
 
 relative_noise_stddevs = 5e-2
 min_absolute_noise_stddev = 5e-2
-list_num_wasserstein_iterations = [50_000, 20_000]
+list_num_wasserstein_iterations = [50_000, 50_000]
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 first_sobol_index_thresshold = 1e-5
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs32"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples16_layer2_width512_numinputs32"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -385,20 +385,9 @@ if retrain_models:
                     initial_parameters_output_scale + initial_parameters_length_scale
                 )
 
-                if gp_mean == "linear":
-                    initial_parameters_weights = [1.0 for _ in range(input_dim)]
-                    initial_parameters_bias = [0.0]
-                    initial_parameters_mean = (
-                        initial_parameters_weights + initial_parameters_bias
-                    )
-                    initial_parameters = torch.tensor(
-                        initial_parameters_mean + initial_parameters_kernel,
-                        device=device,
-                    )
-                else:
-                    initial_parameters = torch.tensor(
-                        initial_parameters_kernel, device=device
-                    )
+                initial_parameters = torch.tensor(
+                    initial_parameters_kernel, device=device
+                )
                 gaussian_process.set_parameters(initial_parameters)
                 return gaussian_process
 
@@ -418,7 +407,7 @@ if retrain_models:
         def select_gp_prior() -> None:
             if data_set_label == data_set_label_treloar:
                 num_iterations = int(5e4)
-                learning_rate = 1e-3
+                learning_rate = 5e-3
             elif data_set_label == data_set_label_linka:
                 num_iterations = int(5e4)
                 learning_rate = 5e-3
@@ -457,11 +446,15 @@ if retrain_models:
                         num_points_per_test_case=32
                     )
                 )
+                num_func_samples = 16  # 32
+                num_iters_lipschitz = 10
             elif data_set_label == data_set_label_linka:
                 data_set_linka = cast(LinkaHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
-                    data_set_linka.generate_uniform_inputs(num_points_per_test_case=16)
+                    data_set_linka.generate_uniform_inputs(num_points_per_test_case=8)
                 )
+                num_func_samples = 16
+                num_iters_lipschitz = 10
             distribution = extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
                 model=model,
@@ -469,11 +462,11 @@ if retrain_models:
                 is_mean_trainable=True,
                 inputs=inputs_extraction,
                 test_cases=test_cases_extraction,
-                num_func_samples=32,
+                num_func_samples=num_func_samples,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
                 hiden_layer_size_lipschitz_nn=512,
-                num_iters_lipschitz=10,
+                num_iters_lipschitz=num_iters_lipschitz,
                 lipschitz_func_pretraining=False,
                 output_subdirectory=output_subdirectory_parameters,
                 project_directory=project_directory,
