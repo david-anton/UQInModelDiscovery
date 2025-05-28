@@ -63,7 +63,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_treloar
+data_set_label = data_set_label_linka
 retrain_models = True
 
 # Settings
@@ -98,7 +98,7 @@ num_samples_factor_sensitivity_analysis = 4096
 first_sobol_index_thresshold = 1e-5
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples16_layer2_width512_numinputs32"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples16_layer2_width512_numinputs8"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
