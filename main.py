@@ -98,7 +98,7 @@ num_samples_factor_sensitivity_analysis = 4096
 first_sobol_index_thresshold = 1e-5
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples16_layer2_width512_numinputs8"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs8"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -341,8 +341,8 @@ inputs, test_cases, outputs = data_set.read_data()
 noise_stddevs = determine_heteroscedastic_noise(
     relative_noise_stddevs, min_absolute_noise_stddev, outputs
 )
-if data_set_label == data_set_label_linka:
-    outputs = add_noise_to_data(noise_stddevs, outputs, device)
+# if data_set_label == data_set_label_linka:
+#     outputs = add_noise_to_data(noise_stddevs, outputs, device)
 
 validate_data(inputs, test_cases, outputs, noise_stddevs)
 num_discovery_steps = len(list_num_wasserstein_iterations)
@@ -446,14 +446,16 @@ if retrain_models:
                         num_points_per_test_case=32
                     )
                 )
-                num_func_samples = 16  # 32
+                num_func_samples = 32
+                hiden_layer_size_lipschitz_nn = 512
                 num_iters_lipschitz = 10
             elif data_set_label == data_set_label_linka:
                 data_set_linka = cast(LinkaHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_linka.generate_uniform_inputs(num_points_per_test_case=8)
                 )
-                num_func_samples = 16
+                num_func_samples = 32
+                hiden_layer_size_lipschitz_nn = 1024
                 num_iters_lipschitz = 10
             distribution = extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
@@ -465,7 +467,7 @@ if retrain_models:
                 num_func_samples=num_func_samples,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
-                hiden_layer_size_lipschitz_nn=512,
+                hiden_layer_size_lipschitz_nn=hiden_layer_size_lipschitz_nn,
                 num_iters_lipschitz=num_iters_lipschitz,
                 lipschitz_func_pretraining=False,
                 output_subdirectory=output_subdirectory_parameters,
