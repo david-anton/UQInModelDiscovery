@@ -99,7 +99,7 @@ def optimize_gp_hyperparameters(
         {gaussian_process.get_named_parameters()}"""
     )
     print(
-        f"""Noise standard deviation: 
+        f"""Noise standard deviation:
         {_get_noise_standard_deviation(gaussian_process)}"""
     )
 

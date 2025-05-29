@@ -1,5 +1,5 @@
 from itertools import groupby
-from typing import TypeAlias
+from typing import TypeAlias, cast
 
 import gpytorch
 import torch
@@ -146,9 +146,12 @@ class IndependentMultiOutputGP(gpytorch.models.GP):
         return torch.concat(noise_variances, dim=1)
 
     def set_likelihood(self, likelihood: GPLikelihoodsTuple) -> None:
-        validate_likelihoods(likelihood, self.num_gps)
-        likelihood_list = self._prepare_likelihood_list(likelihood)
-        self.likelihood = likelihood_list
+        likelihoods = likelihood
+        validate_likelihoods(likelihoods, self.num_gps)
+        for index, _likelihood in enumerate(likelihoods):
+            gp = cast(gpytorch.models.ExactGP, self.gps.models[index])
+            gp.likelihood = _likelihood
+        self.likelihood = self._prepare_likelihood_list(likelihoods)
 
     def get_gp_for_one_output_dimension(self, output_dim: int) -> GP:
         return self.gps.models[output_dim]

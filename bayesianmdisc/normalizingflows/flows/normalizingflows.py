@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, Mapping, Protocol, TypeVar
+from typing import Any, Dict, Iterator, Mapping, Protocol, TypeVar, cast
 
 import torch
 
@@ -100,7 +100,9 @@ class NormalizingFlow(torch.nn.Module):
         x = self._unsqueeze_single_sample(samples)
         sum_log_det_x = torch.zeros(len(x), device=self._device)
 
-        for sub_flow in reversed(self.flows):
+        # for sub_flow in reversed(self.flows):
+        flows = cast(list[NFNormalizingFlow], self.flows)
+        for sub_flow in reversed(flows):
             x, log_det_x = sub_flow.inverse(x)
             sum_log_det_x = sum_log_det_x + log_det_x
 
