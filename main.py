@@ -97,8 +97,8 @@ elif data_set_label == data_set_label_linka:
     input_directory = "heart_data_linka"
     data_set = LinkaHeartDataSet(input_directory, project_directory, device)
     model = OrthotropicCANN(device)
-    relative_noise_stddevs = 1e-1
-    min_absolute_noise_stddev = 1e-1
+    relative_noise_stddevs = 5e-2
+    min_absolute_noise_stddev = 5e-2
     list_num_wasserstein_iterations = [20_000, 20_000]
     first_sobol_index_thresshold = 1e-4
 
@@ -365,8 +365,8 @@ inputs, test_cases, outputs = data_set.read_data()
 noise_stddevs = determine_heteroscedastic_noise(
     relative_noise_stddevs, min_absolute_noise_stddev, outputs
 )
-# if data_set_label == data_set_label_linka:
-#     outputs = add_noise_to_data(noise_stddevs, outputs, device)
+if data_set_label == data_set_label_linka:
+    outputs = add_noise_to_data(noise_stddevs, outputs, device)
 
 validate_data(inputs, test_cases, outputs, noise_stddevs)
 num_discovery_steps = len(list_num_wasserstein_iterations)
@@ -658,6 +658,7 @@ else:
                 parameter_distribution=parameter_distribution,
                 output_directory_step=output_directory_step,
             )
+
 
 # import os
 # from datetime import date
