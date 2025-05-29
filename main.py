@@ -73,7 +73,7 @@ device = get_device()
 set_default_dtype(torch.float64)
 set_seed(0)
 
-# Input/output
+# Set up
 current_date = date.today().strftime("%Y%m%d")
 if data_set_label == data_set_label_treloar:
     input_directory = data_set_label
@@ -81,21 +81,29 @@ if data_set_label == data_set_label_treloar:
         input_directory, project_directory, device
     )
     model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)
+    relative_noise_stddevs = 5e-2
+    min_absolute_noise_stddev = 5e-2
+    list_num_wasserstein_iterations = [50_000, 50_000]
+    first_sobol_index_thresshold = 1e-5
 elif data_set_label == data_set_label_kawabata:
     input_directory = data_set_label
     data_set = KawabataDataSet(input_directory, project_directory, device)
     model = IsotropicModelLibrary(output_dim=2, device=device)
+    relative_noise_stddevs = 5e-2
+    min_absolute_noise_stddev = 5e-2
+    list_num_wasserstein_iterations = [50_000, 50_000]
+    first_sobol_index_thresshold = 1e-5
 elif data_set_label == data_set_label_linka:
     input_directory = "heart_data_linka"
     data_set = LinkaHeartDataSet(input_directory, project_directory, device)
     model = OrthotropicCANN(device)
+    relative_noise_stddevs = 5e-2
+    min_absolute_noise_stddev = 5e-2
+    list_num_wasserstein_iterations = [20_000, 20_000]
+    first_sobol_index_thresshold = 1e-4
 
-relative_noise_stddevs = 5e-2
-min_absolute_noise_stddev = 5e-2
-list_num_wasserstein_iterations = [50_000, 50_000]
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
-first_sobol_index_thresshold = 1e-5
 
 
 output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs8"
