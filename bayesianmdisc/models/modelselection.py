@@ -17,7 +17,10 @@ from bayesianmdisc.data import (
     zero_stress_inputs_linka,
     zero_stress_inputs_treloar,
 )
-from bayesianmdisc.data.testcases import map_test_case_identifiers_to_labels
+from bayesianmdisc.data.testcases import (
+    map_test_case_identifiers_to_labels,
+    TestCaseLabels,
+)
 from bayesianmdisc.errors import ModelSelectionError
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.readerswriters import PandasDataWriter
@@ -268,6 +271,27 @@ def select_model_through_sobol_sensitivity_analysis(
                 total_indices = problem.analysis["ST"]
                 return first_indices, total_indices
 
+            def remove_independent_inputs(
+                indices: SIndices, test_cases_labels: TestCaseLabels
+            ) -> tuple[SIndices, TestCaseLabels]:
+                cumulated_indices = np.sum(indices, axis=1)
+                is_cumulated_indice_nan = np.isnan(cumulated_indices)
+                is_cumulated_indice_zero = np.isclose(cumulated_indices, 0.0, rtol=1e-5)
+
+                is_independent_input = (
+                    is_cumulated_indice_nan or is_cumulated_indice_zero
+                )
+                is_dependent_input = np.invert(is_independent_input)
+
+                dependent_input_indices = (
+                    np.where(is_dependent_input)[0].reshape((-1,)).tolist()
+                )
+                relevant_indices = indices[dependent_input_indices, :]
+                relevant_test_case_labels = [
+                    test_cases_labels[index] for index in dependent_input_indices
+                ]
+                return relevant_indices, relevant_test_case_labels
+
             def calculate_statistics(indices: SIndices) -> tuple[NPArray, NPArray]:
                 means = np.mean(indices, axis=0)
                 stdes = np.std(indices, axis=0) / np.sqrt(num_inputs)
@@ -281,14 +305,26 @@ def select_model_through_sobol_sensitivity_analysis(
 
         first_indices_inputs = np.vstack(first_indices_inputs_list)
         total_indices_inputs = np.vstack(total_indices_inputs_list)
-        mean_first_indices_inputs, stde_first_indices_inputs = calculate_statistics(
-            first_indices_inputs
+
+        relevant_first_indices_inputs, relevant_first_indices_test_case_labels = (
+            remove_independent_inputs(first_indices_inputs, test_case_labels)
         )
-        mean_total_indices_inputs, stde_total_indices_inputs = calculate_statistics(
-            total_indices_inputs
+        relevant_total_indices_inputs, relevant_total_indices_test_case_labels = (
+            remove_independent_inputs(total_indices_inputs, test_case_labels)
         )
 
-        def save_analysis_results(indices_inputs: SIndices, indices_label: str) -> None:
+        mean_first_indices_inputs, stde_first_indices_inputs = calculate_statistics(
+            relevant_first_indices_inputs
+        )
+        mean_total_indices_inputs, stde_total_indices_inputs = calculate_statistics(
+            relevant_total_indices_inputs
+        )
+
+        def save_analysis_results(
+            indices_inputs: SIndices,
+            test_case_labels: TestCaseLabels,
+            indices_label: str,
+        ) -> None:
             file_name = join_analysis_results_file_name(indices_label, output_index)
             data_frame = pd.DataFrame(indices_inputs, columns=parameter_names)
             data_frame.insert(0, pd_column_lable_test_cases, test_case_labels)
@@ -316,8 +352,16 @@ def select_model_through_sobol_sensitivity_analysis(
                 header=True,
             )
 
-        save_analysis_results(first_indices_inputs, first_indices_label)
-        save_analysis_results(total_indices_inputs, total_indices_label)
+        save_analysis_results(
+            relevant_first_indices_inputs,
+            relevant_first_indices_test_case_labels,
+            first_indices_label,
+        )
+        save_analysis_results(
+            relevant_total_indices_inputs,
+            relevant_total_indices_test_case_labels,
+            total_indices_label,
+        )
         save_analysis_results_statistics(
             mean_first_indices_inputs,
             stde_first_indices_inputs,
