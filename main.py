@@ -99,7 +99,7 @@ elif data_set_label == data_set_label_linka:
     model = OrthotropicCANN(device)
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-2  # 5e-2
-    list_num_wasserstein_iterations = [10_000, 10_000]
+    list_num_wasserstein_iterations = [800, 10_000]  # [10_000, 10_000]
     first_sobol_index_thresshold = 1e-4
 
 num_samples_parameter_distribution = 8192
