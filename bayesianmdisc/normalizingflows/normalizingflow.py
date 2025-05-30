@@ -83,7 +83,9 @@ def _create_normalizing_flow(
         for _ in range(num_flows)
     ]
     flows += [
-        create_exponential_constrained_flow(num_parameters, constrained_output_indices)
+        create_exponential_constrained_flow(
+            num_parameters, constrained_output_indices, device
+        )
     ]
     return NormalizingFlow(num_parameters, flows, base_distribution, device).to(device)
 

@@ -1,23 +1,28 @@
 import torch
 
-from bayesianmdisc.customtypes import Tensor
+from bayesianmdisc.customtypes import Tensor, Device
 
 
 class ExpConstrainedFlow(torch.nn.Module):
     def __init__(
-        self,
-        num_outputs: int,
-        indices_constrained_outputs: list[int],
+        self, num_outputs: int, indices_constrained_outputs: list[int], device: Device
     ) -> None:
         super().__init__()
         self._num_outputs = num_outputs
         self._indices_constr = indices_constrained_outputs
         self._indices_unconstr = self._find_indices_of_unconstrained_outputs()
         self._permutation, self._inv_permutation = self._set_up_permutations()
+        self._device = device
 
-    def forward(self, u) -> tuple[Tensor, Tensor]:
+    def forward(self, u: Tensor) -> tuple[Tensor, Tensor]:
         constr_u = self._unsqueeze_if_necessary(u[:, self._indices_constr])
         unconstr_u = self._unsqueeze_if_necessary(u[:, self._indices_unconstr])
+
+        # ##################################################
+        # device = u.device
+        # min_u = torch.tensor(-100, device=device)
+        # constr_u = constr_u.clamp_min(min_u)
+        # ##################################################
 
         exp_constr_u = torch.exp(constr_u)
 
@@ -33,9 +38,16 @@ class ExpConstrainedFlow(torch.nn.Module):
         log_det = log_det_func()
         return x, log_det
 
-    def inverse(self, x) -> tuple[Tensor, Tensor]:
+    def inverse(self, x: Tensor) -> tuple[Tensor, Tensor]:
         constr_x = self._unsqueeze_if_necessary(x[:, self._indices_constr])
         unconstr_x = self._unsqueeze_if_necessary(x[:, self._indices_unconstr])
+
+        # ##################################################
+        # device = x.device
+        # min_u = torch.tensor(-100, device=device)
+        # min_x = torch.exp(min_u)
+        # constr_x = constr_x.clamp_min(min_x)
+        # ##################################################
 
         def u_func() -> Tensor:
             constr_u = torch.log(constr_x)
@@ -71,7 +83,6 @@ class ExpConstrainedFlow(torch.nn.Module):
 
 
 def create_exponential_constrained_flow(
-    total_num_outputs: int,
-    indices_constrained_outputs: list[int],
+    total_num_outputs: int, indices_constrained_outputs: list[int], device: Device
 ) -> ExpConstrainedFlow:
-    return ExpConstrainedFlow(total_num_outputs, indices_constrained_outputs)
+    return ExpConstrainedFlow(total_num_outputs, indices_constrained_outputs, device)

@@ -530,6 +530,7 @@ class NormalizingFlowParameterDistribution(nn.Module):
             create_exponential_constrained_flow(
                 total_num_outputs=self._dim,
                 indices_constrained_outputs=indices_constrained_outputs,
+                device=self._device,
             )
         ]
         return flows

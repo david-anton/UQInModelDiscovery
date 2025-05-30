@@ -98,15 +98,15 @@ elif data_set_label == data_set_label_linka:
     data_set = LinkaHeartDataSet(input_directory, project_directory, device)
     model = OrthotropicCANN(device)
     relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 1e-2  # 5e-2
-    list_num_wasserstein_iterations = [800, 10_000]  # [10_000, 10_000]
+    min_absolute_noise_stddev = 5e-2
+    list_num_wasserstein_iterations = [10_000, 10_000]
     first_sobol_index_thresshold = 1e-4
 
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs8"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width512_numinputs8_noised"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -368,8 +368,8 @@ inputs, test_cases, outputs = data_set.read_data()
 noise_stddevs = determine_heteroscedastic_noise(
     relative_noise_stddevs, min_absolute_noise_stddev, outputs
 )
-# if data_set_label == data_set_label_linka:
-#     outputs = add_noise_to_data(noise_stddevs, outputs, device)
+if data_set_label == data_set_label_linka:
+    outputs = add_noise_to_data(noise_stddevs, outputs, device)
 
 validate_data(inputs, test_cases, outputs, noise_stddevs)
 num_discovery_steps = len(list_num_wasserstein_iterations)

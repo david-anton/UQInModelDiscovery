@@ -982,7 +982,7 @@ def plot_model_stresses_linka(
                 )
                 text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
                 axes.text(
-                    0.55,
+                    0.5,
                     0.96,
                     text,
                     transform=axes.transAxes,
