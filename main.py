@@ -106,7 +106,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1e-4_samples32_layer2_width1024_numinputs8_noised"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1e-4_samples32_layer2_width1024_numinputs8_noised_inversegamma"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -471,7 +471,7 @@ if retrain_models:
             distribution = extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
                 model=model,
-                distribution_type="normalizing flow",
+                distribution_type="inverse Gamma",  # "normalizing flow",
                 is_mean_trainable=True,
                 inputs=inputs_extraction,
                 test_cases=test_cases_extraction,
