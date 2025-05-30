@@ -278,8 +278,8 @@ def select_model_through_sobol_sensitivity_analysis(
                 is_cumulated_indice_nan = np.isnan(cumulated_indices)
                 is_cumulated_indice_zero = np.isclose(cumulated_indices, 0.0, rtol=1e-5)
 
-                is_independent_input = (
-                    is_cumulated_indice_nan or is_cumulated_indice_zero
+                is_independent_input = np.logical_or(
+                    is_cumulated_indice_nan, is_cumulated_indice_zero
                 )
                 is_dependent_input = np.invert(is_independent_input)
 

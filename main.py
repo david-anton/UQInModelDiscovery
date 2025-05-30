@@ -99,14 +99,14 @@ elif data_set_label == data_set_label_linka:
     model = OrthotropicCANN(device)
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [10_000, 10_000]
+    list_num_wasserstein_iterations = [50_000, 20_000]
     first_sobol_index_thresshold = 1e-4
 
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1_samples32_layer2_width1024_numinputs8_noised"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1e-4_samples32_layer2_width1024_numinputs8_noised"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -256,22 +256,6 @@ def perform_baysian_inference_on_kawabata_data(
     parameter_distribution: DistributionProtocol,
     output_directory_step: str,
 ) -> None:
-    # print("#########################################################")
-    # print("#########################################################")
-    # mr_mr = 1.81 * 1e-4
-    # mr_nh = 1.15 * 1e-1
-    # mr_c20 = 4.58 * 1e-7
-    # mr_c30 = 2.77 * 1e-5
-    # o_m05 = 3.65 * 1e-1
-    # o_m025 = 3.65
-    # o_025 = 2.27 * 1e-3
-    # parameters_sample = torch.tensor(
-    #     [mr_mr, mr_nh, mr_c20, mr_c30, o_m05, o_m025, o_025]
-    # )
-    # print(parameter_distribution.log_prob(parameters_sample))
-    # print(parameter_distribution.prob(parameters_sample))
-    # print("#########################################################")
-    # print("#########################################################")
     input_directory = data_set_label_kawabata
     output_directory_name = "bayesian_inference_kawabata"
     output_subdirectory_name_parameters = "parameters"
