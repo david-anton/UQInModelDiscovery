@@ -13,16 +13,18 @@ class ExpConstrainedFlow(torch.nn.Module):
         self._indices_unconstr = self._find_indices_of_unconstrained_outputs()
         self._permutation, self._inv_permutation = self._set_up_permutations()
         self._device = device
+        self._clamp_u_and_x = False
+        self._min_u = torch.tensor(-100, device=device)
+        self._min_x = torch.exp(self._min_u).to(self._device)
 
     def forward(self, u: Tensor) -> tuple[Tensor, Tensor]:
         constr_u = self._unsqueeze_if_necessary(u[:, self._indices_constr])
         unconstr_u = self._unsqueeze_if_necessary(u[:, self._indices_unconstr])
 
-        # ##################################################
-        # device = u.device
-        # min_u = torch.tensor(-100, device=device)
-        # constr_u = constr_u.clamp_min(min_u)
-        # ##################################################
+        ##################################################
+        if self._clamp_u_and_x:
+            constr_u = constr_u.clamp_min(self._min_u)
+        ##################################################
 
         exp_constr_u = torch.exp(constr_u)
 
@@ -42,12 +44,10 @@ class ExpConstrainedFlow(torch.nn.Module):
         constr_x = self._unsqueeze_if_necessary(x[:, self._indices_constr])
         unconstr_x = self._unsqueeze_if_necessary(x[:, self._indices_unconstr])
 
-        # ##################################################
-        # device = x.device
-        # min_u = torch.tensor(-100, device=device)
-        # min_x = torch.exp(min_u)
-        # constr_x = constr_x.clamp_min(min_x)
-        # ##################################################
+        ##################################################
+        if self._clamp_u_and_x:
+            constr_x = constr_x.clamp_min(self._min_x)
+        ##################################################
 
         def u_func() -> Tensor:
             constr_u = torch.log(constr_x)
