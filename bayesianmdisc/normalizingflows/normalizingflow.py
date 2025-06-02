@@ -108,7 +108,16 @@ def _fit_normalizing_flow(
     target_distribution = TargetDistributionWrapper(likelihood, prior, device)
 
     def create_optimizer(parameters: Iterator[Tensor]) -> TorchOptimizer:
-        return torch.optim.RMSprop(params=parameters, lr=initial_learning_rate)
+        return torch.optim.LBFGS(
+            params=parameters,
+            lr=initial_learning_rate,
+            max_iter=20,
+            max_eval=None,
+            tolerance_grad=1e-7,
+            tolerance_change=1e-9,
+            history_size=100,
+            line_search_fn="strong_wolfe",
+        )
 
     def create_exponential_learning_rate_scheduler(
         optimizer: TorchOptimizer,
@@ -125,18 +134,8 @@ def _fit_normalizing_flow(
         return is_first | is_last | is_interval_reached
 
     def train_normalizing_flow() -> None:
-        # optimizer = create_optimizer(normalizing_flow.parameters())
-        optimizer = torch.optim.LBFGS(
-            params=normalizing_flow.parameters(),
-            lr=0.0001,  # 1.0,
-            max_iter=20,
-            max_eval=None,
-            tolerance_grad=1e-7,
-            tolerance_change=1e-9,
-            history_size=100,
-            line_search_fn="strong_wolfe",
-        )
-        # lr_scheduler = create_exponential_learning_rate_scheduler(optimizer)
+        optimizer = create_optimizer(normalizing_flow.parameters())
+        lr_scheduler = create_exponential_learning_rate_scheduler(optimizer)
 
         def reverse_kld_func(samples_base: Tensor, log_probs_base: Tensor) -> Tensor:
             u = samples_base
@@ -147,20 +146,17 @@ def _fit_normalizing_flow(
             return torch.mean(log_prob_u - sum_log_det_u - log_prob_x, dim=0)
 
         def run_iteration() -> Tensor:
-            # Closure for LBFGS
+
             def loss_func_closure() -> float:
                 optimizer.zero_grad(set_to_none=True)
                 kld = reverse_kld_func(samples_base, log_probs_base)
                 kld.backward(retain_graph=True)
                 return kld.item()
 
-            # optimizer.zero_grad()
             samples_base, log_probs_base = base_distribution(num_samples)
             optimizer.step(loss_func_closure)
             kld = reverse_kld_func(samples_base, log_probs_base)
-            # kld.backward(retain_graph=True)
-            # optimizer.step()
-            # lr_scheduler.step()
+            lr_scheduler.step()
             return kld.detach().cpu()
 
         print("############################################################")
