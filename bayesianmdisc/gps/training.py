@@ -43,9 +43,15 @@ def optimize_gp_hyperparameters(
     gaussian_process.train()
     gaussian_process.likelihood.train()
 
-    optimizer = torch.optim.Adam(
+    optimizer = torch.optim.LBFGS(
         params=gaussian_process.parameters(),
         lr=learning_rate,
+        max_iter=20,
+        max_eval=None,
+        tolerance_grad=1e-7,
+        tolerance_change=1e-9,
+        history_size=100,
+        line_search_fn="strong_wolfe",
     )
 
     gp_outputs = _get_reshaped_gp_outputs(gaussian_process)

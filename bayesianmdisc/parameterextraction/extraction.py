@@ -59,10 +59,25 @@ def extract_gp_inducing_parameter_distribution(
     num_flattened_outputs = len(inputs) * output_dim
 
     penalty_coefficient_lipschitz = torch.tensor(10.0, device=device)
-    learning_rate_lipschitz_func = 1e-4
+    initial_learning_rate_lipschitz_func = 1e-4
+    final_learning_rate_lipschitz_func = 1e-4
+    lr_decay_rate_lipschitz_func = (
+        final_learning_rate_lipschitz_func / initial_learning_rate_lipschitz_func
+    ) ** (1 / num_iters_wasserstein)
 
-    lr_decay_rate_distribution = 0.9999
-    lr_decay_rate_lipschitz_func = 1.0
+    initial_learning_rate_distribution_rmsprop = 5e-4
+    final_learning_rate_distribution_rmsprop = 5e-4
+    lr_decay_rate_distribution_rmsprop = (
+        final_learning_rate_distribution_rmsprop
+        / initial_learning_rate_distribution_rmsprop
+    ) ** (1 / num_iters_wasserstein)
+
+    initial_learning_rate_distribution_lbfgs = 1e-1
+    final_learning_rate_distribution_lbfgs = 1e-1
+    lr_decay_rate_distribution_lbfgs = (
+        final_learning_rate_distribution_lbfgs
+        / initial_learning_rate_distribution_lbfgs
+    ) ** (1 / num_iters_wasserstein)
 
     def create_lipschitz_network(layer_sizes: list[int], device: Device) -> Module:
         return FFNN(
@@ -81,13 +96,30 @@ def extract_gp_inducing_parameter_distribution(
         for parameters in likelihood.parameters():
             parameters.requires_grad = False
 
-    def create_distribution_optimizer() -> TorchOptimizer:
-        return torch.optim.RMSprop(distribution.get_parameters_and_options())
+    def create_distribution_optimizer(
+        optimizer_type: str = "RMSprop",
+    ) -> TorchOptimizer:
+        if optimizer_type == "LBFGS":
+            return torch.optim.LBFGS(
+                params=distribution.parameters(),
+                lr=initial_learning_rate_distribution_lbfgs,
+                max_iter=50,
+                max_eval=None,
+                tolerance_grad=1e-12,
+                tolerance_change=1e-12,
+                history_size=100,
+                line_search_fn="strong_wolfe",
+            )
+        else:
+            return torch.optim.RMSprop(
+                params=distribution.parameters(),
+                lr=initial_learning_rate_distribution_rmsprop,
+            )
 
     def create_lipschitz_func_optimizer() -> TorchOptimizer:
         return torch.optim.AdamW(
             params=lipschitz_func.parameters(),
-            lr=learning_rate_lipschitz_func,
+            lr=initial_learning_rate_lipschitz_func,
             betas=(0.0, 0.9),
         )
 
@@ -194,10 +226,6 @@ def extract_gp_inducing_parameter_distribution(
         device=device,
     )
 
-    # gp_likelihood = gp.likelihood
-    # gp_distribution: GPMultivariateNormal = gp_likelihood(
-    #     gp.forward_for_optimization(inputs)
-    # )
     gp_distribution: GPMultivariateNormal = gp(inputs)
 
     if not resample:
@@ -212,7 +240,7 @@ def extract_gp_inducing_parameter_distribution(
     optimizer_distribution = create_distribution_optimizer()
     optimizer_lipschitz_func = create_lipschitz_func_optimizer()
     lr_scheduler_distribution = create_learning_rate_scheduler(
-        optimizer_distribution, lr_decay_rate_distribution
+        optimizer_distribution, lr_decay_rate_distribution_rmsprop
     )
     lr_scheduler_lipschitz_func = create_learning_rate_scheduler(
         optimizer_lipschitz_func, lr_decay_rate_lipschitz_func
@@ -224,32 +252,41 @@ def extract_gp_inducing_parameter_distribution(
             gp_func_values = draw_gp_func_values()
             model_func_values = draw_model_func_values()
 
-            optimizer_lipschitz_func.zero_grad(set_to_none=True)
-            loss_lipschitz = lipschitz_func_loss(
-                gp_func_values=gp_func_values,
-                model_func_values=model_func_values,
-                penalty_coefficient=penalty_coefficient_lipschitz,
-            )
-            loss_lipschitz.backward(retain_graph=True)
-            optimizer_lipschitz_func.step()
+            def lipschitz_loss_closure() -> float:
+                optimizer_lipschitz_func.zero_grad(set_to_none=True)
+                loss_lipschitz = lipschitz_func_loss(
+                    gp_func_values,
+                    model_func_values,
+                    penalty_coefficient_lipschitz,
+                )
+                loss_lipschitz.backward(retain_graph=True)
+                return loss_lipschitz.item()
+
+            loss_lipschitz = optimizer_lipschitz_func.step(lipschitz_loss_closure)
 
         gp_func_values = draw_gp_func_values()
         model_func_values = draw_model_func_values()
-        optimizer_distribution.zero_grad(set_to_none=True)
-        loss_wasserstein = wasserstein_loss(
-            gp_func_values=gp_func_values, model_func_values=model_func_values
-        )
-        loss_wasserstein.backward(retain_graph=True)
-        optimizer_distribution.step()
+
+        if iter_wasserstein == 5000:
+            optimizer_distribution = create_distribution_optimizer("LBFGS")
+            lr_scheduler_distribution = create_learning_rate_scheduler(
+                optimizer_distribution, lr_decay_rate_distribution_lbfgs
+            )
+
+        def wasserstein_loss_closure() -> float:
+            optimizer_distribution.zero_grad(set_to_none=True)
+            loss_wasserstein = wasserstein_loss(gp_func_values, model_func_values)
+            loss_wasserstein.backward(retain_graph=True)
+            return loss_wasserstein.item()
+
+        loss_wasserstein = optimizer_distribution.step(wasserstein_loss_closure)
         lr_scheduler_distribution.step()
         lr_scheduler_lipschitz_func.step()
-        loss_wasserstein_float = loss_wasserstein.detach().cpu().item()
-        loss_lipschitz_float = loss_lipschitz.detach().cpu().item()
-        wasserstein_loss_hist += [loss_wasserstein_float]
+        wasserstein_loss_hist += [loss_wasserstein]
         print_progress(
             iter_wasserstein=iter_wasserstein,
-            loss_wasserstein=loss_wasserstein_float,
-            loss_lipschitz_func=loss_lipschitz_float,
+            loss_wasserstein=loss_wasserstein,
+            loss_lipschitz_func=loss_lipschitz,
         )
 
     history_plotter_config = HistoryPlotterConfig()

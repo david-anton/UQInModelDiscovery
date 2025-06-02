@@ -63,7 +63,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_linka
+data_set_label = data_set_label_treloar  # data_set_label_linka
 retrain_models = True
 
 # Settings
@@ -83,7 +83,7 @@ if data_set_label == data_set_label_treloar:
     model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 5e-2
-    list_num_wasserstein_iterations = [50_000, 50_000]
+    list_num_wasserstein_iterations = [10_000, 10_000]  # [50_000, 50_000]
     first_sobol_index_thresshold = 1e-6  # 1e-5
 elif data_set_label == data_set_label_kawabata:
     input_directory = data_set_label
@@ -106,7 +106,8 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1e-4_samples32_layer2_width1024_numinputs8_noised_inversegamma"
+# output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1e-4_samples32_layer2_width1024_numinputs8_noised_inversegamma"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1e-4_samples32_layer2_width512_numinputs32_lbfgs"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -417,11 +418,11 @@ if retrain_models:
 
         def select_gp_prior() -> None:
             if data_set_label == data_set_label_treloar:
-                num_iterations = int(2e4)  # int(5e4)
-                learning_rate = 5e-3  # 1e-5
+                num_iterations = int(200)
+                learning_rate = 1e-3
             elif data_set_label == data_set_label_linka:
-                num_iterations = int(2e4)
-                learning_rate = 5e-3
+                num_iterations = int(500)
+                learning_rate = 1e-3
 
             optimize_gp_hyperparameters(
                 gaussian_process=gaussian_process,
@@ -471,7 +472,7 @@ if retrain_models:
             distribution = extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
                 model=model,
-                distribution_type="inverse Gamma",  # "normalizing flow",
+                distribution_type="normalizing flow",
                 is_mean_trainable=True,
                 inputs=inputs_extraction,
                 test_cases=test_cases_extraction,

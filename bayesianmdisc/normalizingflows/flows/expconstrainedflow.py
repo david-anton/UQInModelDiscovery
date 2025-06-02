@@ -13,7 +13,7 @@ class ExpConstrainedFlow(torch.nn.Module):
         self._indices_unconstr = self._find_indices_of_unconstrained_outputs()
         self._permutation, self._inv_permutation = self._set_up_permutations()
         self._device = device
-        self._clamp_u_and_x = True  # False
+        self._clamp_u_and_x = False
         self._min_u = torch.tensor(-100, device=device)
         self._min_x = torch.exp(self._min_u).to(self._device)
 
