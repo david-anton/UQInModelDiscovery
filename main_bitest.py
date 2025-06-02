@@ -378,10 +378,10 @@ def perform_baysian_inference_on_kawabata_data(
             prior=prior,
             num_flows=num_flows,
             relative_width_flow_layers=relative_width_flow_layers,
-            num_samples=32,
+            num_samples=64,
             initial_learning_rate=1e-5,
             final_learning_rate=1e-5,
-            num_iterations=5000,
+            num_iterations=2000,
             output_subdirectory=output_directory,
             project_directory=project_directory,
         )

@@ -65,18 +65,10 @@ def extract_gp_inducing_parameter_distribution(
         final_learning_rate_lipschitz_func / initial_learning_rate_lipschitz_func
     ) ** (1 / num_iters_wasserstein)
 
-    initial_learning_rate_distribution_rmsprop = 5e-4
-    final_learning_rate_distribution_rmsprop = 5e-4
-    lr_decay_rate_distribution_rmsprop = (
-        final_learning_rate_distribution_rmsprop
-        / initial_learning_rate_distribution_rmsprop
-    ) ** (1 / num_iters_wasserstein)
-
-    initial_learning_rate_distribution_lbfgs = 1e-1
-    final_learning_rate_distribution_lbfgs = 1e-1
-    lr_decay_rate_distribution_lbfgs = (
-        final_learning_rate_distribution_lbfgs
-        / initial_learning_rate_distribution_lbfgs
+    initial_learning_rate_distribution = 5e-4
+    final_learning_rate_distribution = 1e-6
+    lr_decay_rate_distribution = (
+        final_learning_rate_distribution / initial_learning_rate_distribution
     ) ** (1 / num_iters_wasserstein)
 
     def create_lipschitz_network(layer_sizes: list[int], device: Device) -> Module:
@@ -96,25 +88,11 @@ def extract_gp_inducing_parameter_distribution(
         for parameters in likelihood.parameters():
             parameters.requires_grad = False
 
-    def create_distribution_optimizer(
-        optimizer_type: str = "RMSprop",
-    ) -> TorchOptimizer:
-        if optimizer_type == "LBFGS":
-            return torch.optim.LBFGS(
-                params=distribution.parameters(),
-                lr=initial_learning_rate_distribution_lbfgs,
-                max_iter=50,
-                max_eval=None,
-                tolerance_grad=1e-12,
-                tolerance_change=1e-12,
-                history_size=100,
-                line_search_fn="strong_wolfe",
-            )
-        else:
-            return torch.optim.RMSprop(
-                params=distribution.parameters(),
-                lr=initial_learning_rate_distribution_rmsprop,
-            )
+    def create_distribution_optimizer() -> TorchOptimizer:
+        return torch.optim.RMSprop(
+            params=distribution.parameters(),
+            lr=initial_learning_rate_distribution,
+        )
 
     def create_lipschitz_func_optimizer() -> TorchOptimizer:
         return torch.optim.AdamW(
@@ -240,7 +218,7 @@ def extract_gp_inducing_parameter_distribution(
     optimizer_distribution = create_distribution_optimizer()
     optimizer_lipschitz_func = create_lipschitz_func_optimizer()
     lr_scheduler_distribution = create_learning_rate_scheduler(
-        optimizer_distribution, lr_decay_rate_distribution_rmsprop
+        optimizer_distribution, lr_decay_rate_distribution
     )
     lr_scheduler_lipschitz_func = create_learning_rate_scheduler(
         optimizer_lipschitz_func, lr_decay_rate_lipschitz_func
@@ -266,12 +244,6 @@ def extract_gp_inducing_parameter_distribution(
 
         gp_func_values = draw_gp_func_values()
         model_func_values = draw_model_func_values()
-
-        if iter_wasserstein == 5000:
-            optimizer_distribution = create_distribution_optimizer("LBFGS")
-            lr_scheduler_distribution = create_learning_rate_scheduler(
-                optimizer_distribution, lr_decay_rate_distribution_lbfgs
-            )
 
         def wasserstein_loss_closure() -> float:
             optimizer_distribution.zero_grad(set_to_none=True)
