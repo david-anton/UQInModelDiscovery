@@ -63,7 +63,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -106,7 +106,10 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_lipschitz_lambda100_relwidth2_invariants14"
+# output_directory = f"{current_date}_{input_directory}_normalizingflow_lipschitz_lambda100_relwidth2_invariants14"
+output_directory = (
+    f"{current_date}_{input_directory}_normalizingflow_lipschitz_lambda10_relwidth4"
+)
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -455,7 +458,7 @@ if retrain_models:
 
             if data_set_label == data_set_label_treloar:
                 num_points_per_test_case = 32
-                lipschitz_penalty_coefficient = 100.0
+                lipschitz_penalty_coefficient = 10.0
                 hiden_layer_size_lipschitz_nn = 512
                 data_set_treloar = cast(TreloarDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
