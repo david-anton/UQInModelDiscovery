@@ -106,7 +106,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_lipschitz_lambda100_layers8_nf_relwidth4"
+output_directory = f"{current_date}_{input_directory}_normalizingflow_lipschitz_lambda100_layers8_nf_relwidth4_invariants14"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
