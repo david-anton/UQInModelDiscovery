@@ -478,7 +478,7 @@ class NormalizingFlowParameterDistribution(nn.Module):
         self._device = device
         self._is_base_trainable = False
         self._num_layers = 16
-        self._relative_width_layers = 4  # 8
+        self._relative_width_layers = 8  # 4
         self._learning_rate = 5e-4
         self._normalizing_flow = self._init_normalizing_flow()
 

@@ -107,7 +107,7 @@ num_samples_factor_sensitivity_analysis = 4096
 
 
 output_directory = (
-    f"{current_date}_{input_directory}_normalizingflow_lipschitz_lambda100_relwidth_4"
+    f"{current_date}_{input_directory}_normalizingflow_lipschitz_lambda100_relwidth_8"
 )
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
