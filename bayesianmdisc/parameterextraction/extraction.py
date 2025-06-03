@@ -68,8 +68,8 @@ def extract_gp_inducing_parameter_distribution(
         final_learning_rate_lipschitz_func / initial_learning_rate_lipschitz_func
     ) ** (1 / num_iters_wasserstein)
 
-    initial_learning_rate_distribution = 5e-4
-    final_learning_rate_distribution = 1e-6
+    initial_learning_rate_distribution = 1e-3
+    final_learning_rate_distribution = 1e-5
     lr_decay_rate_distribution = (
         final_learning_rate_distribution / initial_learning_rate_distribution
     ) ** (1 / num_iters_wasserstein)
