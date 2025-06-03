@@ -77,7 +77,7 @@ def extract_gp_inducing_parameter_distribution(
     def create_lipschitz_network(layer_sizes: list[int], device: Device) -> Module:
         return FFNN(
             layer_sizes=layer_sizes,
-            activation=nn.ReLU(),
+            activation=nn.LeakyReLU(),
             init_weights=nn.init.xavier_uniform_,
             init_bias=nn.init.zeros_,
             use_layer_norm=False,
