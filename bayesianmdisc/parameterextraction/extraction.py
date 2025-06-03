@@ -62,13 +62,13 @@ def extract_gp_inducing_parameter_distribution(
     penalty_coefficient_lipschitz = torch.tensor(
         lipschitz_penalty_coefficient, device=device
     )
-    initial_learning_rate_lipschitz_func = 1e-4
-    final_learning_rate_lipschitz_func = 1e-4
+    initial_learning_rate_lipschitz_func = 5e-4  # 1e-4
+    final_learning_rate_lipschitz_func = 5e-4  # 1e-4
     lr_decay_rate_lipschitz_func = (
         final_learning_rate_lipschitz_func / initial_learning_rate_lipschitz_func
     ) ** (1 / num_iters_wasserstein)
 
-    initial_learning_rate_distribution = 1e-3
+    initial_learning_rate_distribution = 5e-4
     final_learning_rate_distribution = 1e-5
     lr_decay_rate_distribution = (
         final_learning_rate_distribution / initial_learning_rate_distribution
@@ -77,7 +77,7 @@ def extract_gp_inducing_parameter_distribution(
     def create_lipschitz_network(layer_sizes: list[int], device: Device) -> Module:
         return FFNN(
             layer_sizes=layer_sizes,
-            activation=nn.Softplus(),
+            activation=nn.ReLU(),
             init_weights=nn.init.xavier_uniform_,
             init_bias=nn.init.zeros_,
             use_layer_norm=False,
@@ -98,10 +98,14 @@ def extract_gp_inducing_parameter_distribution(
         )
 
     def create_lipschitz_func_optimizer() -> TorchOptimizer:
-        return torch.optim.AdamW(
+        # return torch.optim.AdamW(
+        #     params=lipschitz_func.parameters(),
+        #     lr=initial_learning_rate_lipschitz_func,
+        #     betas=(0.0, 0.9),
+        # )
+        return torch.optim.RMSprop(
             params=lipschitz_func.parameters(),
             lr=initial_learning_rate_lipschitz_func,
-            betas=(0.0, 0.9),
         )
 
     def create_learning_rate_scheduler(
@@ -200,6 +204,12 @@ def extract_gp_inducing_parameter_distribution(
     lipschitz_func = create_lipschitz_network(
         layer_sizes=[
             num_flattened_outputs,
+            hiden_layer_size_lipschitz_nn,
+            hiden_layer_size_lipschitz_nn,
+            hiden_layer_size_lipschitz_nn,
+            hiden_layer_size_lipschitz_nn,
+            hiden_layer_size_lipschitz_nn,
+            hiden_layer_size_lipschitz_nn,
             hiden_layer_size_lipschitz_nn,
             hiden_layer_size_lipschitz_nn,
             1,

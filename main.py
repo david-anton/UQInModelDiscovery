@@ -63,7 +63,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_treloar
+data_set_label = data_set_label_linka
 retrain_models = True
 
 # Settings
@@ -99,17 +99,14 @@ elif data_set_label == data_set_label_linka:
     model = OrthotropicCANN(device)
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 5e-2
-    list_num_wasserstein_iterations = [2_000, 1_000]
-    first_sobol_index_thresshold = 1e-4
+    list_num_wasserstein_iterations = [20_000, 10_000]
+    first_sobol_index_thresshold = 1e-2
 
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-# output_directory = f"{current_date}_{input_directory}_normalizingflow_lipschitz_lambda100_relwidth2_invariants14"
-output_directory = (
-    f"{current_date}_{input_directory}_normalizingflow_lipschitz_lambda10_relwidth2"
-)
+output_directory = f"{current_date}_{input_directory}_normalizingflow_lipschitz_lambda100_layers8_nf_relwidth4"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -355,8 +352,33 @@ inputs, test_cases, outputs = data_set.read_data()
 noise_stddevs = determine_heteroscedastic_noise(
     relative_noise_stddevs, min_absolute_noise_stddev, outputs
 )
-if data_set_label == data_set_label_linka:
-    outputs = add_noise_to_data(noise_stddevs, outputs, device)
+# if data_set_label == data_set_label_linka:
+#     outputs = add_noise_to_data(noise_stddevs, outputs, device)
+
+# if data_set_label == data_set_label_linka:
+#     active_parameter_names = [
+#         "W_2_5 (l2, I_2, p1, I)",
+#         "W_1_6 (l1, I_2, p1, exp)",
+#         "W_2_6 (l2, I_2, p1, exp)",
+#         "W_2_7 (l2, I_2, p2, I)",
+#         "W_1_12 (l1, I_4f, p2, exp)",
+#         "W_2_12 (l2, I_4f, p2, exp)",
+#         "W_1_16 (l1, I_4s, p2, exp)",
+#         "W_2_16 (l2, I_4s, p2, exp)",
+#         "W_1_20 (l1, I_4n, p2, exp)",
+#         "W_2_20 (l2, I_4n, p2, exp)",
+#         "W_2_21 (l2, I_8fs, p1, I)",
+#         "W_2_29 (l2, I_8sn, p1, I)",
+#     ]
+
+#     active_parameter_indices = []
+#     for parameter_name in active_parameter_names:
+#         active_parameter_indices += [model.parameter_names.index(parameter_name)]
+
+#     model.deactivate_parameters(list(range(model.num_parameters)))
+#     model.activate_parameters(active_parameter_indices)
+#     model.reduce_to_activated_parameters()
+
 
 validate_data(inputs, test_cases, outputs, noise_stddevs)
 num_discovery_steps = len(list_num_wasserstein_iterations)
@@ -420,10 +442,10 @@ if retrain_models:
 
         def select_gp_prior() -> None:
             if data_set_label == data_set_label_treloar:
-                num_iterations = int(200)
+                num_iterations = int(100)
                 learning_rate = 1e-3
             elif data_set_label == data_set_label_linka:
-                num_iterations = int(200)
+                num_iterations = int(100)
                 learning_rate = 1e-3
 
             optimize_gp_hyperparameters(
@@ -466,8 +488,8 @@ if retrain_models:
                 )
 
             elif data_set_label == data_set_label_linka:
-                num_points_per_test_case = 8
-                hiden_layer_size_lipschitz_nn = 1024
+                num_points_per_test_case = 8  # 16
+                hiden_layer_size_lipschitz_nn = 256  # 1024
                 lipschitz_penalty_coefficient = 100.0
                 data_set_linka = cast(LinkaHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
