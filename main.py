@@ -63,7 +63,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_treloar  # data_set_label_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -83,31 +83,32 @@ if data_set_label == data_set_label_treloar:
     model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 5e-2
-    list_num_wasserstein_iterations = [10_000, 10_000]  # [50_000, 50_000]
-    first_sobol_index_thresshold = 1e-6  # 1e-5
+    list_num_wasserstein_iterations = [20_000, 10_000]
+    first_sobol_index_thresshold = 1e-6
 elif data_set_label == data_set_label_kawabata:
     input_directory = data_set_label
     data_set = KawabataDataSet(input_directory, project_directory, device)
     model = IsotropicModelLibrary(output_dim=2, device=device)
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 5e-2
-    list_num_wasserstein_iterations = [50_000, 50_000]
+    list_num_wasserstein_iterations = [20_000, 20_000]
     first_sobol_index_thresshold = 1e-5
 elif data_set_label == data_set_label_linka:
     input_directory = "heart_data_linka"
     data_set = LinkaHeartDataSet(input_directory, project_directory, device)
     model = OrthotropicCANN(device)
     relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [50_000, 20_000]
+    min_absolute_noise_stddev = 5e-2
+    list_num_wasserstein_iterations = [1_000, 1_000]
     first_sobol_index_thresshold = 1e-4
 
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-# output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1e-4_samples32_layer2_width1024_numinputs8_noised_inversegamma"
-output_directory = f"{current_date}_{input_directory}_normalizingflow_relnoise5e-2_minabsnoise5e-2_lipschitz_iters10_lambda10_lr1e-4_samples32_layer2_width512_numinputs32_lbfgs"
+output_directory = (
+    f"{current_date}_{input_directory}_normalizingflow_lipschitz_lambda100_relwidth_4"
+)
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -421,7 +422,7 @@ if retrain_models:
                 num_iterations = int(200)
                 learning_rate = 1e-3
             elif data_set_label == data_set_label_linka:
-                num_iterations = int(500)
+                num_iterations = int(200)
                 learning_rate = 1e-3
 
             optimize_gp_hyperparameters(
@@ -451,24 +452,27 @@ if retrain_models:
             )
 
         def extract_parameter_distribution() -> DistributionProtocol:
+            num_func_samples = 32
+            num_iters_lipschitz = 10
+
             if data_set_label == data_set_label_treloar:
+                num_points_per_test_case = 32
+                lipschitz_penalty_coefficient = 100.0
+                hiden_layer_size_lipschitz_nn = 512
                 data_set_treloar = cast(TreloarDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
-                    data_set_treloar.generate_uniform_inputs(
-                        num_points_per_test_case=32
-                    )
+                    data_set_treloar.generate_uniform_inputs(num_points_per_test_case)
                 )
-                num_func_samples = 32
-                hiden_layer_size_lipschitz_nn = 512
-                num_iters_lipschitz = 10
+
             elif data_set_label == data_set_label_linka:
+                num_points_per_test_case = 8
+                hiden_layer_size_lipschitz_nn = 1024
+                lipschitz_penalty_coefficient = 100.0
                 data_set_linka = cast(LinkaHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
-                    data_set_linka.generate_uniform_inputs(num_points_per_test_case=8)
+                    data_set_linka.generate_uniform_inputs(num_points_per_test_case)
                 )
-                num_func_samples = 32
-                hiden_layer_size_lipschitz_nn = 1024
-                num_iters_lipschitz = 10
+
             distribution = extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
                 model=model,
@@ -477,6 +481,7 @@ if retrain_models:
                 inputs=inputs_extraction,
                 test_cases=test_cases_extraction,
                 num_func_samples=num_func_samples,
+                lipschitz_penalty_coefficient=lipschitz_penalty_coefficient,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
                 hiden_layer_size_lipschitz_nn=hiden_layer_size_lipschitz_nn,

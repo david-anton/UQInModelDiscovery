@@ -556,6 +556,7 @@ if retrain_models:
                 inputs=inputs_extraction,
                 test_cases=test_cases_extraction,
                 num_func_samples=num_func_samples,
+                lipschitz_penalty_coefficient=10.0,
                 resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
                 hiden_layer_size_lipschitz_nn=hiden_layer_size_lipschitz_nn,

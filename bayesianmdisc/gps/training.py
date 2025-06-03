@@ -48,8 +48,8 @@ def optimize_gp_hyperparameters(
         lr=learning_rate,
         max_iter=20,
         max_eval=None,
-        tolerance_grad=1e-7,
-        tolerance_change=1e-9,
+        tolerance_grad=1e-12,
+        tolerance_change=1e-12,
         history_size=100,
         line_search_fn="strong_wolfe",
     )
