@@ -5,7 +5,7 @@ import torch
 from torch import vmap
 from torch.func import grad
 
-from bayesianmdisc.customtypes import Device, Tensor
+from bayesianmdisc.customtypes import Device, Tensor, TensorSize
 from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
 from bayesianmdisc.data.testcases import (
     test_case_identifier_biaxial_tension,
@@ -16,6 +16,7 @@ from bayesianmdisc.data.testcases import (
     test_case_identifier_simple_shear_31,
     test_case_identifier_simple_shear_32,
 )
+from bayesianmdisc.errors import OutputSelectorError
 from bayesianmdisc.models.base import (
     AllowedTestCases,
     CauchyStresses,
@@ -26,13 +27,13 @@ from bayesianmdisc.models.base import (
     Invariants,
     LSDesignMatrix,
     LSTargets,
+    OutputSelectionIndices,
     ParameterIndices,
     ParameterNames,
     ParameterPopulationMatrix,
     Parameters,
     SplittedParameters,
     StrainEnergy,
-    calculate_pressure_from_incompressibility_constraint,
     count_active_parameters,
     determine_initial_parameter_mask,
     filter_active_parameter_indices,
@@ -48,6 +49,10 @@ from bayesianmdisc.models.base import (
     validate_parameters,
     validate_test_cases,
 )
+from bayesianmdisc.models.base_mechanics import (
+    calculate_pressure_from_incompressibility_constraint,
+)
+from bayesianmdisc.models.base_outputselection import validate_full_output_size
 
 ParameterCouplingTuples: TypeAlias = list[tuple[str, str]]
 
@@ -501,6 +506,57 @@ class OrthotropicCANN:
     def _deactivate_all_parameters(self) -> None:
         parameter_indices = list(range(self.num_parameters))
         self.deactivate_parameters(parameter_indices)
+
+
+class OutputSelectorLinka:
+
+    def __init__(self, test_cases: TestCases, model: OrthotropicCANN) -> None:
+        self._test_cases = test_cases
+        self._num_outputs = len(self._test_cases)
+        self._single_full_output_dim = model.output_dim
+        self._expected_full_output_size = self._determine_full_output_size()
+        self._selection_indices = self._determine_output_selction_indices()
+
+    def __call__(self, full_outputs: StressOutputs) -> StressOutputs:
+        validate_full_output_size(full_outputs, self._expected_full_output_size)
+        return full_outputs[self._selection_indices]
+
+    def _determine_full_output_size(self) -> TensorSize:
+        full_output_dim = int(self._num_outputs * self._single_full_output_dim)
+        return torch.Size((full_output_dim,))
+
+    def _determine_output_selction_indices(self) -> OutputSelectionIndices:
+        selection_indices: OutputSelectionIndices = []
+
+        for test_case_index, test_case in enumerate(self._test_cases):
+            start_index = test_case_index * self._single_full_output_dim
+            if test_case == test_case_identifier_simple_shear_12:
+                selection_indices += [start_index + 1]
+                selection_indices += [start_index + 3]
+            elif test_case == test_case_identifier_simple_shear_21:
+                selection_indices += [start_index + 1]
+                selection_indices += [start_index + 3]
+            elif test_case == test_case_identifier_simple_shear_13:
+                selection_indices += [start_index + 2]
+                selection_indices += [start_index + 5]
+            elif test_case == test_case_identifier_simple_shear_31:
+                selection_indices += [start_index + 2]
+                selection_indices += [start_index + 5]
+            elif test_case == test_case_identifier_simple_shear_23:
+                selection_indices += [start_index + 4]
+                selection_indices += [start_index + 6]
+            elif test_case == test_case_identifier_simple_shear_32:
+                selection_indices += [start_index + 4]
+                selection_indices += [start_index + 6]
+            elif test_case == test_case_identifier_biaxial_tension:
+                selection_indices += [start_index + 0]
+                selection_indices += [start_index + 7]
+            else:
+                raise OutputSelectorError(
+                    f"""There ist no implementation for the requested test case: {test_case}"""
+                )
+
+        return selection_indices
 
 
 # class OrthotropicCANN:

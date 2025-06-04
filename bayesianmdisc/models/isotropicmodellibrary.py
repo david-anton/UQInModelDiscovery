@@ -5,7 +5,7 @@ import torch
 from torch import vmap
 from torch.func import grad
 
-from bayesianmdisc.customtypes import Device, NPArray, Tensor
+from bayesianmdisc.customtypes import Device, Tensor, TensorSize
 from bayesianmdisc.data import (
     AllowedTestCases,
     DeformationInputs,
@@ -23,6 +23,7 @@ from bayesianmdisc.models.base import (
     Invariants,
     LSDesignMatrix,
     LSTargets,
+    OutputSelectionIndices,
     ParameterIndices,
     ParameterNames,
     ParameterPopulationMatrix,
@@ -33,9 +34,6 @@ from bayesianmdisc.models.base import (
     StrainEnergy,
     Stretch,
     Stretches,
-    assemble_stretches_from_factors,
-    assemble_stretches_from_incompressibility_assumption,
-    calculate_pressure_from_incompressibility_constraint,
     count_active_parameters,
     determine_initial_parameter_mask,
     filter_active_parameter_indices,
@@ -52,6 +50,12 @@ from bayesianmdisc.models.base import (
     validate_stress_output_dimension,
     validate_test_cases,
 )
+from bayesianmdisc.models.base_mechanics import (
+    assemble_stretches_from_factors,
+    assemble_stretches_from_incompressibility_assumption,
+    calculate_pressure_from_incompressibility_constraint,
+)
+from bayesianmdisc.models.base_outputselection import validate_full_output_size
 from bayesianmdisc.models.utility import unsqueeze_if_necessary
 
 StretchesTuple: TypeAlias = tuple[Stretch, Stretch, Stretch]
@@ -521,3 +525,25 @@ class IsotropicModelLibrary:
     def _deactivate_all_parameters(self) -> None:
         parameter_indices = list(range(self.num_parameters))
         self.deactivate_parameters(parameter_indices)
+
+
+class OutputSelectorTreloar:
+
+    def __init__(self, test_cases: TestCases, model: IsotropicModelLibrary) -> None:
+        self._test_cases = test_cases
+        self._num_outputs = len(self._test_cases)
+        self._single_full_output_dim = model.output_dim
+        self._expected_full_output_size = self._determine_full_output_size()
+        self._selection_indices = self._determine_output_selction_indices()
+
+    def __call__(self, full_outputs: StressOutputs) -> StressOutputs:
+        validate_full_output_size(full_outputs, self._expected_full_output_size)
+        return full_outputs[self._selection_indices]
+
+    def _determine_full_output_size(self) -> TensorSize:
+        full_output_dim = int(self._num_outputs * self._single_full_output_dim)
+        return torch.Size((full_output_dim,))
+
+    def _determine_output_selction_indices(self) -> OutputSelectionIndices:
+        num_full_outputs = int(self._num_outputs * self._single_full_output_dim)
+        return list(range(num_full_outputs))
