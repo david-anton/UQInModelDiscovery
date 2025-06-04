@@ -56,7 +56,7 @@ class OrthotropicCANN:
 
     def __init__(self, device: Device):
         self._device = device
-        self._num_invariants = 14
+        self._num_invariants = 8
         self._num_invariant_power_terms = 2
         self._num_activation_functions = 2
         self._test_case_identifier_bt = test_case_identifier_biaxial_tension
@@ -284,15 +284,9 @@ class OrthotropicCANN:
             "I_4f",
             "I_4s",
             "I_4n",
-            "I_5f",
-            "I_5s",
-            "I_5n",
             "I_8fs",
             "I_8fn",
             "I_8sn",
-            "I_9fs",
-            "I_9fn",
-            "I_9sn",
         ]
         power_names = ["p1", "p2"]
         activation_function_names = ["I", "exp"]
@@ -437,16 +431,11 @@ class OrthotropicCANN:
     ) -> Invariants:
         # Deformation tensors
         F = deformation_gradient
-        C = torch.matmul(F.transpose(0, 1), F)  # right Cauchy-Green deformation tensor
         b = torch.matmul(F, F.transpose(0, 1))  # left Cauchy-Green deformation tensor
-        C_squared = torch.matmul(C, C)
         # Direction tensors
-        f_0 = self._fiber_direction_reference
-        s_0 = self._sheet_direction_reference
-        n_0 = self._normal_direction_reference
-        f = torch.matmul(F, f_0)
-        s = torch.matmul(F, s_0)
-        n = torch.matmul(F, n_0)
+        f = torch.matmul(F, self._fiber_direction_reference)
+        s = torch.matmul(F, self._sheet_direction_reference)
+        n = torch.matmul(F, self._normal_direction_reference)
         # Constants
         half = torch.tensor(0.5, device=self._device)
         one = torch.tensor(1.0, device=self._device)
@@ -466,13 +455,6 @@ class OrthotropicCANN:
         I_4s_cor = I_4s - one
         I_4n_cor = I_4n - one
 
-        I_5f = torch.maximum(torch.inner(f_0, torch.matmul(C_squared, f_0)), one)
-        I_5s = torch.maximum(torch.inner(s_0, torch.matmul(C_squared, s_0)), one)
-        I_5n = torch.maximum(torch.inner(n_0, torch.matmul(C_squared, n_0)), one)
-        I_5f_cor = I_5f - one
-        I_5s_cor = I_5s - one
-        I_5n_cor = I_5n - one
-
         # Coupling invariants
         I_8fs = torch.inner(f, s)
         I_8fn = torch.inner(f, n)
@@ -480,29 +462,15 @@ class OrthotropicCANN:
         I_8fs_cor = I_8fs
         I_8fn_cor = I_8fn
         I_8sn_cor = I_8sn
-
-        I_9fs = torch.inner(f_0, torch.matmul(C_squared, s_0))
-        I_9fn = torch.inner(f_0, torch.matmul(C_squared, n_0))
-        I_9sn = torch.inner(s_0, torch.matmul(C_squared, n_0))
-        I_9fs_cor = I_9fs
-        I_9fn_cor = I_9fn
-        I_9sn_cor = I_9sn
-
         return (
             I_1_cor,
             I_2_cor,
             I_4f_cor,
             I_4s_cor,
             I_4n_cor,
-            I_5f_cor,
-            I_5s_cor,
-            I_5n_cor,
             I_8fs_cor,
             I_8fn_cor,
             I_8sn_cor,
-            I_9fs_cor,
-            I_9fn_cor,
-            I_9sn_cor,
         )
 
     def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
@@ -539,7 +507,7 @@ class OrthotropicCANN:
 
 #     def __init__(self, device: Device):
 #         self._device = device
-#         self._num_invariants = 8
+#         self._num_invariants = 14
 #         self._num_invariant_power_terms = 2
 #         self._num_activation_functions = 2
 #         self._test_case_identifier_bt = test_case_identifier_biaxial_tension
@@ -767,9 +735,15 @@ class OrthotropicCANN:
 #             "I_4f",
 #             "I_4s",
 #             "I_4n",
+#             "I_5f",
+#             "I_5s",
+#             "I_5n",
 #             "I_8fs",
 #             "I_8fn",
 #             "I_8sn",
+#             "I_9fs",
+#             "I_9fn",
+#             "I_9sn",
 #         ]
 #         power_names = ["p1", "p2"]
 #         activation_function_names = ["I", "exp"]
@@ -914,11 +888,16 @@ class OrthotropicCANN:
 #     ) -> Invariants:
 #         # Deformation tensors
 #         F = deformation_gradient
+#         C = torch.matmul(F.transpose(0, 1), F)  # right Cauchy-Green deformation tensor
 #         b = torch.matmul(F, F.transpose(0, 1))  # left Cauchy-Green deformation tensor
+#         C_squared = torch.matmul(C, C)
 #         # Direction tensors
-#         f = torch.matmul(F, self._fiber_direction_reference)
-#         s = torch.matmul(F, self._sheet_direction_reference)
-#         n = torch.matmul(F, self._normal_direction_reference)
+#         f_0 = self._fiber_direction_reference
+#         s_0 = self._sheet_direction_reference
+#         n_0 = self._normal_direction_reference
+#         f = torch.matmul(F, f_0)
+#         s = torch.matmul(F, s_0)
+#         n = torch.matmul(F, n_0)
 #         # Constants
 #         half = torch.tensor(0.5, device=self._device)
 #         one = torch.tensor(1.0, device=self._device)
@@ -938,6 +917,13 @@ class OrthotropicCANN:
 #         I_4s_cor = I_4s - one
 #         I_4n_cor = I_4n - one
 
+#         I_5f = torch.maximum(torch.inner(f_0, torch.matmul(C_squared, f_0)), one)
+#         I_5s = torch.maximum(torch.inner(s_0, torch.matmul(C_squared, s_0)), one)
+#         I_5n = torch.maximum(torch.inner(n_0, torch.matmul(C_squared, n_0)), one)
+#         I_5f_cor = I_5f - one
+#         I_5s_cor = I_5s - one
+#         I_5n_cor = I_5n - one
+
 #         # Coupling invariants
 #         I_8fs = torch.inner(f, s)
 #         I_8fn = torch.inner(f, n)
@@ -945,15 +931,29 @@ class OrthotropicCANN:
 #         I_8fs_cor = I_8fs
 #         I_8fn_cor = I_8fn
 #         I_8sn_cor = I_8sn
+
+#         I_9fs = torch.inner(f_0, torch.matmul(C_squared, s_0))
+#         I_9fn = torch.inner(f_0, torch.matmul(C_squared, n_0))
+#         I_9sn = torch.inner(s_0, torch.matmul(C_squared, n_0))
+#         I_9fs_cor = I_9fs
+#         I_9fn_cor = I_9fn
+#         I_9sn_cor = I_9sn
+
 #         return (
 #             I_1_cor,
 #             I_2_cor,
 #             I_4f_cor,
 #             I_4s_cor,
 #             I_4n_cor,
+#             I_5f_cor,
+#             I_5s_cor,
+#             I_5n_cor,
 #             I_8fs_cor,
 #             I_8fn_cor,
 #             I_8sn_cor,
+#             I_9fs_cor,
+#             I_9fn_cor,
+#             I_9sn_cor,
 #         )
 
 #     def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
