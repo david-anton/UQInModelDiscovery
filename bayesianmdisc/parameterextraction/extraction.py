@@ -64,16 +64,18 @@ def extract_gp_inducing_parameter_distribution(
         lipschitz_penalty_coefficient, device=device
     )
     initial_learning_rate_lipschitz_func = 1e-4
-    final_learning_rate_lipschitz_func = 1e-4
-    lr_decay_rate_lipschitz_func = (
-        final_learning_rate_lipschitz_func / initial_learning_rate_lipschitz_func
-    ) ** (1 / num_iters_wasserstein)
+    lr_decay_rate_lipschitz_func = 1.0
+    # final_learning_rate_lipschitz_func = 1e-4
+    # lr_decay_rate_lipschitz_func = (
+    #     final_learning_rate_lipschitz_func / initial_learning_rate_lipschitz_func
+    # ) ** (1 / num_iters_wasserstein)
 
-    initial_learning_rate_distribution = 5e-4
-    final_learning_rate_distribution = 1e-6
-    lr_decay_rate_distribution = (
-        final_learning_rate_distribution / initial_learning_rate_distribution
-    ) ** (1 / num_iters_wasserstein)
+    initial_learning_rate_distribution = 1e-3
+    lr_decay_rate_distribution = 0.9999
+    # final_learning_rate_distribution = 1e-6
+    # lr_decay_rate_distribution = (
+    #     final_learning_rate_distribution / initial_learning_rate_distribution
+    # ) ** (1 / num_iters_wasserstein)
 
     def create_lipschitz_network(layer_sizes: list[int], device: Device) -> Module:
         return FFNN(
