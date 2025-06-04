@@ -212,6 +212,8 @@ def extract_gp_inducing_parameter_distribution(
             num_flattened_outputs,
             hiden_layer_size_lipschitz_nn,
             hiden_layer_size_lipschitz_nn,
+            hiden_layer_size_lipschitz_nn,
+            hiden_layer_size_lipschitz_nn,
             1,
         ],
         device=device,

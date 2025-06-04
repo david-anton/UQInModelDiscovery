@@ -101,7 +101,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise1e-1_minnoise5e-2_lipschitz_lambda100_iters10_layersize1024_nf_ilr1e-3_samples8"
+output_directory = f"{current_date}_{input_directory}_relnoise1e-1_minnoise5e-2_lipschitz_lambda100_iters10_layersize256_4_nf_ilr1e-3_samples8"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -488,7 +488,7 @@ if retrain_models:
             elif data_set_label == data_set_label_linka:
                 num_points_per_test_case = 8
                 lipschitz_penalty_coefficient = 100.0
-                hiden_layer_size_lipschitz_nn = 1024  # 512
+                hiden_layer_size_lipschitz_nn = 256  # 512
                 data_set_linka = cast(LinkaHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_linka.generate_uniform_inputs(num_points_per_test_case)
