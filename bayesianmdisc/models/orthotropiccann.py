@@ -80,7 +80,7 @@ class OrthotropicCANN:
         self._allowed_input_dimensions = [9]
         self._fiber_direction_reference = torch.tensor([1.0, 0.0, 0.0], device=device)
         self._sheet_direction_reference = torch.tensor([0.0, 1.0, 0.0], device=device)
-        self._normal_direction_reference = torch.tensor([1.0, 0.0, 0.0], device=device)
+        self._normal_direction_reference = torch.tensor([0.0, 0.0, 1.0], device=device)
         self._zero_principal_stress_index = 1
         self._irrelevant_stress_component = 4
         self._initial_num_parameters = self._determine_number_of_parameters()
