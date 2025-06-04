@@ -1,0 +1,22 @@
+#!/bin/bash
+#SBATCH --partition=gpu_teaching
+#SBATCH --nodes=1
+#SBATCH --time=168:00:00
+#SBATCH --job-name=BMDisc
+#SBATCH --ntasks-per-node=1
+#SBATCH --gres=gpu:ampere:1
+
+## Build command
+## singularity build --fakeroot --force bayesianmdisc.sif app/.devcontainer/container.def
+
+SCRIPT=main.py
+
+srun singularity run \
+ --cleanenv \
+ --env CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES \
+ --nv \
+ --nvccli \
+ bayesianmdisc.sif \
+ python3 /home/davanton/BayesianModelDiscovery/app/${SCRIPT}
+
+
