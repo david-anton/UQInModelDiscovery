@@ -8,13 +8,13 @@ from matplotlib.patches import Patch
 from torch import vmap
 
 from bayesianmdisc.customtypes import Device, NPArray, Tensor
-from bayesianmdisc.data.testcases import (
-    test_case_identifier_equibiaxial_tension,
-    test_case_identifier_uniaxial_tension,
-)
 from bayesianmdisc.data.linkaheartdataset import (
     assemble_flattened_deformation_gradients,
     generate_principal_stretches,
+)
+from bayesianmdisc.data.testcases import (
+    test_case_identifier_equibiaxial_tension,
+    test_case_identifier_uniaxial_tension,
 )
 from bayesianmdisc.errors import PlotterError
 from bayesianmdisc.gps.base import GPMultivariateNormal
@@ -23,15 +23,15 @@ from bayesianmdisc.gps.multioutputgp import IndependentMultiOutputGP
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import IsotropicModelLibrary, ModelProtocol, OrthotropicCANN
 from bayesianmdisc.models.base import assemble_stretches_from_factors
+from bayesianmdisc.postprocessing.plot.utility import (
+    split_kawabata_inputs_and_outputs,
+    split_linka_inputs_and_outputs,
+    split_treloar_inputs_and_outputs,
+)
 from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
     coverage_test,
     root_mean_squared_error,
-)
-from bayesianmdisc.postprocessing.plot.utility import (
-    split_treloar_inputs_and_outputs,
-    split_linka_inputs_and_outputs,
-    split_kawabata_inputs_and_outputs,
 )
 from bayesianmdisc.statistics.utility import determine_quantiles
 

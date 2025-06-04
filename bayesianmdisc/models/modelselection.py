@@ -18,13 +18,17 @@ from bayesianmdisc.data import (
     zero_stress_inputs_treloar,
 )
 from bayesianmdisc.data.testcases import (
-    map_test_case_identifiers_to_labels,
     TestCaseLabels,
+    map_test_case_identifiers_to_labels,
 )
 from bayesianmdisc.errors import ModelSelectionError
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.readerswriters import PandasDataWriter
-from bayesianmdisc.models.base import ParameterIndex, ParameterIndices, ModelProtocol
+from bayesianmdisc.models.base import (
+    ModelProtocol,
+    ParameterIndex,
+    ParameterIndices,
+)
 from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
     mean_absolute_error,

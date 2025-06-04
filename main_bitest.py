@@ -6,34 +6,23 @@ import torch
 
 from bayesianmdisc.bayes.distributions import (
     DistributionProtocol,
-    sample_and_analyse_distribution,
-    create_univariate_inverse_gamma_distribution,
     create_univariate_gamma_distribution,
+    create_univariate_inverse_gamma_distribution,
     multiply_distributions,
+    sample_and_analyse_distribution,
 )
-from bayesianmdisc.normalizingflows import (
-    FitNormalizingFlowConfig,
-    LoadNormalizingFlowConfig,
-    NormalizingFlowDistribution,
-    fit_normalizing_flow,
-    load_normalizing_flow,
-)
-from bayesianmdisc.statistics.utility import (
-    determine_moments_of_multivariate_normal_distribution,
-    MomentsMultivariateNormal,
-)
-from bayesianmdisc.bayes.likelihood import create_likelihood, LikelihoodProtocol
+from bayesianmdisc.bayes.likelihood import LikelihoodProtocol, create_likelihood
 from bayesianmdisc.customtypes import NPArray
 from bayesianmdisc.data import (
     DataSetProtocol,
     KawabataDataSet,
     LinkaHeartDataSet,
     TreloarDataSet,
+    add_noise_to_data,
     data_set_label_kawabata,
     data_set_label_linka,
     data_set_label_treloar,
     determine_heteroscedastic_noise,
-    add_noise_to_data,
     validate_data,
 )
 from bayesianmdisc.gps import (
@@ -53,14 +42,21 @@ from bayesianmdisc.models import (
     save_model_state,
     select_model_through_sobol_sensitivity_analysis,
 )
+from bayesianmdisc.normalizingflows import (
+    FitNormalizingFlowConfig,
+    LoadNormalizingFlowConfig,
+    NormalizingFlowDistribution,
+    fit_normalizing_flow,
+    load_normalizing_flow,
+)
 from bayesianmdisc.parameterextraction import (
     extract_gp_inducing_parameter_distribution,
     load_normalizing_flow_parameter_distribution,
     save_normalizing_flow_parameter_distribution,
 )
 from bayesianmdisc.postprocessing.plot import (
-    plot_gp_stresses_treloar,
     plot_gp_stresses_linka,
+    plot_gp_stresses_treloar,
     plot_histograms,
     plot_model_stresses_kawabata,
     plot_model_stresses_linka,
@@ -69,6 +65,10 @@ from bayesianmdisc.postprocessing.plot import (
     plot_sobol_indice_statistics,
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
+from bayesianmdisc.statistics.utility import (
+    MomentsMultivariateNormal,
+    determine_moments_of_multivariate_normal_distribution,
+)
 
 data_set_label = data_set_label_treloar
 retrain_models = False  # True

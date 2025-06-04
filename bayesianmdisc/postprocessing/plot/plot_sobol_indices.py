@@ -6,15 +6,14 @@ import torch
 
 from bayesianmdisc.customtypes import NPArray, PDDataFrame
 from bayesianmdisc.data.testcases import (
+    map_test_case_identifiers_to_labels,
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_pure_shear,
     test_case_identifier_uniaxial_tension,
-    map_test_case_identifiers_to_labels,
 )
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.readerswriters import CSVDataReader
 from bayesianmdisc.postprocessing.plot.utility import split_treloar_inputs_and_outputs
-
 
 first_indices_label = "first_sobol_indices"
 total_indices_label = "total_sobol_indices"

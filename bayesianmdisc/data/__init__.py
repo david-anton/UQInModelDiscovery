@@ -13,10 +13,10 @@ from .linkaheartdataset import LinkaHeartDataSet
 from .testcases import AllowedTestCases, TestCase, TestCases
 from .treloardataset import TreloarDataSet
 from .utility import (
+    add_noise_to_data,
     determine_heteroscedastic_noise,
     split_data,
     validate_data,
-    add_noise_to_data,
 )
 
 __all__ = [

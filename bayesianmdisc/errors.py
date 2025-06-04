@@ -47,6 +47,11 @@ class ModelError(Error):
         super().__init__(message)
 
 
+class OutputSelectorError(Error):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
 class LikelihoodError(Error):
     def __init__(self, message: str) -> None:
         super().__init__(message)
