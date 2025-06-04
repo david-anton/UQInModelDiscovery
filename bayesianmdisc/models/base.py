@@ -30,7 +30,7 @@ ParameterIndices: TypeAlias = list[ParameterIndex]
 ParameterPopulationMatrix = Tensor
 LSDesignMatrix: TypeAlias = NPArray
 LSTargets: TypeAlias = NPArray
-OutputSelectionIndices: TypeAlias = list[int]
+OutputSelectionMask: TypeAlias = Tensor
 
 
 class ModelProtocol(Protocol):

@@ -35,6 +35,9 @@ from bayesianmdisc.models import (
     IsotropicModelLibrary,
     ModelProtocol,
     OrthotropicCANN,
+    OutputSelectorLinka,
+    OutputSelectorTreloar,
+    OutputSelectorProtocol,
     load_model_state,
     save_model_state,
     select_model_through_sobol_sensitivity_analysis,
@@ -85,16 +88,8 @@ if data_set_label == data_set_label_treloar:
     min_absolute_noise_stddev = 5e-2
     list_num_wasserstein_iterations = [20_000, 10_000]
     first_sobol_index_thresshold = 1e-6
-elif data_set_label == data_set_label_kawabata:
-    input_directory = data_set_label
-    data_set = KawabataDataSet(input_directory, project_directory, device)
-    model = IsotropicModelLibrary(output_dim=2, device=device)
-    relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 5e-2
-    list_num_wasserstein_iterations = [20_000, 20_000]
-    first_sobol_index_thresshold = 1e-5
 elif data_set_label == data_set_label_linka:
-    input_directory = "heart_data_linka"
+    input_directory = data_set_label
     data_set = LinkaHeartDataSet(input_directory, project_directory, device)
     model = OrthotropicCANN(device)
     relative_noise_stddevs = 5e-2
@@ -106,7 +101,9 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_normalizingflow_lipschitz_lambda100_layers8_nf_relwidth4_invariants14"
+output_directory = (
+    f"{current_date}_{input_directory}_normalizingflow_lipschitz_lambda100_nf_relwidth4"
+)
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -486,19 +483,26 @@ if retrain_models:
                 inputs_extraction, test_cases_extraction = (
                     data_set_treloar.generate_uniform_inputs(num_points_per_test_case)
                 )
+                output_selector: OutputSelectorProtocol = OutputSelectorTreloar(
+                    test_cases_extraction, cast(IsotropicModelLibrary, model), device
+                )
 
             elif data_set_label == data_set_label_linka:
-                num_points_per_test_case = 8  # 16
-                hiden_layer_size_lipschitz_nn = 256  # 1024
+                num_points_per_test_case = 8
+                hiden_layer_size_lipschitz_nn = 512
                 lipschitz_penalty_coefficient = 100.0
                 data_set_linka = cast(LinkaHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_linka.generate_uniform_inputs(num_points_per_test_case)
                 )
+                output_selector = OutputSelectorLinka(
+                    test_cases_extraction, cast(OrthotropicCANN, model), device
+                )
 
             distribution = extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
                 model=model,
+                output_selector=output_selector,
                 distribution_type="normalizing flow",
                 is_mean_trainable=True,
                 inputs=inputs_extraction,

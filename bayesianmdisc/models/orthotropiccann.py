@@ -16,6 +16,7 @@ from bayesianmdisc.data.testcases import (
     test_case_identifier_simple_shear_31,
     test_case_identifier_simple_shear_32,
 )
+from bayesianmdisc.utility import flatten_outputs
 from bayesianmdisc.errors import OutputSelectorError
 from bayesianmdisc.models.base import (
     AllowedTestCases,
@@ -27,7 +28,7 @@ from bayesianmdisc.models.base import (
     Invariants,
     LSDesignMatrix,
     LSTargets,
-    OutputSelectionIndices,
+    OutputSelectionMask,
     ParameterIndices,
     ParameterNames,
     ParameterPopulationMatrix,
@@ -52,7 +53,11 @@ from bayesianmdisc.models.base import (
 from bayesianmdisc.models.base_mechanics import (
     calculate_pressure_from_incompressibility_constraint,
 )
-from bayesianmdisc.models.base_outputselection import validate_full_output_size
+from bayesianmdisc.models.base_outputselection import (
+    validate_full_output_size,
+    count_number_of_selected_outputs,
+    determine_full_output_size,
+)
 
 ParameterCouplingTuples: TypeAlias = list[tuple[str, str]]
 
@@ -510,53 +515,70 @@ class OrthotropicCANN:
 
 class OutputSelectorLinka:
 
-    def __init__(self, test_cases: TestCases, model: OrthotropicCANN) -> None:
+    def __init__(
+        self, test_cases: TestCases, model: OrthotropicCANN, device: Device
+    ) -> None:
         self._test_cases = test_cases
         self._num_outputs = len(self._test_cases)
         self._single_full_output_dim = model.output_dim
-        self._expected_full_output_size = self._determine_full_output_size()
-        self._selection_indices = self._determine_output_selction_indices()
+        self._device = device
+        self._expected_full_output_size = determine_full_output_size(
+            self._num_outputs, self._single_full_output_dim
+        )
+        self._selection_mask = self._determine_output_selction_mask()
+        self.total_num_selected_outputs = count_number_of_selected_outputs(
+            self._selection_mask
+        )
 
     def __call__(self, full_outputs: StressOutputs) -> StressOutputs:
         validate_full_output_size(full_outputs, self._expected_full_output_size)
-        return full_outputs[self._selection_indices]
+        return torch.masked_select(full_outputs, self._selection_mask)
 
-    def _determine_full_output_size(self) -> TensorSize:
-        full_output_dim = int(self._num_outputs * self._single_full_output_dim)
-        return torch.Size((full_output_dim,))
+    def _determine_output_selction_mask(self) -> OutputSelectionMask:
+        selection_mask_list: list[OutputSelectionMask] = []
 
-    def _determine_output_selction_indices(self) -> OutputSelectionIndices:
-        selection_indices: OutputSelectionIndices = []
+        def _reshape(mask: OutputSelectionMask) -> OutputSelectionMask:
+            return mask.reshape((1, -1))
 
-        for test_case_index, test_case in enumerate(self._test_cases):
-            start_index = test_case_index * self._single_full_output_dim
+        for test_case in self._test_cases:
+            selection_mask = torch.full(
+                (self._single_full_output_dim,), False, device=self._device
+            )
             if test_case == test_case_identifier_simple_shear_12:
-                selection_indices += [start_index + 1]
-                selection_indices += [start_index + 3]
+                selection_mask[1] = True
+                selection_mask[3] = True
+                selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_21:
-                selection_indices += [start_index + 1]
-                selection_indices += [start_index + 3]
+                selection_mask[1] = True
+                selection_mask[3] = True
+                selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_13:
-                selection_indices += [start_index + 2]
-                selection_indices += [start_index + 5]
+                selection_mask[2] = True
+                selection_mask[5] = True
+                selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_31:
-                selection_indices += [start_index + 2]
-                selection_indices += [start_index + 5]
+                selection_mask[2] = True
+                selection_mask[5] = True
+                selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_23:
-                selection_indices += [start_index + 4]
-                selection_indices += [start_index + 6]
+                selection_mask[4] = True
+                selection_mask[6] = True
+                selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_32:
-                selection_indices += [start_index + 4]
-                selection_indices += [start_index + 6]
+                selection_mask[4] = True
+                selection_mask[6] = True
+                selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_biaxial_tension:
-                selection_indices += [start_index + 0]
-                selection_indices += [start_index + 7]
+                selection_mask[0] = True
+                selection_mask[7] = True
+                selection_mask_list += _reshape(selection_mask)
             else:
                 raise OutputSelectorError(
                     f"""There ist no implementation for the requested test case: {test_case}"""
                 )
 
-        return selection_indices
+        selection_mask = torch.concat(selection_mask_list, dim=0)
+        return flatten_outputs(selection_mask)
 
 
 # class OrthotropicCANN:

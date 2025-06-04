@@ -22,7 +22,7 @@ from bayesianmdisc.gps.gp import GP
 from bayesianmdisc.gps.multioutputgp import IndependentMultiOutputGP
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import IsotropicModelLibrary, ModelProtocol, OrthotropicCANN
-from bayesianmdisc.models.base import assemble_stretches_from_factors
+from bayesianmdisc.models.base_mechanics import assemble_stretches_from_factors
 from bayesianmdisc.postprocessing.plot.utility import (
     split_kawabata_inputs_and_outputs,
     split_linka_inputs_and_outputs,

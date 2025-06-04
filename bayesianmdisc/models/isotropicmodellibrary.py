@@ -23,7 +23,7 @@ from bayesianmdisc.models.base import (
     Invariants,
     LSDesignMatrix,
     LSTargets,
-    OutputSelectionIndices,
+    OutputSelectionMask,
     ParameterIndices,
     ParameterNames,
     ParameterPopulationMatrix,
@@ -55,7 +55,11 @@ from bayesianmdisc.models.base_mechanics import (
     assemble_stretches_from_incompressibility_assumption,
     calculate_pressure_from_incompressibility_constraint,
 )
-from bayesianmdisc.models.base_outputselection import validate_full_output_size
+from bayesianmdisc.models.base_outputselection import (
+    validate_full_output_size,
+    count_number_of_selected_outputs,
+    determine_full_output_size,
+)
 from bayesianmdisc.models.utility import unsqueeze_if_necessary
 
 StretchesTuple: TypeAlias = tuple[Stretch, Stretch, Stretch]
@@ -529,21 +533,25 @@ class IsotropicModelLibrary:
 
 class OutputSelectorTreloar:
 
-    def __init__(self, test_cases: TestCases, model: IsotropicModelLibrary) -> None:
+    def __init__(
+        self, test_cases: TestCases, model: IsotropicModelLibrary, device: Device
+    ) -> None:
         self._test_cases = test_cases
         self._num_outputs = len(self._test_cases)
         self._single_full_output_dim = model.output_dim
-        self._expected_full_output_size = self._determine_full_output_size()
-        self._selection_indices = self._determine_output_selction_indices()
+        self._device = device
+        self._expected_full_output_size = determine_full_output_size(
+            self._num_outputs, self._single_full_output_dim
+        )
+        self._selection_mask = self._determine_output_selction_mask()
+        self.total_num_selected_outputs = count_number_of_selected_outputs(
+            self._selection_mask
+        )
 
     def __call__(self, full_outputs: StressOutputs) -> StressOutputs:
         validate_full_output_size(full_outputs, self._expected_full_output_size)
-        return full_outputs[self._selection_indices]
+        return torch.masked_select(full_outputs, self._selection_mask)
 
-    def _determine_full_output_size(self) -> TensorSize:
-        full_output_dim = int(self._num_outputs * self._single_full_output_dim)
-        return torch.Size((full_output_dim,))
-
-    def _determine_output_selction_indices(self) -> OutputSelectionIndices:
-        num_full_outputs = int(self._num_outputs * self._single_full_output_dim)
-        return list(range(num_full_outputs))
+    def _determine_output_selction_mask(self) -> OutputSelectionMask:
+        full_output_dim = self._expected_full_output_size[0]
+        return torch.full((full_output_dim,), True, device=self._device)

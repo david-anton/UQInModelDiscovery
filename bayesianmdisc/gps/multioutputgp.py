@@ -181,13 +181,6 @@ class IndependentMultiOutputGP(gpytorch.models.GP):
         return self.gps.train_targets
 
 
-def flatten_outputs(outputs: Tensor) -> Tensor:
-    if outputs.dim() == 1:
-        return outputs
-    else:
-        return torch.transpose(outputs, 1, 0).ravel()
-
-
 def _combine_independent_multivariate_normals(
     multivariate_normals: GPMultivariateNormalList, device: Device
 ) -> GPMultivariateNormal:

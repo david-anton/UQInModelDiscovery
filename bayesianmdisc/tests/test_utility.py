@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from bayesianmdisc.customtypes import Tensor
-from bayesianmdisc.gps.multioutputgp import flatten_outputs
+from bayesianmdisc.utility import flatten_outputs
 
 
 @pytest.mark.parametrize(

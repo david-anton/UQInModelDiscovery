@@ -12,10 +12,11 @@ from bayesianmdisc.customtypes import (
     TorchLRScheduler,
     TorchOptimizer,
 )
+from bayesianmdisc.models import OutputSelectorProtocol
 from bayesianmdisc.data import DeformationInputs, TestCases
 from bayesianmdisc.gps import GaussianProcess
 from bayesianmdisc.gps.base import GPMultivariateNormal
-from bayesianmdisc.gps.multioutputgp import flatten_outputs
+from bayesianmdisc.utility import flatten_outputs
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.loaderssavers import PytorchModelLoader, PytorchModelSaver
 from bayesianmdisc.models import ModelProtocol
@@ -41,6 +42,7 @@ file_name_model_parameters_nf = "normalizing_flow_parameters"
 def extract_gp_inducing_parameter_distribution(
     gp: GaussianProcess,
     model: ModelProtocol,
+    output_selector: OutputSelectorProtocol,
     distribution_type: str,
     is_mean_trainable: bool,
     inputs: DeformationInputs,
@@ -56,8 +58,7 @@ def extract_gp_inducing_parameter_distribution(
     project_directory: ProjectDirectory,
     device: Device,
 ) -> DistributionProtocol:
-    output_dim = model.output_dim
-    num_flattened_outputs = len(inputs) * output_dim
+    num_flattened_outputs = output_selector.total_num_selected_outputs
 
     penalty_coefficient_lipschitz = torch.tensor(
         lipschitz_penalty_coefficient, device=device
@@ -109,17 +110,24 @@ def extract_gp_inducing_parameter_distribution(
     ) -> TorchLRScheduler:
         return torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=decay_rate)
 
-    def draw_gp_func_values() -> Tensor:
+    def sample_from_gp() -> Tensor:
         # Output of multi-output GP is already flattened, output = [output1_1:n, output2_1:n, ...].
+        func_samples = gp_distribution.rsample(
+            sample_shape=torch.Size([num_func_samples])
+        )
+        vmap_func = lambda _func_sample: output_selector(_func_sample)
+        return vmap(vmap_func)(func_samples)
+
+    def draw_gp_func_values() -> Tensor:
         if resample:
-            return gp_distribution.rsample(sample_shape=torch.Size([num_func_samples]))
+            return sample_from_gp()
         else:
             return fixed_gp_func_values
 
     def draw_model_func_values() -> Tensor:
         model_parameters = distribution(num_func_samples)
-        vmap_model_func = lambda _model_parameters: flatten_outputs(
-            model(inputs, test_cases, _model_parameters)
+        vmap_model_func = lambda _model_parameters: output_selector(
+            flatten_outputs(model(inputs, test_cases, _model_parameters))
         )
         return vmap(vmap_model_func)(model_parameters)
 
@@ -210,9 +218,7 @@ def extract_gp_inducing_parameter_distribution(
     gp_distribution: GPMultivariateNormal = gp(inputs)
 
     if not resample:
-        fixed_gp_func_values = gp_distribution.rsample(
-            sample_shape=torch.Size([num_func_samples])
-        )
+        fixed_gp_func_values = sample_from_gp()
 
     freeze_gp(gp)
     if lipschitz_func_pretraining:
