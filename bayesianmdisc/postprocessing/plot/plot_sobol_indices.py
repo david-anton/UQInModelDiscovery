@@ -206,7 +206,7 @@ def plot_sobol_indice_paths_treloar(
                 test_case_label = map_test_case_identifiers_to_labels(
                     torch.tensor([test_case_identifier])
                 )[0]
-                file_name = f"treloar_data_{indice_label}_{test_case_label}.png"
+                file_name = f"{indice_label}_{test_case_label}.png"
                 output_path = project_directory.create_output_file_path(
                     file_name=file_name, subdir_name=output_subdirectory
                 )
@@ -326,7 +326,7 @@ def plot_sobol_indice_statistics(
         axes.set_yticks(yticks, parameter_names)
 
         # saving
-        file_name = f"treloar_data_statistics.png"
+        file_name = f"sobol_indices_statistics.png"
         output_path = project_directory.create_output_file_path(
             file_name=file_name, subdir_name=output_subdirectory
         )

@@ -14,6 +14,8 @@ from bayesianmdisc.data.base import (
     numpy_data_type,
     stack_arrays,
 )
+
+# from bayesianmdisc.models import OrthotropicCANN
 from bayesianmdisc.data.testcases import (
     TestCaseIdentifier,
     test_case_identifier_biaxial_tension,
@@ -34,6 +36,7 @@ max_shear_strain = 0.5
 min_nominal_principel_stretch = 1.0
 max_nominal_principal_stretch = 1.1
 irrelevant_stress_components = [4]
+synthetic_data_file_name = "CANNsHEARTdata_synthetic.xlsx"
 
 
 class LinkaHeartDataSet:
@@ -65,12 +68,12 @@ class LinkaHeartDataSet:
         self._test_case_identifier_ss_23 = test_case_identifier_simple_shear_23
         self._test_case_identifier_ss_32 = test_case_identifier_simple_shear_32
         self._test_case_identifiers_ss = [
-            self._test_case_identifier_ss_12,
             self._test_case_identifier_ss_21,
-            self._test_case_identifier_ss_13,
             self._test_case_identifier_ss_31,
-            self._test_case_identifier_ss_23,
+            self._test_case_identifier_ss_12,
             self._test_case_identifier_ss_32,
+            self._test_case_identifier_ss_13,
+            self._test_case_identifier_ss_23,
         ]
         self._stretch_ratios = [
             (1.0, 1.0),
@@ -88,91 +91,91 @@ class LinkaHeartDataSet:
 
         if self._consider_shear_data:
             column = self._start_column_shear
-            stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
-                column, self._test_case_identifier_ss_21
+            deformations_column, test_cases_colum, stresses_column = (
+                self._read_shear_data(column, self._test_case_identifier_ss_21)
             )
-            all_deformation_gradients.append(stretches_column)
+            all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
             column = column + 2
-            stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
-                column, self._test_case_identifier_ss_31
+            deformations_column, test_cases_colum, stresses_column = (
+                self._read_shear_data(column, self._test_case_identifier_ss_31)
             )
-            all_deformation_gradients.append(stretches_column)
+            all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
             column = column + 3
-            stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
-                column, self._test_case_identifier_ss_12
+            deformations_column, test_cases_colum, stresses_column = (
+                self._read_shear_data(column, self._test_case_identifier_ss_12)
             )
-            all_deformation_gradients.append(stretches_column)
+            all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
             column = column + 2
-            stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
-                column, self._test_case_identifier_ss_32
+            deformations_column, test_cases_colum, stresses_column = (
+                self._read_shear_data(column, self._test_case_identifier_ss_32)
             )
-            all_deformation_gradients.append(stretches_column)
+            all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
             column = column + 3
-            stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
-                column, self._test_case_identifier_ss_13
+            deformations_column, test_cases_colum, stresses_column = (
+                self._read_shear_data(column, self._test_case_identifier_ss_13)
             )
-            all_deformation_gradients.append(stretches_column)
+            all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
             column = column + 2
-            stretches_column, test_cases_colum, stresses_column = self._read_shear_data(
-                column, self._test_case_identifier_ss_23
+            deformations_column, test_cases_colum, stresses_column = (
+                self._read_shear_data(column, self._test_case_identifier_ss_23)
             )
-            all_deformation_gradients.append(stretches_column)
+            all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
         if self._consider_biaxial_data:
             column = self._start_column_biaxial
-            stretches_column, test_cases_colum, stresses_column = (
+            deformations_column, test_cases_colum, stresses_column = (
                 self._read_biaxial_data(column)
             )
-            all_deformation_gradients.append(stretches_column)
+            all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
             column = column + 5
-            stretches_column, test_cases_colum, stresses_column = (
+            deformations_column, test_cases_colum, stresses_column = (
                 self._read_biaxial_data(column)
             )
-            all_deformation_gradients.append(stretches_column)
+            all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
             column = column + 5
-            stretches_column, test_cases_colum, stresses_column = (
+            deformations_column, test_cases_colum, stresses_column = (
                 self._read_biaxial_data(column)
             )
-            all_deformation_gradients.append(stretches_column)
+            all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
             column = column + 5
-            stretches_column, test_cases_colum, stresses_column = (
+            deformations_column, test_cases_colum, stresses_column = (
                 self._read_biaxial_data(column)
             )
-            all_deformation_gradients.append(stretches_column)
+            all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
             column = column + 5
-            stretches_column, test_cases_colum, stresses_column = (
+            deformations_column, test_cases_colum, stresses_column = (
                 self._read_biaxial_data(column)
             )
-            all_deformation_gradients.append(stretches_column)
+            all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
             all_stresse_tensors.append(stresses_column)
 
@@ -302,6 +305,81 @@ class LinkaHeartDataSet:
             .astype(self._np_data_type)
             .values
         )
+
+
+# class LinkaHeartDataSetGenerator:
+
+#     def __init__(
+#         self,
+#         model: OrthotropicCANN,
+#         activae_parameters: list[str],
+#         active_parameter_values: list[float],
+#         num_point_per_test_case: int,
+#         output_file_name: str,
+#         output_directory: str,
+#         project_directory: ProjectDirectory,
+#         device: Device,
+#     ) -> None:
+#         self._model = model
+#         self._activae_parameters = activae_parameters
+#         self._active_parameter_values = active_parameter_values
+#         self._num_points_per_test_case = num_point_per_test_case
+#         self._output_file_name = output_file_name
+#         self._output_directory = output_directory
+#         self._project_directory = project_directory
+#         self._device = device
+#         self._file_name = synthetic_data_file_name
+#         self._excel_sheet_name = "Sheet1"
+#         self._test_case_identifiers_ss = [
+#             test_case_identifier_simple_shear_21,
+#             test_case_identifier_simple_shear_31,
+#             test_case_identifier_simple_shear_12,
+#             test_case_identifier_simple_shear_32,
+#             test_case_identifier_simple_shear_13,
+#             test_case_identifier_simple_shear_23,
+#         ]
+
+#     def generate(self) -> None:
+#         all_deformation_gradients = []
+#         all_test_cases = []
+
+#         shear_strains = generate_shear_strains(self._num_points_per_test_case)
+#         for test_case_identifier in self._test_case_identifiers_ss:
+#             all_deformation_gradients += [
+#                 assemble_flattened_deformation_gradients(
+#                     shear_strains, test_case_identifier
+#                 )
+#             ]
+#             all_test_cases += [
+#                 assemble_test_case_identifiers(test_case_identifier, shear_strains)
+#             ]
+
+#         if self._consider_biaxial_data:
+#             for stretch_ratio in self._stretch_ratios:
+#                 test_case_identifier = self._test_case_identifier_bt
+#                 principal_stretches = generate_principal_stretches(
+#                     stretch_ratio, num_points_per_test_case
+#                 )
+#                 all_deformation_gradients += [
+#                     assemble_flattened_deformation_gradients(
+#                         principal_stretches, test_case_identifier
+#                     )
+#                 ]
+#                 all_test_cases += [
+#                     assemble_test_case_identifiers(
+#                         test_case_identifier, principal_stretches
+#                     )
+#                 ]
+
+#         deformation_gradients = stack_arrays(all_deformation_gradients)
+#         test_cases = stack_arrays(all_test_cases)
+#         test_cases = test_cases.reshape((-1,))
+
+#         deformation_gradients_torch = convert_to_torch(
+#             deformation_gradients, self._device
+#         )
+#         test_cases_torch = convert_to_torch(test_cases, self._device)
+#         return deformation_gradients_torch, test_cases_torch
 
 
 def assemble_flattened_deformation_gradients(
