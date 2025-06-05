@@ -51,7 +51,8 @@ def extract_gp_inducing_parameter_distribution(
     resample: bool,
     lipschitz_penalty_coefficient: float,
     num_iters_wasserstein: int,
-    hiden_layer_size_lipschitz_nn: int,
+    num_layers_lipschitz_nn: int,
+    layer_size_lipschitz_nn: int,
     num_iters_lipschitz: int,
     lipschitz_func_pretraining: bool,
     output_subdirectory: str,
@@ -70,14 +71,19 @@ def extract_gp_inducing_parameter_distribution(
     #     final_learning_rate_lipschitz_func / initial_learning_rate_lipschitz_func
     # ) ** (1 / num_iters_wasserstein)
 
-    initial_learning_rate_distribution = 1e-3
+    initial_learning_rate_distribution = 5e-4
     lr_decay_rate_distribution = 0.9999
     # final_learning_rate_distribution = 1e-6
     # lr_decay_rate_distribution = (
     #     final_learning_rate_distribution / initial_learning_rate_distribution
     # ) ** (1 / num_iters_wasserstein)
 
-    def create_lipschitz_network(layer_sizes: list[int], device: Device) -> Module:
+    def create_lipschitz_network(
+        num_layers: int, layer_size: int, device: Device
+    ) -> Module:
+        layer_sizes = [num_flattened_outputs]
+        layer_sizes += [layer_size for _ in range(num_layers)]
+        layer_sizes += [1]
         return FFNN(
             layer_sizes=layer_sizes,
             activation=nn.LeakyReLU(),
@@ -208,12 +214,8 @@ def extract_gp_inducing_parameter_distribution(
         device=device,
     )
     lipschitz_func = create_lipschitz_network(
-        layer_sizes=[
-            num_flattened_outputs,
-            hiden_layer_size_lipschitz_nn,
-            hiden_layer_size_lipschitz_nn,
-            1,
-        ],
+        num_layers=num_layers_lipschitz_nn,
+        layer_size=layer_size_lipschitz_nn,
         device=device,
     )
 
