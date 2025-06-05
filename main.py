@@ -101,7 +101,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise1e-1_minnoise5e-2_lipschitz_lambda100_iters10_layersize4_256_nf_ilr5e-4_samples32"
+output_directory = f"{current_date}_{input_directory}_relnoise1e-1_minnoise5e-2_lipschitz_lambda100_iters10_layersize4_256_nf_ilr5e-4_samples16_invariants14"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -487,7 +487,7 @@ if retrain_models:
                 )
 
             elif data_set_label == data_set_label_linka:
-                num_points_per_test_case = 32  # 16
+                num_points_per_test_case = 16
                 lipschitz_penalty_coefficient = 100.0
                 num_layers_lipschitz_nn = 4
                 layer_size_lipschitz_nn = 256
