@@ -70,6 +70,10 @@ class ModelProtocol(Protocol):
 
     def reduce_to_activated_parameters(self) -> None: ...
 
+    def reduce_model_to_parameter_names(
+        self, parameter_names: ParameterNames
+    ) -> None: ...
+
     def get_model_state(self) -> ParameterPopulationMatrix: ...
 
     def init_model_state(
@@ -219,6 +223,12 @@ def mask_and_populate_parameters(
     return _populate_parameters(masked_parameters, parameter_population_matrix)
 
 
+def determine_initial_parameter_mask(
+    parameter_population_matrix: ParameterPopulationMatrix,
+) -> ParameterMask:
+    return torch.greater(torch.sum(parameter_population_matrix, dim=1), 0)
+
+
 def _cast_to_float(tensor: Tensor) -> Tensor:
     return tensor.to(torch.get_default_dtype())
 
@@ -235,7 +245,16 @@ def _populate_parameters(
     return torch.matmul(parameter_population_matrix, parameters)
 
 
-def determine_initial_parameter_mask(
-    parameter_population_matrix: ParameterPopulationMatrix,
-) -> ParameterMask:
-    return torch.greater(torch.sum(parameter_population_matrix, dim=1), 0)
+# Parameter names to indices mapping
+def map_parameter_names_to_indices(
+    parameter_names_of_interest: ParameterNames,
+    model_parameter_names: ParameterNames,
+) -> ParameterIndices:
+    parameter_indices_of_interest = []
+    for parameter_name in parameter_names_of_interest:
+        if not parameter_name in model_parameter_names:
+            raise ModelError(
+                f"""Model does not have parameter with name {parameter_name}."""
+            )
+        parameter_indices_of_interest += [model_parameter_names.index(parameter_name)]
+    return parameter_indices_of_interest

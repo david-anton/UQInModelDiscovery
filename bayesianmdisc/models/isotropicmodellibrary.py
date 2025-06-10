@@ -5,7 +5,7 @@ import torch
 from torch import vmap
 from torch.func import grad
 
-from bayesianmdisc.customtypes import Device, Tensor, TensorSize
+from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.data import (
     AllowedTestCases,
     DeformationInputs,
@@ -49,6 +49,7 @@ from bayesianmdisc.models.base import (
     validate_parameters,
     validate_stress_output_dimension,
     validate_test_cases,
+    map_parameter_names_to_indices,
 )
 from bayesianmdisc.models.base_mechanics import (
     assemble_stretches_from_factors,
@@ -188,6 +189,15 @@ class IsotropicModelLibrary:
         reduce_parameter_names()
         reduce_parameter_mask()
         reduce_parameter_population_matrix()
+
+    def reduce_model_to_parameter_names(self, parameter_names: ParameterNames) -> None:
+        active_parameter_indices = map_parameter_names_to_indices(
+            parameter_names_of_interest=parameter_names,
+            model_parameter_names=self.parameter_names,
+        )
+        self._deactivate_all_parameters()
+        self.activate_parameters(active_parameter_indices)
+        self.reduce_to_activated_parameters()
 
     def get_model_state(self) -> ParameterPopulationMatrix:
         return self._parameter_population_matrix
