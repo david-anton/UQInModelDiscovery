@@ -2,6 +2,7 @@ from typing import TypeAlias
 
 import numpy as np
 import pandas as pd
+import torch
 
 from bayesianmdisc.customtypes import Device, NPArray, PDDataFrame
 from bayesianmdisc.data.base import (
@@ -14,6 +15,7 @@ from bayesianmdisc.data.base import (
     numpy_data_type,
     stack_arrays,
 )
+from bayesianmdisc.models import OrthotropicCANN
 
 # from bayesianmdisc.models import OrthotropicCANN
 from bayesianmdisc.data.testcases import (
@@ -25,11 +27,14 @@ from bayesianmdisc.data.testcases import (
     test_case_identifier_simple_shear_23,
     test_case_identifier_simple_shear_31,
     test_case_identifier_simple_shear_32,
+    map_test_case_identifiers_to_labels,
 )
 from bayesianmdisc.errors import DataError
 from bayesianmdisc.io import ProjectDirectory
 
-Component: TypeAlias = tuple[int, int]
+StrainComponent: TypeAlias = tuple[int, int]
+StressIndex: TypeAlias = int
+StretchRatio: TypeAlias = tuple[float, float]
 
 min_shear_strain = 0.0
 max_shear_strain = 0.5
@@ -307,79 +312,222 @@ class LinkaHeartDataSet:
         )
 
 
-# class LinkaHeartDataSetGenerator:
+class LinkaHeartDataSetGenerator:
 
-#     def __init__(
-#         self,
-#         model: OrthotropicCANN,
-#         activae_parameters: list[str],
-#         active_parameter_values: list[float],
-#         num_point_per_test_case: int,
-#         output_file_name: str,
-#         output_directory: str,
-#         project_directory: ProjectDirectory,
-#         device: Device,
-#     ) -> None:
-#         self._model = model
-#         self._activae_parameters = activae_parameters
-#         self._active_parameter_values = active_parameter_values
-#         self._num_points_per_test_case = num_point_per_test_case
-#         self._output_file_name = output_file_name
-#         self._output_directory = output_directory
-#         self._project_directory = project_directory
-#         self._device = device
-#         self._file_name = synthetic_data_file_name
-#         self._excel_sheet_name = "Sheet1"
-#         self._test_case_identifiers_ss = [
-#             test_case_identifier_simple_shear_21,
-#             test_case_identifier_simple_shear_31,
-#             test_case_identifier_simple_shear_12,
-#             test_case_identifier_simple_shear_32,
-#             test_case_identifier_simple_shear_13,
-#             test_case_identifier_simple_shear_23,
-#         ]
+    def __init__(
+        self,
+        model: OrthotropicCANN,
+        activae_parameter_names: tuple[str],
+        active_parameter_values: list[float],
+        num_point_per_test_case: int,
+        output_directory: str,
+        project_directory: ProjectDirectory,
+        device: Device,
+    ) -> None:
+        self._model = model
+        self._model.reduce_model_to_parameter_names(activae_parameter_names)
+        self._active_parameter_values = active_parameter_values
+        self._num_points_per_test_case = num_point_per_test_case
+        self._output_directory = output_directory
+        self._project_directory = project_directory
+        self._device = device
+        self._output_file_name = synthetic_data_file_name
+        self._excel_sheet_name = "Sheet1"
+        self._test_case_identifiers_ss = [
+            test_case_identifier_simple_shear_21,
+            test_case_identifier_simple_shear_31,
+            test_case_identifier_simple_shear_12,
+            test_case_identifier_simple_shear_32,
+            test_case_identifier_simple_shear_13,
+            test_case_identifier_simple_shear_23,
+        ]
+        self._start_column_indices_ss = [0, 2, 5, 7, 10, 12]
+        self._test_case_identifier_bt = test_case_identifier_biaxial_tension
+        self._index_fiber = 0
+        self._index_normal = 1
+        self._stretch_ratios = [
+            (1.0, 1.0),
+            (1.0, 0.75),
+            (0.75, 1.0),
+            (1.0, 0.5),
+            (0.5, 1.0),
+        ]
+        self._start_column_indices_bt = [15, 20, 25, 30, 35]
 
-#     def generate(self) -> None:
-#         all_deformation_gradients = []
-#         all_test_cases = []
+    def generate(self) -> None:
+        data_frame = self._init_data_frame()
+        self._generate_shear_data(data_frame)
+        self._generate_biaxial_data(data_frame)
 
-#         shear_strains = generate_shear_strains(self._num_points_per_test_case)
-#         for test_case_identifier in self._test_case_identifiers_ss:
-#             all_deformation_gradients += [
-#                 assemble_flattened_deformation_gradients(
-#                     shear_strains, test_case_identifier
-#                 )
-#             ]
-#             all_test_cases += [
-#                 assemble_test_case_identifiers(test_case_identifier, shear_strains)
-#             ]
+    def _init_data_frame(self) -> PDDataFrame:
+        return pd.DataFrame()
 
-#         if self._consider_biaxial_data:
-#             for stretch_ratio in self._stretch_ratios:
-#                 test_case_identifier = self._test_case_identifier_bt
-#                 principal_stretches = generate_principal_stretches(
-#                     stretch_ratio, num_points_per_test_case
-#                 )
-#                 all_deformation_gradients += [
-#                     assemble_flattened_deformation_gradients(
-#                         principal_stretches, test_case_identifier
-#                     )
-#                 ]
-#                 all_test_cases += [
-#                     assemble_test_case_identifiers(
-#                         test_case_identifier, principal_stretches
-#                     )
-#                 ]
+    def _generate_shear_data(self, data_frame: PDDataFrame) -> None:
+        shear_strains = generate_shear_strains(self._num_points_per_test_case)
 
-#         deformation_gradients = stack_arrays(all_deformation_gradients)
-#         test_cases = stack_arrays(all_test_cases)
-#         test_cases = test_cases.reshape((-1,))
+        for test_case in range(len(self._test_case_identifiers_ss)):
+            start_column_index = self._start_column_indices_ss[test_case]
+            self._write_shear_data(
+                shear_strains=shear_strains,
+                test_case_identifier=self._test_case_identifiers_ss[test_case],
+                data_frame=data_frame,
+                start_column_index=start_column_index,
+            )
+            if test_case != 0 and test_case % 2 != 0:
+                self._add_empty_column(data_frame, start_column_index + 2)
 
-#         deformation_gradients_torch = convert_to_torch(
-#             deformation_gradients, self._device
-#         )
-#         test_cases_torch = convert_to_torch(test_cases, self._device)
-#         return deformation_gradients_torch, test_cases_torch
+    def _generate_biaxial_data(self, data_frame: PDDataFrame) -> None:
+
+        for test_case in range(len(self._stretch_ratios)):
+            stretch_ratio = self._stretch_ratios[test_case]
+            stretches = generate_principal_stretches(
+                stretch_ratio, self._num_points_per_test_case
+            )
+            start_column_index = self._start_column_indices_bt[test_case]
+            self._write_biaxial_data(
+                stretches=stretches,
+                test_case_identifier=self._test_case_identifier_bt,
+                stretch_ratio=stretch_ratio,
+                data_frame=data_frame,
+                start_column_index=start_column_index,
+            )
+            self._add_empty_column(data_frame, start_column_index + 4)
+
+    def _write_shear_data(
+        self,
+        shear_strains: NPArray,
+        test_case_identifier: TestCaseIdentifier,
+        data_frame: PDDataFrame,
+        start_column_index: int,
+    ) -> None:
+        full_outputs = self._forward_model(shear_strains, test_case_identifier)
+        output_index = _map_to_reduced_shear_stess_index(test_case_identifier)
+        shear_stresses = full_outputs[:, output_index]
+        self._add_shear_data(
+            shear_strains=shear_strains,
+            shear_stresses=shear_stresses,
+            test_case_identifier=test_case_identifier,
+            data_frame=data_frame,
+            start_column_index=start_column_index,
+        )
+
+    def _write_biaxial_data(
+        self,
+        stretches: NPArray,
+        test_case_identifier: TestCaseIdentifier,
+        stretch_ratio: StretchRatio,
+        data_frame: PDDataFrame,
+        start_column_index: int,
+    ) -> None:
+        full_outputs = self._forward_model(stretches, test_case_identifier)
+        stresses_ff = full_outputs[:, 0]
+        stresses_nn = full_outputs[:, 7]
+        stresses = np.hstack((stresses_ff, stresses_nn))
+        self._add_biaxial_data(
+            stretches=stretches,
+            stresses=stresses,
+            test_case_identifier=test_case_identifier,
+            stretch_ratio=stretch_ratio,
+            data_frame=data_frame,
+            start_column_index=start_column_index,
+        )
+
+    def _forward_model(
+        self, deformation_inputs: NPArray, test_case_identifier: TestCaseIdentifier
+    ) -> NPArray:
+        deformation_gradients = assemble_flattened_deformation_gradients(
+            deformation_inputs, test_case_identifier
+        )
+        inputs = (
+            torch.from_numpy(deformation_gradients)
+            .type(torch.get_default_dtype())
+            .to(self._device)
+        )
+        test_cases = torch.full(
+            (len(inputs),), test_case_identifier, dtype=torch.int, device=self._device
+        )
+        parameters = torch.tensor(self._active_parameter_values, device=self._device)
+        outputs = self._model(inputs, test_cases, parameters)
+        return outputs.detach().cpu().numpy()
+
+    def _add_shear_data(
+        self,
+        shear_strains: NPArray,
+        shear_stresses: NPArray,
+        test_case_identifier: TestCaseIdentifier,
+        data_frame: PDDataFrame,
+        start_column_index: int,
+    ) -> None:
+        column_index_strains = start_column_index
+        column_index_stresses = start_column_index + 1
+
+        test_case_label = map_test_case_identifiers_to_labels(
+            torch.tensor([test_case_identifier])
+        )[0]
+        label_strains = test_case_label + " - gamma [-]"
+        label_stresses = test_case_label + " - P [kPa]"
+
+        self._insert_one_column(
+            data_frame, column_index_strains, label_strains, shear_strains
+        )
+        self._insert_one_column(
+            data_frame, column_index_stresses, label_stresses, shear_stresses
+        )
+
+    def _add_biaxial_data(
+        self,
+        stretches: NPArray,
+        stresses: NPArray,
+        test_case_identifier: TestCaseIdentifier,
+        stretch_ratio: StretchRatio,
+        data_frame: PDDataFrame,
+        start_column_index: int,
+    ) -> None:
+        column_index_stretch_f = start_column_index
+        column_index_stretch_n = start_column_index + 1
+        column_index_stress_ff = start_column_index + 2
+        column_index_stress_nn = start_column_index + 3
+
+        stretches_f = stretches[:, self._index_fiber]
+        stretches_n = stretches[:, self._index_normal]
+        stresses_ff = stresses[:, self._index_fiber]
+        stresses_nn = stresses[:, self._index_normal]
+
+        test_case_label = map_test_case_identifiers_to_labels(
+            torch.tensor([test_case_identifier])
+        )[0]
+        stretch_ratio_label = f" - ratio {stretch_ratio[0]}:{stretch_ratio[1]}"
+        label_stretch_f = test_case_label + stretch_ratio_label + " - lambda f [-]"
+        label_stretch_n = test_case_label + stretch_ratio_label + " - lambda n [-]"
+        label_stress_ff = test_case_label + " - P [kPa]"
+        label_stress_nn = test_case_label + " - P [kPa]"
+
+        self._insert_one_column(
+            data_frame, column_index_stretch_f, label_stretch_f, stretches_f
+        )
+        self._insert_one_column(
+            data_frame, column_index_stretch_n, label_stretch_n, stretches_n
+        )
+        self._insert_one_column(
+            data_frame, column_index_stress_ff, label_stress_ff, stresses_ff
+        )
+        self._insert_one_column(
+            data_frame, column_index_stress_nn, label_stress_nn, stresses_nn
+        )
+
+    def _add_empty_column(self, data_frame: PDDataFrame, column_index: int) -> None:
+        self._insert_one_column(
+            data_frame, column_index, column_label="", column_values=""
+        )
+
+    def _insert_one_column(
+        self,
+        data_frame: PDDataFrame,
+        column_index: int,
+        column_label: str,
+        column_values: NPArray | str,
+    ) -> None:
+        data_frame.insert(column_index, column_label, column_values)
 
 
 def assemble_flattened_deformation_gradients(
@@ -491,7 +639,7 @@ def generate_principal_stretches(
 
 def _map_to_shear_strain_components(
     shear_test_case_identifier: TestCaseIdentifier,
-) -> Component:
+) -> StrainComponent:
     if shear_test_case_identifier == test_case_identifier_simple_shear_12:
         return (0, 1)
     elif shear_test_case_identifier == test_case_identifier_simple_shear_21:
@@ -504,5 +652,24 @@ def _map_to_shear_strain_components(
         return (1, 2)
     elif shear_test_case_identifier == test_case_identifier_simple_shear_32:
         return (2, 1)
+    else:
+        raise DataError(f"Unvalid test case identifier: {shear_test_case_identifier}")
+
+
+def _map_to_reduced_shear_stess_index(
+    shear_test_case_identifier: TestCaseIdentifier,
+) -> StressIndex:
+    if shear_test_case_identifier == test_case_identifier_simple_shear_12:
+        return 1
+    elif shear_test_case_identifier == test_case_identifier_simple_shear_21:
+        return 3
+    elif shear_test_case_identifier == test_case_identifier_simple_shear_13:
+        return 2
+    elif shear_test_case_identifier == test_case_identifier_simple_shear_31:
+        return 5
+    elif shear_test_case_identifier == test_case_identifier_simple_shear_23:
+        return 4
+    elif shear_test_case_identifier == test_case_identifier_simple_shear_32:
+        return 6
     else:
         raise DataError(f"Unvalid test case identifier: {shear_test_case_identifier}")
