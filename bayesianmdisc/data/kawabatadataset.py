@@ -7,9 +7,9 @@ from bayesianmdisc.data.base import (
     convert_to_torch,
     numpy_data_type,
 )
-from bayesianmdisc.data.testcases import test_case_identifier_biaxial_tension
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.readerswriters import CSVDataReader
+from bayesianmdisc.testcases import test_case_identifier_biaxial_tension
 
 
 class KawabataDataSet:

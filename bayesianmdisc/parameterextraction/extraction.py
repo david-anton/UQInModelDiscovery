@@ -12,14 +12,12 @@ from bayesianmdisc.customtypes import (
     TorchLRScheduler,
     TorchOptimizer,
 )
-from bayesianmdisc.models import OutputSelectorProtocol
-from bayesianmdisc.data import DeformationInputs, TestCases
+from bayesianmdisc.data import DeformationInputs
 from bayesianmdisc.gps import GaussianProcess
 from bayesianmdisc.gps.base import GPMultivariateNormal
-from bayesianmdisc.utility import flatten_outputs
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.loaderssavers import PytorchModelLoader, PytorchModelSaver
-from bayesianmdisc.models import ModelProtocol
+from bayesianmdisc.models import ModelProtocol, OutputSelectorProtocol
 from bayesianmdisc.networks.ffnn import FFNN
 from bayesianmdisc.normalizingflows import (
     NormalizingFlowDistribution,
@@ -33,6 +31,8 @@ from bayesianmdisc.postprocessing.plot import (
     HistoryPlotterConfig,
     plot_statistical_loss_history,
 )
+from bayesianmdisc.testcases import TestCases
+from bayesianmdisc.utility import flatten_outputs
 
 print_interval = 10
 num_iters_lipschitz_pretraining = 2_000

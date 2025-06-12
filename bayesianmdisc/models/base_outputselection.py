@@ -4,7 +4,7 @@ import torch
 
 from bayesianmdisc.customtypes import TensorSize
 from bayesianmdisc.errors import OutputSelectorError
-from bayesianmdisc.models.base import StressOutputs, OutputSelectionMask
+from bayesianmdisc.models.base import OutputSelectionMask, StressOutputs
 
 
 class OutputSelectorProtocol(Protocol):

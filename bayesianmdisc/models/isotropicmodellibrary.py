@@ -6,20 +6,9 @@ from torch import vmap
 from torch.func import grad
 
 from bayesianmdisc.customtypes import Device, Tensor
-from bayesianmdisc.data import (
-    AllowedTestCases,
-    DeformationInputs,
-    StressOutputs,
-    TestCases,
-)
-from bayesianmdisc.data.testcases import (
-    test_case_identifier_biaxial_tension,
-    test_case_identifier_equibiaxial_tension,
-    test_case_identifier_pure_shear,
-    test_case_identifier_uniaxial_tension,
-)
 from bayesianmdisc.models.base import (
     DeformationGradient,
+    DeformationInputs,
     Invariants,
     LSDesignMatrix,
     LSTargets,
@@ -32,6 +21,7 @@ from bayesianmdisc.models.base import (
     PiolaStresses,
     SplittedParameters,
     StrainEnergy,
+    StressOutputs,
     Stretch,
     Stretches,
     count_active_parameters,
@@ -40,6 +30,7 @@ from bayesianmdisc.models.base import (
     filter_active_parameter_names,
     init_parameter_mask,
     init_parameter_population_matrix,
+    map_parameter_names_to_indices,
     mask_and_populate_parameters,
     mask_parameters,
     update_parameter_population_matrix,
@@ -49,7 +40,6 @@ from bayesianmdisc.models.base import (
     validate_parameters,
     validate_stress_output_dimension,
     validate_test_cases,
-    map_parameter_names_to_indices,
 )
 from bayesianmdisc.models.base_mechanics import (
     assemble_stretches_from_factors,
@@ -57,11 +47,19 @@ from bayesianmdisc.models.base_mechanics import (
     calculate_pressure_from_incompressibility_constraint,
 )
 from bayesianmdisc.models.base_outputselection import (
-    validate_full_output_size,
     count_number_of_selected_outputs,
     determine_full_output_size,
+    validate_full_output_size,
 )
 from bayesianmdisc.models.utility import unsqueeze_if_necessary
+from bayesianmdisc.testcases import (
+    AllowedTestCases,
+    TestCases,
+    test_case_identifier_biaxial_tension,
+    test_case_identifier_equibiaxial_tension,
+    test_case_identifier_pure_shear,
+    test_case_identifier_uniaxial_tension,
+)
 
 StretchesTuple: TypeAlias = tuple[Stretch, Stretch, Stretch]
 OgdenExponents: TypeAlias = list[float]

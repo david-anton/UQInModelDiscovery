@@ -1,5 +1,3 @@
-from typing import TypeAlias
-
 import numpy as np
 
 from bayesianmdisc.customtypes import Device, NPArray
@@ -11,14 +9,14 @@ from bayesianmdisc.data.base import (
     numpy_data_type,
     stack_arrays,
 )
-from bayesianmdisc.data.testcases import (
+from bayesianmdisc.io import ProjectDirectory
+from bayesianmdisc.io.readerswriters import CSVDataReader
+from bayesianmdisc.testcases import (
     TestCases,
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_pure_shear,
     test_case_identifier_uniaxial_tension,
 )
-from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.io.readerswriters import CSVDataReader
 
 
 class TreloarDataSet:

@@ -1,12 +1,12 @@
 import numpy as np
 
 from bayesianmdisc.customtypes import NPArray
-from bayesianmdisc.data.testcases import (
+from bayesianmdisc.errors import PlotterError
+from bayesianmdisc.testcases import (
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_pure_shear,
     test_case_identifier_uniaxial_tension,
 )
-from bayesianmdisc.errors import PlotterError
 
 
 def split_treloar_inputs_and_outputs(

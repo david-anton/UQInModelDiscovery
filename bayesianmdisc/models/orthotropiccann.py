@@ -6,22 +6,12 @@ from torch import vmap
 from torch.func import grad
 
 from bayesianmdisc.customtypes import Device, Tensor
-from bayesianmdisc.data import DeformationInputs, StressOutputs, TestCases
-from bayesianmdisc.data.testcases import (
-    test_case_identifier_biaxial_tension,
-    test_case_identifier_simple_shear_12,
-    test_case_identifier_simple_shear_13,
-    test_case_identifier_simple_shear_21,
-    test_case_identifier_simple_shear_23,
-    test_case_identifier_simple_shear_31,
-    test_case_identifier_simple_shear_32,
-)
-from bayesianmdisc.utility import flatten_outputs
 from bayesianmdisc.errors import OutputSelectorError
 from bayesianmdisc.models.base import (
     AllowedTestCases,
     CauchyStresses,
     DeformationGradient,
+    DeformationInputs,
     FlattenedCauchyStresses,
     FlattenedDeformationGradient,
     Invariant,
@@ -35,12 +25,14 @@ from bayesianmdisc.models.base import (
     Parameters,
     SplittedParameters,
     StrainEnergy,
+    StressOutputs,
     count_active_parameters,
     determine_initial_parameter_mask,
     filter_active_parameter_indices,
     filter_active_parameter_names,
     init_parameter_mask,
     init_parameter_population_matrix,
+    map_parameter_names_to_indices,
     mask_and_populate_parameters,
     mask_parameters,
     update_parameter_population_matrix,
@@ -49,16 +41,26 @@ from bayesianmdisc.models.base import (
     validate_model_state,
     validate_parameters,
     validate_test_cases,
-    map_parameter_names_to_indices,
 )
 from bayesianmdisc.models.base_mechanics import (
     calculate_pressure_from_incompressibility_constraint,
 )
 from bayesianmdisc.models.base_outputselection import (
-    validate_full_output_size,
     count_number_of_selected_outputs,
     determine_full_output_size,
+    validate_full_output_size,
 )
+from bayesianmdisc.testcases import (
+    TestCases,
+    test_case_identifier_biaxial_tension,
+    test_case_identifier_simple_shear_12,
+    test_case_identifier_simple_shear_13,
+    test_case_identifier_simple_shear_21,
+    test_case_identifier_simple_shear_23,
+    test_case_identifier_simple_shear_31,
+    test_case_identifier_simple_shear_32,
+)
+from bayesianmdisc.utility import flatten_outputs
 
 ParameterCouplingTuples: TypeAlias = list[tuple[str, str]]
 

@@ -8,31 +8,31 @@ from torch import vmap
 
 from bayesianmdisc.bayes.distributions import DistributionProtocol
 from bayesianmdisc.customtypes import Device, NPArray, Tensor
-from bayesianmdisc.data import (
-    DeformationInputs,
-    StressOutputs,
-    TestCases,
+from bayesianmdisc.datasettings import (
     data_set_label_linka,
     data_set_label_treloar,
     zero_stress_inputs_linka,
     zero_stress_inputs_treloar,
 )
-from bayesianmdisc.data.testcases import (
-    TestCaseLabels,
-    map_test_case_identifiers_to_labels,
-)
 from bayesianmdisc.errors import ModelSelectionError
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.readerswriters import PandasDataWriter
 from bayesianmdisc.models.base import (
+    DeformationInputs,
     ModelProtocol,
     ParameterIndex,
     ParameterIndices,
+    StressOutputs,
 )
 from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
     mean_absolute_error,
     root_mean_squared_error,
+)
+from bayesianmdisc.testcases import (
+    TestCaseLabels,
+    TestCases,
+    map_test_case_identifiers_to_labels,
 )
 
 ModelAccuracies: TypeAlias = list[float]

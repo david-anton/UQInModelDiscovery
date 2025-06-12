@@ -4,19 +4,18 @@ from dataclasses import dataclass
 import torch
 
 from bayesianmdisc.customtypes import Device, Tensor
-from bayesianmdisc.data import (
-    DeformationInputs,
-    StressOutputs,
-    TestCases,
+from bayesianmdisc.data.base import DeformationInputs, StressOutputs
+from bayesianmdisc.datasettings import (
     data_set_label_kawabata,
     data_set_label_linka,
     data_set_label_treloar,
 )
-from bayesianmdisc.data.testcases import (
+from bayesianmdisc.errors import DataError
+from bayesianmdisc.testcases import (
+    TestCases,
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_uniaxial_tension,
 )
-from bayesianmdisc.errors import DataError
 
 
 @dataclass

@@ -1,17 +1,17 @@
 import torch
 
 from bayesianmdisc.customtypes import Device
-from bayesianmdisc.data import TestCases
-from bayesianmdisc.data.testcases import (
-    test_case_identifier_equibiaxial_tension,
-    test_case_identifier_pure_shear,
-    test_case_identifier_uniaxial_tension,
-)
 from bayesianmdisc.models.base import (
     DeformationGradient,
     Pressure,
     StrainEnergyDerivatives,
     Stretches,
+)
+from bayesianmdisc.testcases import (
+    TestCases,
+    test_case_identifier_equibiaxial_tension,
+    test_case_identifier_pure_shear,
+    test_case_identifier_uniaxial_tension,
 )
 
 

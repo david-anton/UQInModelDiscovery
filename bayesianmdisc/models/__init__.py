@@ -1,4 +1,5 @@
 from .base import ModelProtocol
+from .base_outputselection import OutputSelectorProtocol
 from .isotropicmodellibrary import IsotropicModelLibrary, OutputSelectorTreloar
 from .modelselection import (
     select_model_through_backward_elimination,
@@ -9,7 +10,6 @@ from .utility import (
     load_model_state,
     save_model_state,
 )
-from .base_outputselection import OutputSelectorProtocol
 
 __all__ = [
     "ModelProtocol",
