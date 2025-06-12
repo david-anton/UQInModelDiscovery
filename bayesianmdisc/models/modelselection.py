@@ -13,6 +13,7 @@ from bayesianmdisc.datasettings import (
     data_set_label_treloar,
     zero_stress_inputs_linka,
     zero_stress_inputs_treloar,
+    data_set_label_synthetic_linka,
 )
 from bayesianmdisc.errors import ModelSelectionError
 from bayesianmdisc.io import ProjectDirectory
@@ -179,7 +180,10 @@ def select_model_through_sobol_sensitivity_analysis(
 
     if data_set_label == data_set_label_treloar:
         skipped_input_indices = zero_stress_inputs_treloar
-    elif data_set_label == data_set_label_linka:
+    elif (
+        data_set_label == data_set_label_linka
+        or data_set_label == data_set_label_synthetic_linka
+    ):
         skipped_input_indices = zero_stress_inputs_linka
     else:
         raise ModelSelectionError(

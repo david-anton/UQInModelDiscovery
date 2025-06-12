@@ -333,6 +333,7 @@ class LinkaHeartDataSetGenerator:
         data_frame = self._init_data_frame()
         self._generate_shear_data(data_frame)
         self._generate_biaxial_data(data_frame)
+        self._write_data_frame(data_frame)
 
     def _init_data_frame(self) -> PDDataFrame:
         return pd.DataFrame()
@@ -342,7 +343,7 @@ class LinkaHeartDataSetGenerator:
 
         for test_case in range(len(test_case_identifiers_ss)):
             start_column_index = self._start_column_indices_ss[test_case]
-            self._write_shear_data(
+            self._add_shear_data_to_data_frame(
                 shear_strains=shear_strains,
                 test_case_identifier=test_case_identifiers_ss[test_case],
                 data_frame=data_frame,
@@ -359,26 +360,51 @@ class LinkaHeartDataSetGenerator:
                 stretch_ratio, self._num_points_per_test_case
             )
             start_column_index = self._start_column_indices_bt[test_case]
-            self._write_biaxial_data(
+            self._add_biaxial_data_to_data_frame(
                 stretches=stretches,
                 test_case_identifier=test_case_identifier_biaxial_tension,
                 stretch_ratio=stretch_ratio,
                 data_frame=data_frame,
                 start_column_index=start_column_index,
             )
-            self._add_empty_column(data_frame, start_column_index + 4)
+            if not test_case == len(stretch_ratios) - 1:
+                self._add_empty_column(data_frame, start_column_index + 4)
 
-    def _write_shear_data(
+    def _add_shear_data_to_data_frame(
         self,
         shear_strains: NPArray,
         test_case_identifier: TestCaseIdentifier,
         data_frame: PDDataFrame,
         start_column_index: int,
     ) -> None:
+
+        def add_shear_data(
+            shear_strains: NPArray,
+            shear_stresses: NPArray,
+            test_case_identifier: TestCaseIdentifier,
+            data_frame: PDDataFrame,
+            start_column_index: int,
+        ) -> None:
+            column_index_strains = start_column_index
+            column_index_stresses = start_column_index + 1
+
+            test_case_label = map_test_case_identifiers_to_labels(
+                torch.tensor([test_case_identifier])
+            )[0]
+            label_strains = test_case_label + " - gamma [-]"
+            label_stresses = test_case_label + " - sigma [kPa]"
+            shear_strains = shear_strains.reshape((-1,))
+            self._insert_one_column(
+                data_frame, column_index_strains, label_strains, shear_strains
+            )
+            self._insert_one_column(
+                data_frame, column_index_stresses, label_stresses, shear_stresses
+            )
+
         full_outputs = self._forward_model(shear_strains, test_case_identifier)
         output_index = _map_to_reduced_shear_stess_index(test_case_identifier)
         shear_stresses = full_outputs[:, output_index]
-        self._add_shear_data(
+        add_shear_data(
             shear_strains=shear_strains,
             shear_stresses=shear_stresses,
             test_case_identifier=test_case_identifier,
@@ -386,7 +412,7 @@ class LinkaHeartDataSetGenerator:
             start_column_index=start_column_index,
         )
 
-    def _write_biaxial_data(
+    def _add_biaxial_data_to_data_frame(
         self,
         stretches: NPArray,
         test_case_identifier: TestCaseIdentifier,
@@ -394,11 +420,57 @@ class LinkaHeartDataSetGenerator:
         data_frame: PDDataFrame,
         start_column_index: int,
     ) -> None:
+
+        def add_biaxial_data(
+            stretches: NPArray,
+            stresses: NPArray,
+            test_case_identifier: TestCaseIdentifier,
+            stretch_ratio: StretchRatio,
+            data_frame: PDDataFrame,
+            start_column_index: int,
+        ) -> None:
+            column_index_stretch_f = start_column_index
+            column_index_stress_ff = start_column_index + 1
+            column_index_stretch_n = start_column_index + 2
+            column_index_stress_nn = start_column_index + 3
+
+            stretches_f = stretches[:, self._index_fiber]
+            stresses_ff = stresses[:, self._index_fiber]
+            stretches_n = stretches[:, self._index_normal]
+            stresses_nn = stresses[:, self._index_normal]
+
+            test_case_label = map_test_case_identifiers_to_labels(
+                torch.tensor([test_case_identifier])
+            )[0]
+            stretch_ratio_label = f" - ratio {stretch_ratio[0]}:{stretch_ratio[1]}"
+            label_stretch_f = test_case_label + stretch_ratio_label + " - lambda f [-]"
+            label_stress_ff = (
+                test_case_label + stretch_ratio_label + " - sigma_ff [kPa]"
+            )
+            label_stretch_n = test_case_label + stretch_ratio_label + " - lambda n [-]"
+
+            label_stress_nn = (
+                test_case_label + stretch_ratio_label + " - sigma_nn [kPa]"
+            )
+
+            self._insert_one_column(
+                data_frame, column_index_stretch_f, label_stretch_f, stretches_f
+            )
+            self._insert_one_column(
+                data_frame, column_index_stress_ff, label_stress_ff, stresses_ff
+            )
+            self._insert_one_column(
+                data_frame, column_index_stretch_n, label_stretch_n, stretches_n
+            )
+            self._insert_one_column(
+                data_frame, column_index_stress_nn, label_stress_nn, stresses_nn
+            )
+
         full_outputs = self._forward_model(stretches, test_case_identifier)
-        stresses_ff = full_outputs[:, 0]
-        stresses_nn = full_outputs[:, 7]
+        stresses_ff = full_outputs[:, 0].reshape((-1, 1))
+        stresses_nn = full_outputs[:, 7].reshape((-1, 1))
         stresses = np.hstack((stresses_ff, stresses_nn))
-        self._add_biaxial_data(
+        add_biaxial_data(
             stretches=stretches,
             stresses=stresses,
             test_case_identifier=test_case_identifier,
@@ -425,74 +497,12 @@ class LinkaHeartDataSetGenerator:
         outputs = self._model(inputs, test_cases, parameters)
         return outputs.detach().cpu().numpy()
 
-    def _add_shear_data(
-        self,
-        shear_strains: NPArray,
-        shear_stresses: NPArray,
-        test_case_identifier: TestCaseIdentifier,
-        data_frame: PDDataFrame,
-        start_column_index: int,
-    ) -> None:
-        column_index_strains = start_column_index
-        column_index_stresses = start_column_index + 1
-
-        test_case_label = map_test_case_identifiers_to_labels(
-            torch.tensor([test_case_identifier])
-        )[0]
-        label_strains = test_case_label + " - gamma [-]"
-        label_stresses = test_case_label + " - P [kPa]"
-
-        self._insert_one_column(
-            data_frame, column_index_strains, label_strains, shear_strains
-        )
-        self._insert_one_column(
-            data_frame, column_index_stresses, label_stresses, shear_stresses
-        )
-
-    def _add_biaxial_data(
-        self,
-        stretches: NPArray,
-        stresses: NPArray,
-        test_case_identifier: TestCaseIdentifier,
-        stretch_ratio: StretchRatio,
-        data_frame: PDDataFrame,
-        start_column_index: int,
-    ) -> None:
-        column_index_stretch_f = start_column_index
-        column_index_stretch_n = start_column_index + 1
-        column_index_stress_ff = start_column_index + 2
-        column_index_stress_nn = start_column_index + 3
-
-        stretches_f = stretches[:, self._index_fiber]
-        stretches_n = stretches[:, self._index_normal]
-        stresses_ff = stresses[:, self._index_fiber]
-        stresses_nn = stresses[:, self._index_normal]
-
-        test_case_label = map_test_case_identifiers_to_labels(
-            torch.tensor([test_case_identifier])
-        )[0]
-        stretch_ratio_label = f" - ratio {stretch_ratio[0]}:{stretch_ratio[1]}"
-        label_stretch_f = test_case_label + stretch_ratio_label + " - lambda f [-]"
-        label_stretch_n = test_case_label + stretch_ratio_label + " - lambda n [-]"
-        label_stress_ff = test_case_label + " - P [kPa]"
-        label_stress_nn = test_case_label + " - P [kPa]"
-
-        self._insert_one_column(
-            data_frame, column_index_stretch_f, label_stretch_f, stretches_f
-        )
-        self._insert_one_column(
-            data_frame, column_index_stretch_n, label_stretch_n, stretches_n
-        )
-        self._insert_one_column(
-            data_frame, column_index_stress_ff, label_stress_ff, stresses_ff
-        )
-        self._insert_one_column(
-            data_frame, column_index_stress_nn, label_stress_nn, stresses_nn
-        )
-
     def _add_empty_column(self, data_frame: PDDataFrame, column_index: int) -> None:
         self._insert_one_column(
-            data_frame, column_index, column_label="", column_values=""
+            data_frame,
+            column_index,
+            column_label=f"empty_{column_index}",
+            column_values=np.full((self._num_points_per_test_case,), np.nan),
         )
 
     def _insert_one_column(
@@ -500,17 +510,16 @@ class LinkaHeartDataSetGenerator:
         data_frame: PDDataFrame,
         column_index: int,
         column_label: str,
-        column_values: NPArray | str,
+        column_values: NPArray,
     ) -> None:
-        data_frame.insert(column_index, column_label, column_values)
+        data_frame.insert(column_index, column_label, pd.Series(column_values))
 
     def _write_data_frame(self, data_frame: PDDataFrame) -> None:
-        output_path = self._project_directory.get_input_file_path(
+        output_path = self._project_directory.create_input_file_path(
             file_name=self._file_name, subdir_name=self._output_directory
         )
         data_frame.to_excel(
-            output_path,
-            sheet_name=excel_sheet_name,
+            output_path, sheet_name=excel_sheet_name, index=False, startrow=row_offset
         )
 
 

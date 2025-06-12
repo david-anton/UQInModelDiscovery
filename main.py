@@ -167,7 +167,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise1e-1_minnoise5e-2_lipschitz_lambda1000_iters10_layersize4_256_nf_ilr5e-4_samples16"
+output_directory = f"{current_date}_{input_directory}_lipschitz_lambda1000_iters10_layersize4_256_nf_ilr5e-4_samples16"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -203,7 +203,10 @@ def plot_gp_stresses(
 
     if data_set_label == data_set_label_treloar:
         plot_treloar()
-    elif data_set_label == data_set_label_linka:
+    elif (
+        data_set_label == data_set_label_linka
+        or data_set_label == data_set_label_synthetic_linka
+    ):
         plot_linka()
 
 
@@ -481,7 +484,10 @@ if retrain_models:
             if data_set_label == data_set_label_treloar:
                 num_iterations = int(100)
                 learning_rate = 1e-3
-            elif data_set_label == data_set_label_linka:
+            elif (
+                data_set_label == data_set_label_linka
+                or data_set_label == data_set_label_synthetic_linka
+            ):
                 num_iterations = int(100)
                 learning_rate = 1e-3
 
@@ -528,7 +534,10 @@ if retrain_models:
                     test_cases_extraction, cast(IsotropicModelLibrary, model), device
                 )
 
-            elif data_set_label == data_set_label_linka:
+            elif (
+                data_set_label == data_set_label_linka
+                or data_set_label == data_set_label_synthetic_linka
+            ):
                 num_points_per_test_case = 16
                 lipschitz_penalty_coefficient = 1000.0
                 num_layers_lipschitz_nn = 4
