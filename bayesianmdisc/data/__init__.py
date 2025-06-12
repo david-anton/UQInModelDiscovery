@@ -1,4 +1,4 @@
-from .base import DataSetProtocol, DeformationInputs, StressOutputs
+from .base import DataSetProtocol
 from .kawabatadataset import KawabataDataSet
 from .linkaheartdataset import LinkaHeartDataSet, LinkaHeartDataSetGenerator
 from .treloardataset import TreloarDataSet
@@ -19,6 +19,4 @@ __all__ = [
     "split_data",
     "determine_heteroscedastic_noise",
     "add_noise_to_data",
-    "DeformationInputs",
-    "StressOutputs",
 ]

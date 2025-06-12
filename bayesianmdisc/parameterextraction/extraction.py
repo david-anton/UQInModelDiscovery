@@ -12,7 +12,6 @@ from bayesianmdisc.customtypes import (
     TorchLRScheduler,
     TorchOptimizer,
 )
-from bayesianmdisc.data import DeformationInputs
 from bayesianmdisc.gps import GaussianProcess
 from bayesianmdisc.gps.base import GPMultivariateNormal
 from bayesianmdisc.io import ProjectDirectory
@@ -45,7 +44,7 @@ def extract_gp_inducing_parameter_distribution(
     output_selector: OutputSelectorProtocol,
     distribution_type: str,
     is_mean_trainable: bool,
-    inputs: DeformationInputs,
+    inputs: Tensor,
     test_cases: TestCases,
     num_func_samples: int,
     resample: bool,
