@@ -240,7 +240,7 @@ def plot_sobol_indice_statistics(
             first_indices_results_df, parameter_names
         )
         parameter_names, total_indices_results_df = read_indices_results(
-            indice_label=first_indices_label,
+            indice_label=total_indices_label,
             output_index=output_index,
             relevant_parameter_indices=relevant_parameter_indices,
             output_subdirectory=output_subdirectory,
@@ -326,7 +326,7 @@ def plot_sobol_indice_statistics(
         axes.set_yticks(yticks, parameter_names)
 
         # saving
-        file_name = f"sobol_indices_statistics.png"
+        file_name = f"sobol_indices_statistics_output_{output_index}.png"
         output_path = project_directory.create_output_file_path(
             file_name=file_name, subdir_name=output_subdirectory
         )

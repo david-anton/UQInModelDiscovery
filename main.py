@@ -113,7 +113,7 @@ elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
     file_name = "CANNsHEARTdata_synthetic.xlsx"
 
-    model = OrthotropicCANN(device)
+    model_data_generation = OrthotropicCANN(device)
     active_parameter_names = (
         "W_2_7 (l2, I_2, p2, I)",
         "W_1_12 (l1, I_4f, p2, exp)",
@@ -123,7 +123,7 @@ elif data_set_label == data_set_label_synthetic_linka:
         "W_1_24 (l1, I_8fs, p2, exp)",
         "W_2_24 (l2, I_8fs, p2, exp)",
     )
-    model.reduce_model_to_parameter_names(active_parameter_names)
+    model_data_generation.reduce_model_to_parameter_names(active_parameter_names)
     mu = 10.324  # [kPa]
     a_f = 3.427  # [kPa]
     a_n = 2.754  # [kPa]
@@ -140,9 +140,8 @@ elif data_set_label == data_set_label_synthetic_linka:
         b_fs,
         a_fs / (2 * b_fs),
     )
-
     data_generator = LinkaHeartDataSetGenerator(
-        model=model,
+        model=model_data_generation,
         parameters=active_parameter_values,
         num_point_per_test_case=11,
         file_name=file_name,
@@ -158,9 +157,11 @@ elif data_set_label == data_set_label_synthetic_linka:
         device=device,
     )
 
+    model = OrthotropicCANN(device)
+
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 5e-2
-    list_num_wasserstein_iterations = [5_000, 5_000]
+    list_num_wasserstein_iterations = [10_000, 10_000]
     first_sobol_index_thresshold = 1e-2
 
 num_samples_parameter_distribution = 8192
@@ -287,7 +288,10 @@ def plot_model_stresses(
         plot_treloar()
     elif data_set_label == data_set_label_kawabata:
         plot_kawabata()
-    elif data_set_label == data_set_label_linka:
+    elif (
+        data_set_label == data_set_label_linka
+        or data_set_label == data_set_label_synthetic_linka
+    ):
         plot_linka()
 
 
