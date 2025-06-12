@@ -15,11 +15,12 @@ from bayesianmdisc.data.base import (
     numpy_data_type,
     stack_arrays,
 )
+from bayesianmdisc.errors import DataError
+from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import OrthotropicCANN
-
-# from bayesianmdisc.models import OrthotropicCANN
-from bayesianmdisc.data.testcases import (
+from bayesianmdisc.testcases import (
     TestCaseIdentifier,
+    map_test_case_identifiers_to_labels,
     test_case_identifier_biaxial_tension,
     test_case_identifier_simple_shear_12,
     test_case_identifier_simple_shear_13,
@@ -27,10 +28,7 @@ from bayesianmdisc.data.testcases import (
     test_case_identifier_simple_shear_23,
     test_case_identifier_simple_shear_31,
     test_case_identifier_simple_shear_32,
-    map_test_case_identifiers_to_labels,
 )
-from bayesianmdisc.errors import DataError
-from bayesianmdisc.io import ProjectDirectory
 
 StrainComponent: TypeAlias = tuple[int, int]
 StressIndex: TypeAlias = int
@@ -41,12 +39,31 @@ max_shear_strain = 0.5
 min_nominal_principel_stretch = 1.0
 max_nominal_principal_stretch = 1.1
 irrelevant_stress_components = [4]
-synthetic_data_file_name = "CANNsHEARTdata_synthetic.xlsx"
+
+test_case_identifiers_ss = [
+    test_case_identifier_simple_shear_21,
+    test_case_identifier_simple_shear_31,
+    test_case_identifier_simple_shear_12,
+    test_case_identifier_simple_shear_32,
+    test_case_identifier_simple_shear_13,
+    test_case_identifier_simple_shear_23,
+]
+stretch_ratios = [
+    (1.0, 1.0),
+    (1.0, 0.75),
+    (0.75, 1.0),
+    (1.0, 0.5),
+    (0.5, 1.0),
+]
+
+row_offset = 3
+excel_sheet_name = "Sheet1"
 
 
 class LinkaHeartDataSet:
     def __init__(
         self,
+        file_name: str,
         input_directory: str,
         project_directory: ProjectDirectory,
         device: Device,
@@ -56,37 +73,13 @@ class LinkaHeartDataSet:
         self._validate_data_configuration(consider_shear_data, consider_extension_data)
         self._consider_shear_data = consider_shear_data
         self._consider_biaxial_data = consider_extension_data
+        self._file_name = file_name
         self._input_directory = input_directory
         self._project_directory = project_directory
         self._device = device
-        self._file_name = "CANNsHEARTdata_shear05.xlsx"
-        self._excel_sheet_name = "Sheet1"
-        self._row_offset = 3
         self._start_column_shear = 0
         self._start_column_biaxial = 15
         self._np_data_type = numpy_data_type
-        self._test_case_identifier_bt = test_case_identifier_biaxial_tension
-        self._test_case_identifier_ss_12 = test_case_identifier_simple_shear_12
-        self._test_case_identifier_ss_21 = test_case_identifier_simple_shear_21
-        self._test_case_identifier_ss_13 = test_case_identifier_simple_shear_13
-        self._test_case_identifier_ss_31 = test_case_identifier_simple_shear_31
-        self._test_case_identifier_ss_23 = test_case_identifier_simple_shear_23
-        self._test_case_identifier_ss_32 = test_case_identifier_simple_shear_32
-        self._test_case_identifiers_ss = [
-            self._test_case_identifier_ss_21,
-            self._test_case_identifier_ss_31,
-            self._test_case_identifier_ss_12,
-            self._test_case_identifier_ss_32,
-            self._test_case_identifier_ss_13,
-            self._test_case_identifier_ss_23,
-        ]
-        self._stretch_ratios = [
-            (1.0, 1.0),
-            (1.0, 0.75),
-            (0.75, 1.0),
-            (1.0, 0.5),
-            (0.5, 1.0),
-        ]
         self._data_frame = self._init_data_frame()
 
     def read_data(self) -> Data:
@@ -97,7 +90,7 @@ class LinkaHeartDataSet:
         if self._consider_shear_data:
             column = self._start_column_shear
             deformations_column, test_cases_colum, stresses_column = (
-                self._read_shear_data(column, self._test_case_identifier_ss_21)
+                self._read_shear_data(column, test_case_identifier_simple_shear_21)
             )
             all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
@@ -105,7 +98,7 @@ class LinkaHeartDataSet:
 
             column = column + 2
             deformations_column, test_cases_colum, stresses_column = (
-                self._read_shear_data(column, self._test_case_identifier_ss_31)
+                self._read_shear_data(column, test_case_identifier_simple_shear_31)
             )
             all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
@@ -113,7 +106,7 @@ class LinkaHeartDataSet:
 
             column = column + 3
             deformations_column, test_cases_colum, stresses_column = (
-                self._read_shear_data(column, self._test_case_identifier_ss_12)
+                self._read_shear_data(column, test_case_identifier_simple_shear_12)
             )
             all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
@@ -121,7 +114,7 @@ class LinkaHeartDataSet:
 
             column = column + 2
             deformations_column, test_cases_colum, stresses_column = (
-                self._read_shear_data(column, self._test_case_identifier_ss_32)
+                self._read_shear_data(column, test_case_identifier_simple_shear_32)
             )
             all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
@@ -129,7 +122,7 @@ class LinkaHeartDataSet:
 
             column = column + 3
             deformations_column, test_cases_colum, stresses_column = (
-                self._read_shear_data(column, self._test_case_identifier_ss_13)
+                self._read_shear_data(column, test_case_identifier_simple_shear_13)
             )
             all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
@@ -137,7 +130,7 @@ class LinkaHeartDataSet:
 
             column = column + 2
             deformations_column, test_cases_colum, stresses_column = (
-                self._read_shear_data(column, self._test_case_identifier_ss_23)
+                self._read_shear_data(column, test_case_identifier_simple_shear_23)
             )
             all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
@@ -206,7 +199,7 @@ class LinkaHeartDataSet:
         if self._consider_shear_data:
             shear_strains = generate_shear_strains(num_points_per_test_case)
 
-            for test_case_identifier in self._test_case_identifiers_ss:
+            for test_case_identifier in test_case_identifiers_ss:
                 all_deformation_gradients += [
                     assemble_flattened_deformation_gradients(
                         shear_strains, test_case_identifier
@@ -217,8 +210,8 @@ class LinkaHeartDataSet:
                 ]
 
         if self._consider_biaxial_data:
-            for stretch_ratio in self._stretch_ratios:
-                test_case_identifier = self._test_case_identifier_bt
+            for stretch_ratio in stretch_ratios:
+                test_case_identifier = test_case_identifier_biaxial_tension
                 principal_stretches = generate_principal_stretches(
                     stretch_ratio, num_points_per_test_case
                 )
@@ -257,7 +250,7 @@ class LinkaHeartDataSet:
         input_path = self._project_directory.get_input_file_path(
             file_name=self._file_name, subdir_name=self._input_directory
         )
-        return pd.read_excel(input_path, sheet_name=self._excel_sheet_name)
+        return pd.read_excel(input_path, sheet_name=excel_sheet_name)
 
     def _read_shear_data(
         self, start_column: int, shear_test_case_identifier: TestCaseIdentifier
@@ -289,13 +282,13 @@ class LinkaHeartDataSet:
         stresses = np.hstack((stresses_ff, stresses_nn))
 
         flattened_deformation_gradients = assemble_flattened_deformation_gradients(
-            stretches, self._test_case_identifier_bt
+            stretches, test_case_identifier_biaxial_tension
         )
         test_cases = assemble_test_case_identifiers(
-            self._test_case_identifier_bt, flattened_deformation_gradients
+            test_case_identifier_biaxial_tension, flattened_deformation_gradients
         )
         reduced_flattened_stress_tensors = assemble_reduced_flattened_stress_tensor(
-            stresses, self._test_case_identifier_bt
+            stresses, test_case_identifier_biaxial_tension
         )
         return (
             flattened_deformation_gradients,
@@ -305,7 +298,7 @@ class LinkaHeartDataSet:
 
     def _read_column(self, column: int) -> NPArray:
         return (
-            self._data_frame.iloc[self._row_offset :, column]
+            self._data_frame.iloc[row_offset:, column]
             .dropna()
             .astype(self._np_data_type)
             .values
@@ -317,41 +310,23 @@ class LinkaHeartDataSetGenerator:
     def __init__(
         self,
         model: OrthotropicCANN,
-        activae_parameter_names: tuple[str],
-        active_parameter_values: list[float],
+        parameters: tuple[float, ...],
         num_point_per_test_case: int,
+        file_name: str,
         output_directory: str,
         project_directory: ProjectDirectory,
         device: Device,
     ) -> None:
         self._model = model
-        self._model.reduce_model_to_parameter_names(activae_parameter_names)
-        self._active_parameter_values = active_parameter_values
+        self._parameters = parameters
         self._num_points_per_test_case = num_point_per_test_case
+        self._file_name = file_name
         self._output_directory = output_directory
         self._project_directory = project_directory
         self._device = device
-        self._output_file_name = synthetic_data_file_name
-        self._excel_sheet_name = "Sheet1"
-        self._test_case_identifiers_ss = [
-            test_case_identifier_simple_shear_21,
-            test_case_identifier_simple_shear_31,
-            test_case_identifier_simple_shear_12,
-            test_case_identifier_simple_shear_32,
-            test_case_identifier_simple_shear_13,
-            test_case_identifier_simple_shear_23,
-        ]
         self._start_column_indices_ss = [0, 2, 5, 7, 10, 12]
-        self._test_case_identifier_bt = test_case_identifier_biaxial_tension
         self._index_fiber = 0
         self._index_normal = 1
-        self._stretch_ratios = [
-            (1.0, 1.0),
-            (1.0, 0.75),
-            (0.75, 1.0),
-            (1.0, 0.5),
-            (0.5, 1.0),
-        ]
         self._start_column_indices_bt = [15, 20, 25, 30, 35]
 
     def generate(self) -> None:
@@ -365,11 +340,11 @@ class LinkaHeartDataSetGenerator:
     def _generate_shear_data(self, data_frame: PDDataFrame) -> None:
         shear_strains = generate_shear_strains(self._num_points_per_test_case)
 
-        for test_case in range(len(self._test_case_identifiers_ss)):
+        for test_case in range(len(test_case_identifiers_ss)):
             start_column_index = self._start_column_indices_ss[test_case]
             self._write_shear_data(
                 shear_strains=shear_strains,
-                test_case_identifier=self._test_case_identifiers_ss[test_case],
+                test_case_identifier=test_case_identifiers_ss[test_case],
                 data_frame=data_frame,
                 start_column_index=start_column_index,
             )
@@ -378,15 +353,15 @@ class LinkaHeartDataSetGenerator:
 
     def _generate_biaxial_data(self, data_frame: PDDataFrame) -> None:
 
-        for test_case in range(len(self._stretch_ratios)):
-            stretch_ratio = self._stretch_ratios[test_case]
+        for test_case in range(len(stretch_ratios)):
+            stretch_ratio = stretch_ratios[test_case]
             stretches = generate_principal_stretches(
                 stretch_ratio, self._num_points_per_test_case
             )
             start_column_index = self._start_column_indices_bt[test_case]
             self._write_biaxial_data(
                 stretches=stretches,
-                test_case_identifier=self._test_case_identifier_bt,
+                test_case_identifier=test_case_identifier_biaxial_tension,
                 stretch_ratio=stretch_ratio,
                 data_frame=data_frame,
                 start_column_index=start_column_index,
@@ -446,7 +421,7 @@ class LinkaHeartDataSetGenerator:
         test_cases = torch.full(
             (len(inputs),), test_case_identifier, dtype=torch.int, device=self._device
         )
-        parameters = torch.tensor(self._active_parameter_values, device=self._device)
+        parameters = torch.tensor(self._parameters, device=self._device)
         outputs = self._model(inputs, test_cases, parameters)
         return outputs.detach().cpu().numpy()
 
@@ -528,6 +503,15 @@ class LinkaHeartDataSetGenerator:
         column_values: NPArray | str,
     ) -> None:
         data_frame.insert(column_index, column_label, column_values)
+
+    def _write_data_frame(self, data_frame: PDDataFrame) -> None:
+        output_path = self._project_directory.get_input_file_path(
+            file_name=self._file_name, subdir_name=self._output_directory
+        )
+        data_frame.to_excel(
+            output_path,
+            sheet_name=excel_sheet_name,
+        )
 
 
 def assemble_flattened_deformation_gradients(

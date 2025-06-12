@@ -14,13 +14,17 @@ from bayesianmdisc.data import (
     DataSetProtocol,
     KawabataDataSet,
     LinkaHeartDataSet,
+    LinkaHeartDataSetGenerator,
     TreloarDataSet,
     add_noise_to_data,
-    data_set_label_kawabata,
-    data_set_label_linka,
-    data_set_label_treloar,
     determine_heteroscedastic_noise,
     validate_data,
+)
+from bayesianmdisc.datasettings import (
+    data_set_label_kawabata,
+    data_set_label_linka,
+    data_set_label_synthetic_linka,
+    data_set_label_treloar,
 )
 from bayesianmdisc.gps import (
     GP,
@@ -36,8 +40,8 @@ from bayesianmdisc.models import (
     ModelProtocol,
     OrthotropicCANN,
     OutputSelectorLinka,
-    OutputSelectorTreloar,
     OutputSelectorProtocol,
+    OutputSelectorTreloar,
     load_model_state,
     save_model_state,
     select_model_through_sobol_sensitivity_analysis,
@@ -66,7 +70,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_linka
+data_set_label = data_set_label_synthetic_linka
 retrain_models = True
 
 # Settings
@@ -83,18 +87,80 @@ if data_set_label == data_set_label_treloar:
     data_set: DataSetProtocol = TreloarDataSet(
         input_directory, project_directory, device
     )
+
     model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)
+
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 5e-2
     list_num_wasserstein_iterations = [20_000, 10_000]
     first_sobol_index_thresshold = 1e-6
 elif data_set_label == data_set_label_linka:
     input_directory = data_set_label
-    data_set = LinkaHeartDataSet(input_directory, project_directory, device)
+    data_set = LinkaHeartDataSet(
+        input_directory=input_directory,
+        file_name="CANNsHEARTdata_shear05.xlsx",
+        project_directory=project_directory,
+        device=device,
+    )
+
     model = OrthotropicCANN(device)
+
     relative_noise_stddevs = 1e-1  # 5e-2
     min_absolute_noise_stddev = 5e-2
-    list_num_wasserstein_iterations = [20_000, 20_000]
+    list_num_wasserstein_iterations = [10_000, 10_000]
+    first_sobol_index_thresshold = 1e-2
+elif data_set_label == data_set_label_synthetic_linka:
+    input_directory = data_set_label
+    file_name = "CANNsHEARTdata_synthetic.xlsx"
+
+    model = OrthotropicCANN(device)
+    active_parameter_names = (
+        "W_2_7 (l2, I_2, p2, I)",
+        "W_1_12 (l1, I_4f, p2, exp)",
+        "W_2_12 (l2, I_4f, p2, exp)",
+        "W_1_20 (l1, I_4n, p2, exp)",
+        "W_2_20 (l2, I_4n, p2, exp)",
+        "W_1_24 (l1, I_8fs, p2, exp)",
+        "W_2_24 (l2, I_8fs, p2, exp)",
+    )
+    model.reduce_model_to_parameter_names(active_parameter_names)
+    mu = 10.324  # [kPa]
+    a_f = 3.427  # [kPa]
+    a_n = 2.754  # [kPa]
+    a_fs = 0.494  # [kPa]
+    b_f = 21.151
+    b_n = 4.371
+    b_fs = 0.508
+    active_parameter_values = (
+        mu / 2,
+        b_f,
+        a_f / (2 * b_f),
+        b_n,
+        a_n / (2 * b_n),
+        b_fs,
+        a_fs / (2 * b_fs),
+    )
+
+    data_generator = LinkaHeartDataSetGenerator(
+        model=model,
+        parameters=active_parameter_values,
+        num_point_per_test_case=11,
+        file_name=file_name,
+        output_directory=input_directory,
+        project_directory=project_directory,
+        device=device,
+    )
+    data_generator.generate()
+    data_set = LinkaHeartDataSet(
+        input_directory=input_directory,
+        file_name=file_name,
+        project_directory=project_directory,
+        device=device,
+    )
+
+    relative_noise_stddevs = 5e-2
+    min_absolute_noise_stddev = 5e-2
+    list_num_wasserstein_iterations = [5_000, 5_000]
     first_sobol_index_thresshold = 1e-2
 
 num_samples_parameter_distribution = 8192
@@ -347,32 +413,8 @@ inputs, test_cases, outputs = data_set.read_data()
 noise_stddevs = determine_heteroscedastic_noise(
     relative_noise_stddevs, min_absolute_noise_stddev, outputs
 )
-# if data_set_label == data_set_label_linka:
-#     outputs = add_noise_to_data(noise_stddevs, outputs, device)
-
-# if data_set_label == data_set_label_linka:
-#     active_parameter_names = [
-#         "W_2_5 (l2, I_2, p1, I)",
-#         "W_1_6 (l1, I_2, p1, exp)",
-#         "W_2_6 (l2, I_2, p1, exp)",
-#         "W_2_7 (l2, I_2, p2, I)",
-#         "W_1_12 (l1, I_4f, p2, exp)",
-#         "W_2_12 (l2, I_4f, p2, exp)",
-#         "W_1_16 (l1, I_4s, p2, exp)",
-#         "W_2_16 (l2, I_4s, p2, exp)",
-#         "W_1_20 (l1, I_4n, p2, exp)",
-#         "W_2_20 (l2, I_4n, p2, exp)",
-#         "W_2_21 (l2, I_8fs, p1, I)",
-#         "W_2_29 (l2, I_8sn, p1, I)",
-#     ]
-
-#     active_parameter_indices = []
-#     for parameter_name in active_parameter_names:
-#         active_parameter_indices += [model.parameter_names.index(parameter_name)]
-
-#     model.deactivate_parameters(list(range(model.num_parameters)))
-#     model.activate_parameters(active_parameter_indices)
-#     model.reduce_to_activated_parameters()
+if data_set_label == data_set_label_synthetic_linka:
+    outputs = add_noise_to_data(noise_stddevs, outputs, device)
 
 
 validate_data(inputs, test_cases, outputs, noise_stddevs)
