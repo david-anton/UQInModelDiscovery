@@ -173,7 +173,7 @@ def extract_gp_inducing_parameter_distribution(
 
     def pretrain_lipschitz_func() -> None:
         print("Start pretraining of Lipschitz function ...")
-        optimizer_lipschitz = create_lipschitz_func_optimizer()
+        optimizer_lipschitz_func = create_lipschitz_func_optimizer()
 
         for iter_pretraining in range(num_iters_lipschitz_pretraining):
             gp_func_values = draw_gp_func_values()

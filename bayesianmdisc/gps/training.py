@@ -43,15 +43,19 @@ def optimize_gp_hyperparameters(
     gaussian_process.train()
     gaussian_process.likelihood.train()
 
-    optimizer = torch.optim.LBFGS(
+    # optimizer = torch.optim.LBFGS(
+    #     params=gaussian_process.parameters(),
+    #     lr=learning_rate,
+    #     max_iter=20,
+    #     max_eval=None,
+    #     tolerance_grad=1e-12,
+    #     tolerance_change=1e-12,
+    #     history_size=100,
+    #     line_search_fn="strong_wolfe",
+    # )
+    optimizer = torch.optim.AdamW(
         params=gaussian_process.parameters(),
         lr=learning_rate,
-        max_iter=20,
-        max_eval=None,
-        tolerance_grad=1e-12,
-        tolerance_change=1e-12,
-        history_size=100,
-        line_search_fn="strong_wolfe",
     )
 
     gp_outputs = _get_reshaped_gp_outputs(gaussian_process)
@@ -69,7 +73,7 @@ def optimize_gp_hyperparameters(
 
     def print_progress(iteration: int, loss: Tensor) -> None:
         if print_condition(iteration):
-            print(f"negative mll: {loss.detach().cpu().item()}")
+            print(f"negative mll: {loss}")
 
     def print_condition(iteration: int) -> bool:
         is_first = iteration == 1
@@ -79,10 +83,9 @@ def optimize_gp_hyperparameters(
 
     loss_hist = []
     for iteration in range(num_iterations):
-        optimizer.step(loss_func_closure)
-        loss = loss_func()
+        loss = optimizer.step(loss_func_closure)
         print_progress(iteration, loss)
-        loss_hist += [loss.detach().cpu().item()]
+        loss_hist += [loss]
 
     _reset_training_data(gaussian_process)
     gaussian_process.eval()
