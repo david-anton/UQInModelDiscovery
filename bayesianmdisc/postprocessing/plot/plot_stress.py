@@ -803,6 +803,55 @@ def plot_model_stresses_linka(
     num_model_inputs = 256
     num_model_samples = 16
 
+    # # active_parameter_names = (
+    # #     "W_2_7 (l2, I_2, p2, I)",
+    # #     "W_1_12 (l1, I_4f, p2, exp)",
+    # #     "W_2_12 (l2, I_4f, p2, exp)",
+    # #     "W_1_20 (l1, I_4n, p2, exp)",
+    # #     "W_2_20 (l2, I_4n, p2, exp)",
+    # #     "W_1_24 (l1, I_8fs, p2, exp)",
+    # #     "W_2_24 (l2, I_8fs, p2, exp)",
+    # # )
+    # # model.reduce_model_to_parameter_names(active_parameter_names)
+    # # mu = 10.324  # [kPa]
+    # # a_f = 3.427  # [kPa]
+    # # a_n = 2.754  # [kPa]
+    # # a_fs = 0.494  # [kPa]
+    # # b_f = 21.151
+    # # b_n = 4.371
+    # # b_fs = 0.508
+    # # active_parameter_values = (
+    # #     mu / 2,
+    # #     b_f,
+    # #     a_f / (2 * b_f),
+    # #     b_n,
+    # #     a_n / (2 * b_n),
+    # #     b_fs,
+    # #     a_fs / (2 * b_fs),
+    # # )
+    # _inputs = torch.tensor(
+    #     [
+    #         [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+    #         # [1.1, 0.0, 0.0, 0.0, 1.0 / (1.1 * 1.1), 0.0, 0.0, 0.0, 1.1],
+    #     ]
+    # )
+    # # _parameters = torch.from_numpy(parameter_samples[0, :])
+    # # _parameters = torch.zeros((model.num_parameters,))
+    # _parameters = torch.ones((model.num_parameters,))
+    # _parameters[24:30] = 2 * torch.ones((6,))
+    # # num_params = 24
+    # # _parameters[0:num_params] = torch.from_numpy(parameter_samples[0, :])[0:num_params]
+    # # _parameters[0:18] = torch.from_numpy(parameter_samples[0, :])[0:18]
+    # # _parameters[24:48] = torch.from_numpy(parameter_samples[0, :])[24:48]
+    # _test_cases = torch.tensor([2])
+    # # parameters = torch.tensor(active_parameter_values)
+    # output = model(_inputs, _test_cases, _parameters)
+    # print("parameters")
+    # print(_parameters)
+    # print("stress")
+    # print(output)
+    # exit()
+
     def plot_one_data_set(
         inputs: NPArray,
         test_case_identifier: int,

@@ -91,7 +91,7 @@ if data_set_label == data_set_label_treloar:
     model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)
 
     relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 5e-2
+    min_absolute_noise_stddev = 1e-3  # 5e-2
     list_num_wasserstein_iterations = [20_000, 10_000]
     first_sobol_index_thresshold = 1e-6
 elif data_set_label == data_set_label_linka:
@@ -106,7 +106,7 @@ elif data_set_label == data_set_label_linka:
     model = OrthotropicCANN(device)
 
     relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 5e-2
+    min_absolute_noise_stddev = 1e-3  # 5e-2
     list_num_wasserstein_iterations = [10_000, 10_000]
     first_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_synthetic_linka:
@@ -159,8 +159,8 @@ elif data_set_label == data_set_label_synthetic_linka:
 
     model = OrthotropicCANN(device)
 
-    relative_noise_stddevs = 1e-1  # 5e-2
-    min_absolute_noise_stddev = 5e-2
+    relative_noise_stddevs = 5e-2
+    min_absolute_noise_stddev = 1e-3  # 5e-2
     list_num_wasserstein_iterations = [10_000, 10_000]
     first_sobol_index_thresshold = 1e-2
 
@@ -485,15 +485,8 @@ if retrain_models:
                 return create_independent_multi_output_gp()
 
         def select_gp_prior() -> None:
-            if data_set_label == data_set_label_treloar:
-                num_iterations = int(100)
-                learning_rate = 1e-3
-            elif (
-                data_set_label == data_set_label_linka
-                or data_set_label == data_set_label_synthetic_linka
-            ):
-                num_iterations = int(100)
-                learning_rate = 1e-3
+            num_iterations = int(200)
+            learning_rate = 1e-3
 
             optimize_gp_hyperparameters(
                 gaussian_process=gaussian_process,

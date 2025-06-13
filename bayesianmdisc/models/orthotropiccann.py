@@ -415,6 +415,14 @@ class OrthotropicCANN:
             F, dW_dF, self._zero_principal_stress_index
         )
         I = torch.eye(3, device=self._device)
+        # print("F")
+        # print(F)
+        # print("W")
+        # print(self._calculate_strain_energy(F, parameters))
+        # print("dW_dF")
+        # print(dW_dF)
+        # print("p")
+        # print(p)
 
         sigma = torch.matmul(dW_dF, F_transpose) - p * I
         return self._flatten_cauchy_stress_tensor(sigma)
@@ -465,7 +473,8 @@ class OrthotropicCANN:
     ) -> Invariants:
         # Deformation tensors
         F = deformation_gradient
-        b = torch.matmul(F, F.transpose(0, 1))  # left Cauchy-Green deformation tensor
+        F_transpose = F.transpose(0, 1)
+        b = torch.matmul(F, F_transpose)  # left Cauchy-Green deformation tensor
         # Direction tensors
         f = torch.matmul(F, self._fiber_direction_reference)
         s = torch.matmul(F, self._sheet_direction_reference)
