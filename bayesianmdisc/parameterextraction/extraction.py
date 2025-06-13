@@ -179,14 +179,17 @@ def extract_gp_inducing_parameter_distribution(
             gp_func_values = draw_gp_func_values()
             model_func_values = draw_model_func_values()
 
-            optimizer_lipschitz.zero_grad(set_to_none=True)
-            loss_lipschitz = lipschitz_func_loss(
-                gp_func_values=gp_func_values,
-                model_func_values=model_func_values,
-                penalty_coefficient=penalty_coefficient_lipschitz,
-            )
-            loss_lipschitz.backward(retain_graph=True)
-            optimizer_lipschitz.step()
+            def lipschitz_loss_closure() -> float:
+                optimizer_lipschitz_func.zero_grad(set_to_none=True)
+                loss_lipschitz = lipschitz_func_loss(
+                    gp_func_values,
+                    model_func_values,
+                    penalty_coefficient_lipschitz,
+                )
+                loss_lipschitz.backward(retain_graph=True)
+                return loss_lipschitz.item()
+
+            loss_lipschitz = optimizer_lipschitz_func.step(lipschitz_loss_closure)
 
             if print_condition(iter_pretraining):
                 print(f"Lipschitz loss: {loss_lipschitz}")
