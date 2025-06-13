@@ -70,7 +70,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_treloar  # data_set_label_linka
+data_set_label = data_set_label_linka
 retrain_models = True
 
 # Settings
@@ -106,7 +106,7 @@ elif data_set_label == data_set_label_linka:
     model = OrthotropicCANN(device)
 
     relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 1e-3  # 5e-2
+    min_absolute_noise_stddev = 5e-3  # 5e-2
     list_num_wasserstein_iterations = [10_000, 10_000]
     first_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_synthetic_linka:
