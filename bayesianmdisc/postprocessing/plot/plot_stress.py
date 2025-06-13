@@ -671,7 +671,6 @@ class LinkaDataConfig:
         )
         self.num_points_per_data_set = 11
         self.min_principal_stretch = 1.0
-        self.max_principal_stretch = 1.1
         self.min_shear_strain = 0.0
         self.max_shear_strain = 0.5
         self.input_labels = [
@@ -716,25 +715,25 @@ class LinkaDataConfig:
         ]
         self.stretch_ratio_index_fiber = 0
         self.stretch_ratio_index_normal = 1
-        index_principal_stress_f = 0
-        index_shear_stress_fs = 1
-        index_shear_stress_fn = 2
-        index_shear_stress_sf = 3
-        index_shear_stress_sn = 4
-        index_shear_stress_nf = 5
-        index_shear_stress_ns = 6
-        index_principal_stress_n = 7
+        self.index_principal_stress_f = 0
+        self.index_shear_stress_fs = 1
+        self.index_shear_stress_fn = 2
+        self.index_shear_stress_sf = 3
+        self.index_shear_stress_sn = 4
+        self.index_shear_stress_nf = 5
+        self.index_shear_stress_ns = 6
+        self.index_principal_stress_n = 7
         self.principal_stress_indices = [
-            index_principal_stress_f,
-            index_principal_stress_n,
+            self.index_principal_stress_f,
+            self.index_principal_stress_n,
         ]
         self.shear_stress_indices_plots = [
-            [index_shear_stress_fs],
-            [index_shear_stress_fn],
-            [index_shear_stress_sf],
-            [index_shear_stress_sn],
-            [index_shear_stress_nf],
-            [index_shear_stress_ns],
+            [self.index_shear_stress_fs],
+            [self.index_shear_stress_fn],
+            [self.index_shear_stress_sf],
+            [self.index_shear_stress_sn],
+            [self.index_shear_stress_nf],
+            [self.index_shear_stress_ns],
         ]
         self.principal_stress_indices_plots = [
             self.principal_stress_indices
@@ -819,8 +818,6 @@ def plot_model_stresses_linka(
             figure, axes = plt.subplots()
 
             if is_principal_stress:
-                min_input = data_config.min_principal_stretch
-                max_input = data_config.max_principal_stretch
                 principal_stretch_data_set_index = (
                     data_set_index - data_config.num_data_sets_simple_shear
                 )
@@ -833,10 +830,27 @@ def plot_model_stresses_linka(
                 stretch_ratio_normal = stretch_ratio[
                     data_config.stretch_ratio_index_normal
                 ]
+                _model_inputs = generate_principal_stretches(
+                    stretch_ratio, num_model_inputs
+                )
+                # model inputs
+                min_input = data_config.min_principal_stretch
+                if stress_index == data_config.index_principal_stress_f:
+                    _input_index = data_config.stretch_ratio_index_fiber
+                elif stress_index == data_config.index_principal_stress_n:
+                    _input_index = data_config.stretch_ratio_index_normal
+                max_input = np.amax(_model_inputs[:, _input_index])
+                model_inputs_axis = np.linspace(min_input, max_input, num_model_inputs)
+                # file name
                 file_name = f"principalstress_{stress_file_name_label}_stretchratio_{stretch_ratio_fiber}_{stretch_ratio_normal}.pdf"
+
             else:
+                # model inputs
                 min_input = data_config.min_shear_strain
                 max_input = data_config.max_shear_strain
+                model_inputs_axis = np.linspace(min_input, max_input, num_model_inputs)
+                _model_inputs = model_inputs_axis.reshape((-1, 1))
+                # file name
                 file_name = f"shearstress_{stress_file_name_label}.pdf"
 
             # data points
@@ -855,13 +869,6 @@ def plot_model_stresses_linka(
             )
 
             # model
-            model_inputs_axis = np.linspace(min_input, max_input, num_model_inputs)
-            if is_principal_stress:
-                _model_inputs = generate_principal_stretches(
-                    stretch_ratio, num_model_inputs
-                )
-            else:
-                _model_inputs = model_inputs_axis.reshape((-1, 1))
             model_inputs = assemble_flattened_deformation_gradients(
                 _model_inputs, test_case_identifier
             )
@@ -936,7 +943,7 @@ def plot_model_stresses_linka(
                 max_input,
                 num=plotter_config.num_x_tick_labels,
             )
-            x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
+            x_tick_labels = [str(round(tick, 3)) for tick in x_ticks]
             axes.set_xticks(x_ticks)
             axes.set_xticklabels(x_tick_labels)
 
@@ -1575,8 +1582,6 @@ def plot_gp_stresses_linka(
             figure, axes = plt.subplots()
 
             if is_principal_stress:
-                min_input = data_config.min_principal_stretch
-                max_input = data_config.max_principal_stretch
                 principal_stretch_data_set_index = (
                     data_set_index - data_config.num_data_sets_simple_shear
                 )
@@ -1589,10 +1594,25 @@ def plot_gp_stresses_linka(
                 stretch_ratio_normal = stretch_ratio[
                     data_config.stretch_ratio_index_normal
                 ]
+                _gp_inputs = generate_principal_stretches(stretch_ratio, num_gp_inputs)
+                # model inputs
+                min_input = data_config.min_principal_stretch
+                if stress_index == data_config.index_principal_stress_f:
+                    _input_index = data_config.stretch_ratio_index_fiber
+                elif stress_index == data_config.index_principal_stress_n:
+                    _input_index = data_config.stretch_ratio_index_normal
+                max_input = np.amax(_gp_inputs[:, _input_index])
+                gp_inputs_axis = np.linspace(min_input, max_input, num_gp_inputs)
+                # file name
                 file_name = f"principalstress_{stress_file_name_label}_stretchratio_{stretch_ratio_fiber}_{stretch_ratio_normal}.pdf"
+
             else:
+                # model inputs
                 min_input = data_config.min_shear_strain
                 max_input = data_config.max_shear_strain
+                gp_inputs_axis = np.linspace(min_input, max_input, num_gp_inputs)
+                _gp_inputs = gp_inputs_axis.reshape((-1, 1))
+                # file name
                 file_name = f"shearstress_{stress_file_name_label}.pdf"
 
             # data points
@@ -1611,11 +1631,6 @@ def plot_gp_stresses_linka(
             )
 
             # GP
-            gp_inputs_axis = np.linspace(min_input, max_input, num_gp_inputs)
-            if is_principal_stress:
-                _gp_inputs = generate_principal_stretches(stretch_ratio, num_gp_inputs)
-            else:
-                _gp_inputs = gp_inputs_axis.reshape((-1, 1))
             gp_inputs = assemble_flattened_deformation_gradients(
                 _gp_inputs, test_case_identifier
             )
@@ -1676,7 +1691,7 @@ def plot_gp_stresses_linka(
                 max_input,
                 num=plotter_config.num_x_tick_labels,
             )
-            x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
+            x_tick_labels = [str(round(tick, 3)) for tick in x_ticks]
             axes.set_xticks(x_ticks)
             axes.set_xticklabels(x_tick_labels)
 
