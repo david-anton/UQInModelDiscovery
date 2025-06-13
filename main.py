@@ -70,7 +70,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_linka
+data_set_label = data_set_label_treloar  # data_set_label_linka
 retrain_models = True
 
 # Settings
@@ -92,7 +92,7 @@ if data_set_label == data_set_label_treloar:
 
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-3  # 5e-2
-    list_num_wasserstein_iterations = [20_000, 10_000]
+    list_num_wasserstein_iterations = [40_000, 20_000]
     first_sobol_index_thresshold = 1e-6
 elif data_set_label == data_set_label_linka:
     input_directory = data_set_label
