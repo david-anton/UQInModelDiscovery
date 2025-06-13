@@ -70,7 +70,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_linka
+data_set_label = data_set_label_synthetic_linka
 retrain_models = True
 
 # Settings
@@ -485,8 +485,8 @@ if retrain_models:
                 return create_independent_multi_output_gp()
 
         def select_gp_prior() -> None:
-            num_iterations = int(200)
-            learning_rate = 1e-3
+            num_iterations = int(1e4)
+            learning_rate = 5e-1
 
             optimize_gp_hyperparameters(
                 gaussian_process=gaussian_process,
