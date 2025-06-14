@@ -70,7 +70,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_synthetic_linka
+data_set_label = data_set_label_linka
 retrain_models = True
 
 # Settings
@@ -369,9 +369,9 @@ def perform_baysian_inference_on_kawabata_data(
             num_flows=num_flows,
             relative_width_flow_layers=relative_width_flow_layers,
             num_samples=128,  # 32,
-            initial_learning_rate=1e-1,  # 5e-4,
+            initial_learning_rate=5e-2,  # 5e-4,
             final_learning_rate=1e-2,  # 1e-6,
-            num_iterations=1000,
+            num_iterations=10_000,
             output_subdirectory=output_directory,
             project_directory=project_directory,
         )
