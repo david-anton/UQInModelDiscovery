@@ -71,7 +71,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
 data_set_label = data_set_label_synthetic_linka
-retrain_models = True
+retrain_models = False  # True
 
 # Settings
 settings = Settings()
@@ -162,13 +162,14 @@ elif data_set_label == data_set_label_synthetic_linka:
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-3  # 5e-2
     list_num_wasserstein_iterations = [10_000, 10_000]
-    first_sobol_index_thresshold = 1e-2
+    first_sobol_index_thresshold = 5e-2  # 1e-2
 
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_lipschitz_lambda100_iters10_layersize8_256_nf_ilr5e-4_samples32"
+# output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_lipschitz_lambda100_iters10_layersize8_256_nf_ilr5e-4_samples32"
+output_directory = f"20250613_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_lipschitz_lambda100_iters10_layersize4_256_nf_ilr5e-4_samples32"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -537,7 +538,7 @@ if retrain_models:
             ):
                 num_points_per_test_case = 32
                 lipschitz_penalty_coefficient = 100.0
-                num_layers_lipschitz_nn = 8
+                num_layers_lipschitz_nn = 4
                 layer_size_lipschitz_nn = 256
                 data_set_linka = cast(LinkaHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
