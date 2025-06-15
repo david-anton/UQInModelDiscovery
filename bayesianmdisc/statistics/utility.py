@@ -44,7 +44,9 @@ def logarithmic_sum_of_exponentials(log_probs: Tensor) -> Tensor:
     )
 
 
-def determine_quantiles(samples: NPArray, credible_interval: float) -> QuantileValues:
+def determine_quantiles_from_samples(
+    samples: NPArray, credible_interval: float
+) -> QuantileValues:
 
     def _validate_credible_interval(credible_interval: float) -> None:
         is_larger_or_equal_zero = credible_interval >= 0.0

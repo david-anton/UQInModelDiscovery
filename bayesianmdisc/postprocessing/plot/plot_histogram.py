@@ -10,7 +10,7 @@ from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.statistics.utility import (
     MomentsMultivariateNormal,
     MomentsUnivariateNormal,
-    determine_quantiles,
+    determine_quantiles_from_samples,
 )
 
 TrueParameter: TypeAlias = Union[float, None]
@@ -188,7 +188,9 @@ def _plot_univariate_distribution_histogram(
 ) -> None:
     title = "Posterior probability density"
     mean = moments.mean
-    min_quantile_np, max_quantile_np = determine_quantiles(samples, credible_interval)
+    min_quantile_np, max_quantile_np = determine_quantiles_from_samples(
+        samples, credible_interval
+    )
     min_quantile = float(min_quantile_np)
     max_quantile = float(max_quantile_np)
 
