@@ -26,10 +26,11 @@ from bayesianmdisc.postprocessing.plot.utility import (
 )
 from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
-    coverage_test,
+    model_coverage_test,
+    gp_coverage_test,
     root_mean_squared_error,
 )
-from bayesianmdisc.statistics.utility import determine_quantiles
+from bayesianmdisc.statistics.utility import determine_quantiles_from_samples
 from bayesianmdisc.testcases import (
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_uniaxial_tension,
@@ -278,7 +279,7 @@ def plot_model_stresses_treloar(
         # text box metrics
         num_data_inputs = len(inputs)
         metrics_test_cases = np.full((num_data_inputs,), test_case_identifier)
-        coverage = calclulate_coverage(
+        coverage = calclulate_model_coverage(
             model,
             parameter_samples,
             inputs,
@@ -354,7 +355,7 @@ def plot_model_stresses_treloar(
         axes_all.legend(fontsize=config.font_size, loc="upper left")
 
         # text box metrics
-        coverage = calclulate_coverage(
+        coverage = calclulate_model_coverage(
             model,
             parameter_samples,
             inputs,
@@ -600,7 +601,7 @@ def plot_model_stresses_kawabata(
         # text box metrics
         num_data_inputs = len(inputs)
         metrics_test_cases = np.full((num_data_inputs,), test_case_identifier)
-        coverage = calclulate_coverage(
+        coverage = calclulate_model_coverage(
             model,
             parameter_samples,
             inputs,
@@ -1048,7 +1049,7 @@ def plot_model_stresses_linka(
             # text box metrics
             num_data_inputs = len(inputs)
             metrics_test_cases = np.full((num_data_inputs,), test_case_identifier)
-            coverage = calclulate_coverage(
+            coverage = calclulate_model_coverage(
                 model,
                 parameter_samples,
                 inputs,
@@ -1208,7 +1209,7 @@ def calculate_model_quantiles(
         test_cases=test_cases,
         device=device,
     )
-    min_quantiles, max_quantiles = determine_quantiles(
+    min_quantiles, max_quantiles = determine_quantiles_from_samples(
         prediction_samples, credible_interval
     )
 
@@ -1219,7 +1220,7 @@ def calculate_model_quantiles(
     return min_quantiles, max_quantiles
 
 
-def calclulate_coverage(
+def calclulate_model_coverage(
     model: ModelProtocol,
     parameter_samples: NPArray,
     inputs: NPArray,
@@ -1240,7 +1241,7 @@ def calclulate_coverage(
         prediction_samples = prediction_samples[:, :, output_dim]
         outputs = outputs[:, output_dim]
 
-    return coverage_test(prediction_samples, outputs, credible_interval)
+    return model_coverage_test(prediction_samples, outputs, credible_interval)
 
 
 def calculate_coefficient_of_determinant(
@@ -1510,6 +1511,20 @@ def plot_gp_stresses_treloar(
             file_name=file_name, subdir_name=output_subdirectory
         )
 
+        # text box metrics
+        coverage = calclulate_gp_coverage(gaussian_process, inputs, outputs, device)
+        text = "\n".join((r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),))
+        text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+        axes.text(
+            0.03,
+            0.72,
+            text,
+            transform=axes.transAxes,
+            fontsize=config.font_size,
+            verticalalignment="top",
+            bbox=text_properties,
+        )
+
         figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
 
     def plot_all_input_and_output_sets() -> None:
@@ -1543,6 +1558,25 @@ def plot_gp_stresses_treloar(
             file_name=file_name, subdir_name=output_subdirectory
         )
         figure_all.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
+
+        # text box metrics
+        coverage = calclulate_gp_coverage(
+            gaussian_process,
+            inputs,
+            outputs,
+            device,
+        )
+        text = "\n".join((r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),))
+        text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+        axes_all.text(
+            0.03,
+            0.52,
+            text,
+            transform=axes_all.transAxes,
+            fontsize=config.font_size,
+            verticalalignment="top",
+            bbox=text_properties,
+        )
 
     input_sets, test_case_sets, output_sets = split_treloar_inputs_and_outputs(
         inputs, test_cases, outputs
@@ -1792,6 +1826,26 @@ def plot_gp_stresses_linka(
                     bbox=text_properties,
                 )
 
+            # text box metrics
+            coverage = calclulate_gp_coverage(
+                gaussian_process,
+                inputs,
+                outputs,
+                device,
+                output_dim=stress_index,
+            )
+            text = "\n".join((r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),))
+            text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+            axes.text(
+                0.03,
+                0.65,
+                text,
+                transform=axes.transAxes,
+                fontsize=plotter_config.font_size,
+                verticalalignment="top",
+                bbox=text_properties,
+            )
+
             output_path = project_directory.create_output_file_path(
                 file_name=file_name, subdir_name=output_subdirectory
             )
@@ -1831,8 +1885,8 @@ def calculate_gp_means(
 ) -> NPArray:
     inputs_torch = torch.from_numpy(inputs).type(torch.get_default_dtype()).to(device)
     gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
-    predictive_distribution = infer_posterior_distribution(gp, inputs_torch)
-    means_torch = predictive_distribution.mean
+    posterior_distribution = infer_posterior_distribution(gp, inputs_torch)
+    means_torch = posterior_distribution.mean
     return means_torch.cpu().detach().numpy()
 
 
@@ -1844,9 +1898,9 @@ def calculate_gp_quantiles(
 ) -> tuple[NPArray, NPArray]:
     inputs_torch = torch.from_numpy(inputs).type(torch.get_default_dtype()).to(device)
     gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
-    predictive_distribution = infer_posterior_distribution(gp, inputs_torch)
-    means_torch = predictive_distribution.mean
-    stddevs_torch = predictive_distribution.stddev
+    posterior_distribution = infer_posterior_distribution(gp, inputs_torch)
+    means_torch = posterior_distribution.mean
+    stddevs_torch = posterior_distribution.stddev
     min_quantiles_torch = means_torch - factor_stddev_credible_interval * stddevs_torch
     max_quantiles_torch = means_torch + factor_stddev_credible_interval * stddevs_torch
     min_quantiles = min_quantiles_torch.cpu().detach().numpy()
@@ -1863,8 +1917,8 @@ def sample_from_gp(
 ) -> NPArray:
     inputs_torch = torch.from_numpy(inputs).type(torch.get_default_dtype()).to(device)
     gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
-    predictive_distribution = infer_posterior_distribution(gp, inputs_torch)
-    samples_torch = predictive_distribution.sample(
+    posterior_distribution = infer_posterior_distribution(gp, inputs_torch)
+    samples_torch = posterior_distribution.sample(
         sample_shape=torch.Size((num_samples,))
     )
     return samples_torch.cpu().detach().numpy()
@@ -1889,6 +1943,23 @@ def reduce_gp_to_output_dimension(
         return gaussian_process.get_gp_for_one_output_dimension(cast(int, output_dim))
     else:
         return gaussian_process
+
+
+def calclulate_gp_coverage(
+    gaussian_process: GaussianProcess,
+    inputs: NPArray,
+    outputs: NPArray,
+    device: Device,
+    output_dim: Optional[int] = None,
+) -> float:
+    min_quantiles, max_quantiles = calculate_gp_quantiles(
+        gaussian_process=gaussian_process,
+        inputs=inputs,
+        device=device,
+        output_dim=output_dim,
+    )
+
+    return gp_coverage_test(min_quantiles, max_quantiles, outputs)
 
 
 def _validate_gp_and_output_dimension(
