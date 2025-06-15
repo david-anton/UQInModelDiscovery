@@ -93,7 +93,7 @@ if data_set_label == data_set_label_treloar:
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-3  # 5e-2
     list_num_wasserstein_iterations = [40_000, 20_000]
-    first_sobol_index_thresshold = 1e-6
+    first_sobol_index_thresshold = 1e-4
 elif data_set_label == data_set_label_linka:
     input_directory = data_set_label
     data_set = LinkaHeartDataSet(
@@ -108,7 +108,7 @@ elif data_set_label == data_set_label_linka:
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-2  # 5e-2
     list_num_wasserstein_iterations = [10_000, 10_000]
-    first_sobol_index_thresshold = 5e-2  # 1e-2
+    first_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
     file_name = "CANNsHEARTdata_synthetic.xlsx"
@@ -162,13 +162,13 @@ elif data_set_label == data_set_label_synthetic_linka:
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-3  # 5e-2
     list_num_wasserstein_iterations = [10_000, 10_000]
-    first_sobol_index_thresshold = 5e-2  # 1e-2
+    first_sobol_index_thresshold = 1e-2
 
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_lipschitz_lambda100_iters10_layersize8_256_nf_ilr5e-4_samples32_threshold{first_sobol_index_thresshold}"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_lipschitz_lambda100_iters10_layersize4_256_nf_ilr5e-4_samples32_threshold{first_sobol_index_thresshold}"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -428,7 +428,7 @@ num_discovery_steps = len(list_num_wasserstein_iterations)
 
 if retrain_models:
     for step in range(num_discovery_steps):
-        is_first_step = step == 0
+        is_last_step = step == num_discovery_steps - 1
         output_directory_step = os.path.join(output_directory, f"discovery_step_{step}")
         output_subdirectory_gp = os.path.join(
             output_directory_step, output_subdirectory_name_gp
@@ -601,46 +601,49 @@ if retrain_models:
             output_directory=output_directory_step,
         )
 
-        if is_first_step:
-            select_model_through_sobol_sensitivity_analysis(
-                model=model,
-                parameter_distribution=parameter_distribution,
-                first_sobol_index_thresshold=first_sobol_index_thresshold,
-                num_samples_factor=num_samples_factor_sensitivity_analysis,
-                data_set_label=data_set_label,
-                inputs=inputs,
-                test_cases=test_cases,
-                output_subdirectory=output_subdirectory_sensitivities,
-                project_directory=project_directory,
-                device=device,
-            )
-            plot_relevenat_sobol_indices_results(
-                relevant_parameter_indices=model.get_active_parameter_indices(),
-                data_set_label=data_set_label,
-                num_outputs=model.output_dim,
-                output_subdirectory=output_subdirectory_sensitivities,
-                project_directory=project_directory,
-            )
-            plot_model_stresses(
-                model=model,
-                model_parameter_samples=parameter_samples,
-                data_set_label=data_set_label,
-                subdirectory_name="model_selected",
-                output_directory=output_directory_step,
-            )
-            model.reduce_to_activated_parameters()
+        select_model_through_sobol_sensitivity_analysis(
+            model=model,
+            parameter_distribution=parameter_distribution,
+            first_sobol_index_thresshold=first_sobol_index_thresshold,
+            num_samples_factor=num_samples_factor_sensitivity_analysis,
+            data_set_label=data_set_label,
+            inputs=inputs,
+            test_cases=test_cases,
+            output_subdirectory=output_subdirectory_sensitivities,
+            project_directory=project_directory,
+            device=device,
+        )
+        plot_relevenat_sobol_indices_results(
+            relevant_parameter_indices=model.get_active_parameter_indices(),
+            data_set_label=data_set_label,
+            num_outputs=model.output_dim,
+            output_subdirectory=output_subdirectory_sensitivities,
+            project_directory=project_directory,
+        )
+        plot_model_stresses(
+            model=model,
+            model_parameter_samples=parameter_samples,
+            data_set_label=data_set_label,
+            subdirectory_name="model_selected",
+            output_directory=output_directory_step,
+        )
 
-        if not is_first_step and data_set_label == data_set_label_treloar:
-            perform_baysian_inference_on_kawabata_data(
-                model=cast(IsotropicModelLibrary, model),
-                parameter_distribution=parameter_distribution,
-                output_directory_step=output_directory_step,
-            )
+        if is_last_step:
+            model.reset_parameter_deactivations()
+            if data_set_label == data_set_label_treloar:
+                perform_baysian_inference_on_kawabata_data(
+                    model=cast(IsotropicModelLibrary, model),
+                    parameter_distribution=parameter_distribution,
+                    output_directory_step=output_directory_step,
+                )
+        else:
+            model.reduce_to_activated_parameters()
 
         save_model_state(model, output_directory_step, project_directory)
 else:
     for step in range(num_discovery_steps):
         is_first_step = step == 0
+        is_last_step = step == num_discovery_steps - 1
         output_directory_step = os.path.join(output_directory, f"discovery_step_{step}")
         output_subdirectory_parameters = os.path.join(
             output_directory_step, output_subdirectory_name_parameters
@@ -648,15 +651,12 @@ else:
         output_subdirectory_sensitivities = os.path.join(
             output_directory_step, output_subdirectory_name_sensitivities
         )
-        if is_first_step:
-            input_directory_step = output_directory_step
-        else:
-            input_step = 0
+
+        if not is_first_step:
+            input_step = step - 1
             input_directory_step = os.path.join(
                 output_directory, f"discovery_step_{input_step}"
             )
-
-        if not is_first_step:
             load_model_state(model, input_directory_step, project_directory, device)
 
         num_parameters = model.num_parameters
@@ -692,37 +692,38 @@ else:
             output_directory=output_directory_step,
         )
 
-        if is_first_step:
-            select_model_through_sobol_sensitivity_analysis(
-                model=model,
-                parameter_distribution=parameter_distribution,
-                first_sobol_index_thresshold=first_sobol_index_thresshold,
-                num_samples_factor=num_samples_factor_sensitivity_analysis,
-                data_set_label=data_set_label,
-                inputs=inputs,
-                test_cases=test_cases,
-                output_subdirectory=output_subdirectory_sensitivities,
-                project_directory=project_directory,
-                device=device,
-            )
-            plot_relevenat_sobol_indices_results(
-                relevant_parameter_indices=model.get_active_parameter_indices(),
-                data_set_label=data_set_label,
-                num_outputs=model.output_dim,
-                output_subdirectory=output_subdirectory_sensitivities,
-                project_directory=project_directory,
-            )
-            plot_model_stresses(
-                model=model,
-                model_parameter_samples=parameter_samples,
-                data_set_label=data_set_label,
-                subdirectory_name="model_selected",
-                output_directory=output_directory_step,
-            )
+        select_model_through_sobol_sensitivity_analysis(
+            model=model,
+            parameter_distribution=parameter_distribution,
+            first_sobol_index_thresshold=first_sobol_index_thresshold,
+            num_samples_factor=num_samples_factor_sensitivity_analysis,
+            data_set_label=data_set_label,
+            inputs=inputs,
+            test_cases=test_cases,
+            output_subdirectory=output_subdirectory_sensitivities,
+            project_directory=project_directory,
+            device=device,
+        )
+        plot_relevenat_sobol_indices_results(
+            relevant_parameter_indices=model.get_active_parameter_indices(),
+            data_set_label=data_set_label,
+            num_outputs=model.output_dim,
+            output_subdirectory=output_subdirectory_sensitivities,
+            project_directory=project_directory,
+        )
+        plot_model_stresses(
+            model=model,
+            model_parameter_samples=parameter_samples,
+            data_set_label=data_set_label,
+            subdirectory_name="model_selected",
+            output_directory=output_directory_step,
+        )
 
-        if not is_first_step and data_set_label == data_set_label_treloar:
-            perform_baysian_inference_on_kawabata_data(
-                model=cast(IsotropicModelLibrary, model),
-                parameter_distribution=parameter_distribution,
-                output_directory_step=output_directory_step,
-            )
+        if is_last_step:
+            model.reset_parameter_deactivations()
+            if data_set_label == data_set_label_treloar:
+                perform_baysian_inference_on_kawabata_data(
+                    model=cast(IsotropicModelLibrary, model),
+                    parameter_distribution=parameter_distribution,
+                    output_directory_step=output_directory_step,
+                )
