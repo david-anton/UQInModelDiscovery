@@ -378,7 +378,7 @@ def plot_model_stresses_treloar(
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axes_all.text(
             0.03,
-            0.5,
+            0.52,
             text,
             transform=axes_all.transAxes,
             fontsize=config.font_size,
@@ -1036,7 +1036,7 @@ def plot_model_stresses_linka(
                 )
                 text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
                 axes.text(
-                    0.5,
+                    0.55,
                     0.96,
                     text,
                     transform=axes.transAxes,
@@ -1085,7 +1085,7 @@ def plot_model_stresses_linka(
             text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
             axes.text(
                 0.03,
-                0.7,
+                0.65,
                 text,
                 transform=axes.transAxes,
                 fontsize=plotter_config.font_size,
@@ -1654,7 +1654,6 @@ def plot_gp_stresses_linka(
                 gp_inputs_axis = np.linspace(min_input, max_input, num_gp_inputs)
                 # file name
                 file_name = f"principalstress_{stress_file_name_label}_stretchratio_{stretch_ratio_fiber}_{stretch_ratio_normal}.pdf"
-
             else:
                 # model inputs
                 min_input = data_config.min_shear_strain
