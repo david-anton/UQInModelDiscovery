@@ -1961,6 +1961,8 @@ def calclulate_gp_coverage(
 
     if output_dim is not None:
         outputs = outputs[:, output_dim]
+    else:
+        outputs = outputs.reshape((-1,))
 
     return gp_coverage_test(min_quantiles, max_quantiles, outputs)
 
