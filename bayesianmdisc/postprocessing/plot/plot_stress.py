@@ -1554,11 +1554,6 @@ def plot_gp_stresses_treloar(
         # legend
         axes_all.legend(fontsize=config.font_size, loc="upper left")
 
-        output_path = project_directory.create_output_file_path(
-            file_name=file_name, subdir_name=output_subdirectory
-        )
-        figure_all.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
-
         # text box metrics
         coverage = calclulate_gp_coverage(
             gaussian_process,
@@ -1577,6 +1572,11 @@ def plot_gp_stresses_treloar(
             verticalalignment="top",
             bbox=text_properties,
         )
+
+        output_path = project_directory.create_output_file_path(
+            file_name=file_name, subdir_name=output_subdirectory
+        )
+        figure_all.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
 
     input_sets, test_case_sets, output_sets = split_treloar_inputs_and_outputs(
         inputs, test_cases, outputs
@@ -1958,6 +1958,9 @@ def calclulate_gp_coverage(
         device=device,
         output_dim=output_dim,
     )
+
+    if output_dim is not None:
+        outputs = outputs[:, output_dim]
 
     return gp_coverage_test(min_quantiles, max_quantiles, outputs)
 
