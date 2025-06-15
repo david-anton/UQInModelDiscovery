@@ -70,7 +70,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_treloar  # data_set_label_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -92,7 +92,7 @@ if data_set_label == data_set_label_treloar:
 
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-3  # 5e-2
-    list_num_wasserstein_iterations = [40_000, 20_000]
+    list_num_wasserstein_iterations = [40_000, 20_000, 20_000]  # [40_000, 20_000]
     first_sobol_index_thresshold = 1e-4
 elif data_set_label == data_set_label_linka:
     input_directory = data_set_label
@@ -107,7 +107,7 @@ elif data_set_label == data_set_label_linka:
 
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-2  # 5e-2
-    list_num_wasserstein_iterations = [10_000, 10_000]
+    list_num_wasserstein_iterations = [10_000, 10_000, 10_000]  # [10_000, 10_000]
     first_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
@@ -161,7 +161,7 @@ elif data_set_label == data_set_label_synthetic_linka:
 
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-3  # 5e-2
-    list_num_wasserstein_iterations = [10_000, 10_000]
+    list_num_wasserstein_iterations = [10_000, 10_000, 10_000]  # [10_000, 10_000]
     first_sobol_index_thresshold = 1e-2
 
 num_samples_parameter_distribution = 8192
@@ -335,7 +335,7 @@ def perform_baysian_inference_on_kawabata_data(
     output_dim = 2
     model.set_output_dimension(output_dim)
     relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 5e-2
+    min_absolute_noise_stddev = 1e-3  # 5e-2
 
     data_set_kawabata = KawabataDataSet(input_directory, project_directory, device)
     inputs, test_cases, outputs = data_set_kawabata.read_data()
@@ -368,9 +368,9 @@ def perform_baysian_inference_on_kawabata_data(
             prior=prior,
             num_flows=num_flows,
             relative_width_flow_layers=relative_width_flow_layers,
-            num_samples=128,  # 32,
-            initial_learning_rate=5e-2,  # 5e-4,
-            final_learning_rate=1e-4,  # 1e-6,
+            num_samples=32,
+            initial_learning_rate=1e-3,  # 5e-4,
+            final_learning_rate=1e-5,  # 1e-6,
             num_iterations=200_000,
             output_subdirectory=output_directory,
             project_directory=project_directory,
@@ -485,7 +485,7 @@ if retrain_models:
 
         def select_gp_prior() -> None:
             num_iterations = int(1e4)
-            learning_rate = 5e-1
+            learning_rate = 2e-1
 
             optimize_gp_hyperparameters(
                 gaussian_process=gaussian_process,
