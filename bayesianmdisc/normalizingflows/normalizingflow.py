@@ -108,16 +108,6 @@ def _fit_normalizing_flow(
     target_distribution = TargetDistributionWrapper(likelihood, prior, device)
 
     def create_optimizer(parameters: Iterator[Tensor]) -> TorchOptimizer:
-        # return torch.optim.LBFGS(
-        #     params=parameters,
-        #     lr=initial_learning_rate,
-        #     max_iter=20,
-        #     max_eval=None,
-        #     tolerance_grad=1e-12,
-        #     tolerance_change=1e-12,
-        #     history_size=100,
-        #     line_search_fn="strong_wolfe",
-        # )
         return torch.optim.RMSprop(
             params=parameters,
             lr=initial_learning_rate,
