@@ -32,6 +32,7 @@ from bayesianmdisc.gps import (
     IndependentMultiOutputGP,
     condition_gp,
     create_scaled_rbf_gaussian_process,
+    create_scaled_matern_gaussian_process,
     optimize_gp_hyperparameters,
 )
 from bayesianmdisc.io import ProjectDirectory
@@ -102,6 +103,7 @@ elif data_set_label == data_set_label_linka:
         project_directory=project_directory,
         device=device,
     )
+    num_points_per_test_case = 11
 
     model = OrthotropicCANN(device)
 
@@ -112,6 +114,7 @@ elif data_set_label == data_set_label_linka:
 elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
     file_name = "CANNsHEARTdata_synthetic.xlsx"
+    num_points_per_test_case = 24
 
     model_data_generation = OrthotropicCANN(device)
     active_parameter_names = (
@@ -143,7 +146,7 @@ elif data_set_label == data_set_label_synthetic_linka:
     data_generator = LinkaHeartDataSetGenerator(
         model=model_data_generation,
         parameters=active_parameter_values,
-        num_point_per_test_case=11,
+        num_point_per_test_case=num_points_per_test_case,
         file_name=file_name,
         output_directory=input_directory,
         project_directory=project_directory,
@@ -168,7 +171,8 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_lipschitz_lambda100_iters10_layersize4_256_nf_ilr5e-4_samples32_threshold{first_sobol_index_thresshold}"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_lipschitz_lambda100_iters10_layersize4_256_nf_ilr5e-4_samples32_threshold{first_sobol_index_thresshold}_maternkernel"
+# output_directory = "20250613_synthetic_heart_data_linka_relnoise0.05_minnoise0.001_lipschitz_lambda100_iters10_layersize4_256_nf_ilr5e-4_samples32"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -197,6 +201,7 @@ def plot_gp_stresses(
             inputs=inputs.detach().cpu().numpy(),
             outputs=outputs.detach().cpu().numpy(),
             test_cases=test_cases.detach().cpu().numpy(),
+            num_points_per_test_case=num_points_per_test_case,
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
             device=device,
@@ -279,6 +284,7 @@ def plot_model_stresses(
             inputs=inputs.detach().cpu().numpy(),
             test_cases=test_cases.detach().cpu().numpy(),
             outputs=outputs.detach().cpu().numpy(),
+            num_points_per_test_case=num_points_per_test_case,
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
             device=device,
@@ -450,8 +456,17 @@ if retrain_models:
 
             def create_single_output_gp() -> GP:
                 gp_mean = "zero"
-                gaussian_process = create_scaled_rbf_gaussian_process(
+                # gaussian_process = create_scaled_rbf_gaussian_process(
+                #     mean=gp_mean,
+                #     input_dim=input_dim,
+                #     min_inputs=min_inputs,
+                #     max_inputs=max_inputs,
+                #     jitter=jitter,
+                #     device=device,
+                # )
+                gaussian_process = create_scaled_matern_gaussian_process(
                     mean=gp_mean,
+                    smoothness_parameter=2.5,
                     input_dim=input_dim,
                     min_inputs=min_inputs,
                     max_inputs=max_inputs,
