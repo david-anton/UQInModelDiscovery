@@ -670,7 +670,6 @@ class LinkaDataConfig:
         self.num_data_sets = (
             self.num_data_sets_simple_shear + self.num_data_sets_biaxial_tension
         )
-        self.num_points_per_data_set = 11
         self.min_principal_stretch = 1.0
         self.min_shear_strain = 0.0
         self.max_shear_strain = 0.5
@@ -795,6 +794,7 @@ def plot_model_stresses_linka(
     inputs: NPArray,
     test_cases: NPArray,
     outputs: NPArray,
+    num_points_per_test_case: int,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
     device: Device,
@@ -905,7 +905,7 @@ def plot_model_stresses_linka(
 
             # data points
             data_inputs_axis = np.linspace(
-                min_input, max_input, data_config.num_points_per_data_set
+                min_input, max_input, num_points_per_test_case
             )
             data_stresses = outputs[:, stress_index]
             axes.plot(
@@ -1641,6 +1641,7 @@ def plot_gp_stresses_linka(
     inputs: NPArray,
     test_cases: NPArray,
     outputs: NPArray,
+    num_points_per_test_case: int,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
     device: Device,
@@ -1699,7 +1700,7 @@ def plot_gp_stresses_linka(
 
             # data points
             data_inputs_axis = np.linspace(
-                min_input, max_input, data_config.num_points_per_data_set
+                min_input, max_input, num_points_per_test_case
             )
             data_stresses = outputs[:, stress_index]
             axes.plot(
