@@ -114,7 +114,7 @@ elif data_set_label == data_set_label_linka:
 elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
     file_name = "CANNsHEARTdata_synthetic.xlsx"
-    num_points_per_test_case = 24
+    num_points_per_test_case = 32
 
     model_data_generation = OrthotropicCANN(device)
     active_parameter_names = (
