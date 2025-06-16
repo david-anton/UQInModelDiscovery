@@ -91,9 +91,9 @@ if data_set_label == data_set_label_treloar:
     model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)
 
     relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 1e-3  # 5e-2
-    list_num_wasserstein_iterations = [40_000, 20_000, 20_000]  # [40_000, 20_000]
-    first_sobol_index_thresshold = 1e-4
+    min_absolute_noise_stddev = 1e-2
+    list_num_wasserstein_iterations = [40_000, 20_000]
+    first_sobol_index_thresshold = 1e-6
 elif data_set_label == data_set_label_linka:
     input_directory = data_set_label
     data_set = LinkaHeartDataSet(
@@ -106,8 +106,8 @@ elif data_set_label == data_set_label_linka:
     model = OrthotropicCANN(device)
 
     relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 1e-2  # 5e-2
-    list_num_wasserstein_iterations = [10_000, 10_000, 10_000]  # [10_000, 10_000]
+    min_absolute_noise_stddev = 1e-2
+    list_num_wasserstein_iterations = [10_000, 10_000]
     first_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
@@ -160,8 +160,8 @@ elif data_set_label == data_set_label_synthetic_linka:
     model = OrthotropicCANN(device)
 
     relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 1e-3  # 5e-2
-    list_num_wasserstein_iterations = [10_000, 10_000, 10_000]  # [10_000, 10_000]
+    min_absolute_noise_stddev = 1e-3
+    list_num_wasserstein_iterations = [10_000, 10_000]
     first_sobol_index_thresshold = 1e-2
 
 num_samples_parameter_distribution = 8192
@@ -371,7 +371,7 @@ def perform_baysian_inference_on_kawabata_data(
             num_samples=32,
             initial_learning_rate=1e-3,  # 5e-4,
             final_learning_rate=1e-5,  # 1e-6,
-            num_iterations=200_000,
+            num_iterations=100_000,
             output_subdirectory=output_directory,
             project_directory=project_directory,
         )
