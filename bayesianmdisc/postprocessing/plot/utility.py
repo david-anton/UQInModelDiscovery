@@ -109,14 +109,18 @@ def split_kawabata_inputs_and_outputs(
 
 
 def split_linka_inputs_and_outputs(
-    inputs: NPArray, test_cases: NPArray, outputs: NPArray
+    inputs: NPArray,
+    test_cases: NPArray,
+    outputs: NPArray,
+    num_points_per_test_case: int = 11,
 ) -> tuple[
     list[NPArray],
     list[int],
     list[NPArray],
 ]:
     num_data_sets = 11
-    num_data_points = 121
+    num_points_per_set = num_points_per_test_case
+    num_data_points = int(round(num_data_sets * num_points_per_set))
 
     def validate_data() -> None:
         num_inputs = len(inputs)

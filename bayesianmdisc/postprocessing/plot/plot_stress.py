@@ -1104,7 +1104,7 @@ def plot_model_stresses_linka(
             plot_one_stress(stress_index)
 
     input_sets, test_case_identifiers, output_sets = split_linka_inputs_and_outputs(
-        inputs, test_cases, outputs
+        inputs, test_cases, outputs, num_points_per_test_case
     )
 
     for (
@@ -1857,7 +1857,7 @@ def plot_gp_stresses_linka(
             plot_one_stress(stress_index)
 
     input_sets, test_case_identifiers, output_sets = split_linka_inputs_and_outputs(
-        inputs, test_cases, outputs
+        inputs, test_cases, outputs, num_points_per_test_case
     )
 
     for (
