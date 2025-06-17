@@ -492,7 +492,10 @@ if retrain_models:
         def select_gp_prior() -> None:
             num_iterations = int(1e4)
             learning_rate = 2e-1
-            factor_length_scales = 0.8
+            if data_set_label == data_set_label_synthetic_linka:
+                factor_length_scales = 0.6
+            else:
+                factor_length_scales = 0.8
 
             def optimize_hyperparameters() -> None:
                 return optimize_gp_hyperparameters(
