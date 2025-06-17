@@ -502,7 +502,7 @@ if retrain_models:
             num_iterations = int(1e4)
             learning_rate = 2e-1
             if data_set_label == data_set_label_synthetic_linka:
-                factor_length_scales = 0.6
+                factor_length_scales = 0.5
             else:
                 factor_length_scales = 0.8
 
