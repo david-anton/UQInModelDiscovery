@@ -456,14 +456,23 @@ if retrain_models:
 
             def create_single_output_gp() -> GP:
                 gp_mean = "zero"
-                gaussian_process = create_scaled_rbf_gaussian_process(
+                gaussian_process = create_scaled_matern_gaussian_process(
                     mean=gp_mean,
+                    smoothness_parameter=2.5,
                     input_dim=input_dim,
                     min_inputs=min_inputs,
                     max_inputs=max_inputs,
                     jitter=jitter,
                     device=device,
                 )
+                # gaussian_process = create_scaled_rbf_gaussian_process(
+                #     mean=gp_mean,
+                #     input_dim=input_dim,
+                #     min_inputs=min_inputs,
+                #     max_inputs=max_inputs,
+                #     jitter=jitter,
+                #     device=device,
+                # )
                 initial_parameters_output_scale = [1.0]
                 initial_parameters_length_scale = [0.1 for _ in range(input_dim)]
                 initial_parameters_kernel = (
