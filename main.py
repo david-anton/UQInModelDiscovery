@@ -9,7 +9,7 @@ from bayesianmdisc.bayes.distributions import (
     sample_and_analyse_distribution,
 )
 from bayesianmdisc.bayes.likelihood import create_likelihood
-from bayesianmdisc.customtypes import NPArray
+from bayesianmdisc.customtypes import NPArray, GPModel
 from bayesianmdisc.data import (
     DataSetProtocol,
     KawabataDataSet,
@@ -163,7 +163,7 @@ elif data_set_label == data_set_label_synthetic_linka:
     model = OrthotropicCANN(device)
 
     relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 1e-3
+    min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [10_000, 10_000]
     first_sobol_index_thresshold = 1e-2
 
@@ -171,7 +171,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_lipschitz_lambda100_iters10_layersize4_512_nf_ilr5e-4_samples32_threshold{first_sobol_index_thresshold}_maternkernel"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_lipschitz_lambda100_iters10_layersize4_512_nf_ilr5e-4_samples32_threshold{first_sobol_index_thresshold}"
 # output_directory = "20250613_synthetic_heart_data_linka_relnoise0.05_minnoise0.001_lipschitz_lambda100_iters10_layersize4_256_nf_ilr5e-4_samples32"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
@@ -341,7 +341,7 @@ def perform_baysian_inference_on_kawabata_data(
     output_dim = 2
     model.set_output_dimension(output_dim)
     relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 1e-3  # 5e-2
+    min_absolute_noise_stddev = 1e-2  # 5e-2
 
     data_set_kawabata = KawabataDataSet(input_directory, project_directory, device)
     inputs, test_cases, outputs = data_set_kawabata.read_data()
@@ -456,17 +456,8 @@ if retrain_models:
 
             def create_single_output_gp() -> GP:
                 gp_mean = "zero"
-                # gaussian_process = create_scaled_rbf_gaussian_process(
-                #     mean=gp_mean,
-                #     input_dim=input_dim,
-                #     min_inputs=min_inputs,
-                #     max_inputs=max_inputs,
-                #     jitter=jitter,
-                #     device=device,
-                # )
-                gaussian_process = create_scaled_matern_gaussian_process(
+                gaussian_process = create_scaled_rbf_gaussian_process(
                     mean=gp_mean,
-                    smoothness_parameter=2.5,
                     input_dim=input_dim,
                     min_inputs=min_inputs,
                     max_inputs=max_inputs,
@@ -501,18 +492,42 @@ if retrain_models:
         def select_gp_prior() -> None:
             num_iterations = int(1e4)
             learning_rate = 2e-1
+            factor_length_scales = 0.8
 
-            optimize_gp_hyperparameters(
-                gaussian_process=gaussian_process,
-                inputs=inputs,
-                outputs=outputs,
-                initial_noise_stddevs=noise_stddevs,
-                num_iterations=num_iterations,
-                learning_rate=learning_rate,
-                output_subdirectory=output_subdirectory_gp,
-                project_directory=project_directory,
-                device=device,
-            )
+            def optimize_hyperparameters() -> None:
+                return optimize_gp_hyperparameters(
+                    gaussian_process=gaussian_process,
+                    inputs=inputs,
+                    outputs=outputs,
+                    initial_noise_stddevs=noise_stddevs,
+                    num_iterations=num_iterations,
+                    learning_rate=learning_rate,
+                    output_subdirectory=output_subdirectory_gp,
+                    project_directory=project_directory,
+                    device=device,
+                )
+
+            def scale_length_scales(factor: float) -> None:
+                def _scale_length_scales_of_one_gp(gp: GaussianProcess):
+                    parameters_dict = gp.get_named_parameters()
+                    length_scale = parameters_dict["length_scale"]
+                    parameters_dict["length_scale"] = factor * length_scale
+                    scaled_parameters = list(parameters_dict.values())
+                    scaled_parameters = [
+                        parameters.reshape((-1,)) for parameters in scaled_parameters
+                    ]
+                    gp.set_parameters(torch.concat(scaled_parameters).to(device))
+
+                if gaussian_process.num_gps == 1:
+                    _scale_length_scales_of_one_gp(gaussian_process)
+                else:
+                    for gp in gaussian_process.gps.models:
+                        _gp = cast(GPModel, gp)
+                        _scale_length_scales_of_one_gp(_gp)
+
+            optimize_hyperparameters()
+            scale_length_scales(factor_length_scales)
+            print(f"Scaled GP parameters: {gaussian_process.get_named_parameters()}")
 
         def infer_gp_posterior() -> None:
             condition_gp(
