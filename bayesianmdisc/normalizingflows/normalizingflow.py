@@ -139,7 +139,7 @@ def _fit_normalizing_flow(
 
             return torch.mean(log_prob_u - sum_log_det_u - log_prob_x, dim=0)
 
-        def run_iteration() -> Tensor:
+        def run_iteration() -> float:
 
             def loss_func_closure() -> float:
                 optimizer.zero_grad(set_to_none=True)
@@ -148,10 +148,9 @@ def _fit_normalizing_flow(
                 return kld.item()
 
             samples_base, log_probs_base = base_distribution(num_samples)
-            optimizer.step(loss_func_closure)
-            kld = reverse_kld_func(samples_base, log_probs_base)
+            kld = optimizer.step(loss_func_closure)
             lr_scheduler.step()
-            return kld.detach().cpu()
+            return kld
 
         print("############################################################")
         print(f"Start training ...")
@@ -161,13 +160,13 @@ def _fit_normalizing_flow(
             time_iteration_start = perf_counter()
 
             kld = run_iteration()
-            kld_hist += [kld.item()]
+            kld_hist += [kld]
 
             if print_condition(iteration):
                 time_iteration_end = perf_counter()
                 time_iteration = time_iteration_end - time_iteration_start
                 print(f"Iteration: {iteration}")
-                print(f"KLD: {kld.item()}")
+                print(f"KLD: {kld}")
                 print(f"Time iteration: {time_iteration}")
 
         print("############################################################")
