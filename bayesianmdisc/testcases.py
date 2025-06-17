@@ -8,6 +8,7 @@ TestCase: TypeAlias = Tensor
 TestCases: TypeAlias = Tensor
 AllowedTestCases: TypeAlias = Tensor
 TestCaseIdentifier: TypeAlias = int
+TestCaseIdentifiers: TypeAlias = list[int]
 TestCaseLabel: TypeAlias = str
 TestCaseLabels = list[TestCaseLabel]
 

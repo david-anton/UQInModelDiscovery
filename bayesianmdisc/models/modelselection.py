@@ -9,11 +9,8 @@ from torch import vmap
 from bayesianmdisc.bayes.distributions import DistributionProtocol
 from bayesianmdisc.customtypes import Device, NPArray, Tensor
 from bayesianmdisc.datasettings import (
-    data_set_label_linka,
-    data_set_label_treloar,
-    zero_stress_inputs_linka,
-    zero_stress_inputs_treloar,
-    data_set_label_synthetic_linka,
+    determine_relevant_test_cases_for_outputs,
+    determine_skipped_input_indices,
 )
 from bayesianmdisc.errors import ModelSelectionError
 from bayesianmdisc.io import ProjectDirectory
@@ -33,6 +30,8 @@ from bayesianmdisc.statistics.metrics import (
 from bayesianmdisc.testcases import (
     TestCaseLabels,
     TestCases,
+    TestCaseIdentifiers,
+    TestCaseIdentifier,
     map_test_case_identifiers_to_labels,
 )
 
@@ -175,20 +174,10 @@ def select_model_through_sobol_sensitivity_analysis(
     num_parameters = model.num_parameters
     parameter_names = model.parameter_names
     num_outputs = model.output_dim
+    skipped_input_indices = determine_skipped_input_indices(data_set_label)
+    relevant_test_cases = determine_relevant_test_cases_for_outputs(data_set_label)
 
     data_writer = PandasDataWriter(project_directory)
-
-    if data_set_label == data_set_label_treloar:
-        skipped_input_indices = zero_stress_inputs_treloar
-    elif (
-        data_set_label == data_set_label_linka
-        or data_set_label == data_set_label_synthetic_linka
-    ):
-        skipped_input_indices = zero_stress_inputs_linka
-    else:
-        raise ModelSelectionError(
-            """There is no implementation for the specified data set."""
-        )
 
     def print_initial_info() -> None:
         print("Start sensitivity analysis ...")
@@ -218,7 +207,6 @@ def select_model_through_sobol_sensitivity_analysis(
     print_initial_info()
     inputs, test_cases = remove_skipped_inputs(inputs, test_cases)
     num_inputs = len(inputs)
-    test_case_labels = map_test_case_identifiers_to_labels(test_cases)
     parameter_bounds = determine_parameter_bounds().tolist()
 
     first_indices_outputs_list: SIndicesList = []
@@ -259,10 +247,17 @@ def select_model_through_sobol_sensitivity_analysis(
         model_outputs = evaluate_model(parameter_samples)
         model_outputs = reshape_model_outputs(model_outputs)
 
+        test_case_identifiers_list: TestCaseIdentifiers = []
         first_indices_inputs_list: SIndicesList = []
         total_indices_inputs_list: SIndicesList = []
 
         for input_index in range(num_inputs):
+
+            def is_input_relevant(
+                test_case_identifier: TestCaseIdentifier,
+                output_index: int,
+            ) -> bool:
+                return test_case_identifier in relevant_test_cases[output_index]
 
             def print_info() -> None:
                 print(
@@ -279,35 +274,21 @@ def select_model_through_sobol_sensitivity_analysis(
                 total_indices = problem.analysis["ST"]
                 return first_indices, total_indices
 
+            test_case_identifier = int(test_cases[input_index])
+            if not is_input_relevant(test_case_identifier, output_index):
+                continue
+
             print_info()
+            test_case_identifiers_list += [test_case_identifier]
             analyze_sobol_indices(problem)
             first_indices, total_indices = get_indices(problem)
             first_indices_inputs_list += [first_indices]
             total_indices_inputs_list += [total_indices]
 
+        test_case_identifiers = torch.tensor(test_case_identifiers_list)
+        test_case_labels = map_test_case_identifiers_to_labels(test_case_identifiers)
         first_indices_inputs = np.vstack(first_indices_inputs_list)
         total_indices_inputs = np.vstack(total_indices_inputs_list)
-
-        # def remove_independent_inputs(
-        #     indices: SIndices, test_cases_labels: TestCaseLabels
-        # ) -> tuple[SIndices, TestCaseLabels]:
-        #     cumulated_indices = np.sum(indices, axis=1)
-        #     is_cumulated_indice_nan = np.isnan(cumulated_indices)
-        #     is_cumulated_indice_zero = np.isclose(cumulated_indices, 0.0, rtol=1e-5)
-
-        #     is_independent_input = np.logical_or(
-        #         is_cumulated_indice_nan, is_cumulated_indice_zero
-        #     )
-        #     is_dependent_input = np.invert(is_independent_input)
-
-        #     dependent_input_indices = (
-        #         np.where(is_dependent_input)[0].reshape((-1,)).tolist()
-        #     )
-        #     relevant_indices = indices[dependent_input_indices, :]
-        #     relevant_test_case_labels = [
-        #         test_cases_labels[index] for index in dependent_input_indices
-        #     ]
-        #     return relevant_indices, relevant_test_case_labels
 
         def calculate_statistics(indices: SIndices) -> tuple[NPArray, NPArray]:
             means = np.mean(indices, axis=0)
@@ -346,19 +327,6 @@ def select_model_through_sobol_sensitivity_analysis(
                 header=True,
             )
 
-        # relevant_first_indices_inputs, relevant_first_indices_test_case_labels = (
-        #     remove_independent_inputs(first_indices_inputs, test_case_labels)
-        # )
-        # relevant_total_indices_inputs, relevant_total_indices_test_case_labels = (
-        #     remove_independent_inputs(total_indices_inputs, test_case_labels)
-        # )
-
-        # mean_relevant_first_indices_inputs, stddev_relevant_first_indices_inputs = (
-        #     calculate_statistics(relevant_first_indices_inputs)
-        # )
-        # mean_relevant_total_indices_inputs, stddev_relevant_total_indices_inputs = (
-        #     calculate_statistics(relevant_total_indices_inputs)
-        # )
         mean_first_indices_inputs, stddev_first_indices_inputs = calculate_statistics(
             first_indices_inputs
         )
@@ -366,28 +334,6 @@ def select_model_through_sobol_sensitivity_analysis(
             total_indices_inputs
         )
 
-        # save_analysis_results(
-        #     relevant_first_indices_inputs,
-        #     relevant_first_indices_test_case_labels,
-        #     first_indices_label,
-        # )
-        # save_analysis_results(
-        #     relevant_total_indices_inputs,
-        #     relevant_total_indices_test_case_labels,
-        #     total_indices_label,
-        # )
-        # save_analysis_result_statistics(
-        #     mean_relevant_first_indices_inputs,
-        #     stddev_relevant_first_indices_inputs,
-        #     first_indices_label,
-        # )
-        # save_analysis_result_statistics(
-        #     mean_relevant_total_indices_inputs,
-        #     stddev_relevant_total_indices_inputs,
-        #     total_indices_label,
-        # )
-        # first_indices_outputs_list += [mean_relevant_first_indices_inputs]
-        # total_indices_outputs_list += [mean_relevant_total_indices_inputs]
         save_analysis_results(
             first_indices_inputs,
             test_case_labels,
