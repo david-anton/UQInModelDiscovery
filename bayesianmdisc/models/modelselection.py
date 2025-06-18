@@ -174,7 +174,7 @@ def select_model_through_sobol_sensitivity_analysis(
     num_parameters = model.num_parameters
     parameter_names = model.parameter_names
     num_outputs = model.output_dim
-    skipped_input_indices = determine_skipped_input_indices(data_set_label)
+    skipped_input_indices = determine_skipped_input_indices(data_set_label, inputs)
     relevant_test_cases = determine_relevant_test_cases_for_outputs(data_set_label)
 
     data_writer = PandasDataWriter(project_directory)

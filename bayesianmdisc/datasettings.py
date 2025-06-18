@@ -13,6 +13,7 @@ from .testcases import (
     test_case_identifier_simple_shear_32,
     TestCaseIdentifier,
 )
+from .customtypes import Tensor
 from .errors import DataError
 
 data_set_label_treloar = "treloar"
@@ -23,17 +24,24 @@ data_set_label_synthetic_linka = "synthetic_heart_data_linka"
 
 SkippedInputIndices: TypeAlias = list[int]
 zero_stress_inputs_treloar = [0, 25, 39]
-zero_stress_inputs_linka = [0, 11, 22, 33, 44, 55, 66, 77, 88, 99, 110]
+num_data_sets_treloar = 11
 
 
-def determine_skipped_input_indices(data_set_label) -> SkippedInputIndices:
+def determine_skipped_input_indices(
+    data_set_label, inputs: Tensor
+) -> SkippedInputIndices:
     if data_set_label == data_set_label_treloar:
         return zero_stress_inputs_treloar
     elif (
         data_set_label == data_set_label_linka
         or data_set_label == data_set_label_synthetic_linka
     ):
-        return zero_stress_inputs_linka
+        num_inputs = len(inputs)
+        num_points_per_data_set = int(round(num_inputs / num_data_sets_treloar))
+        return [
+            num_points_per_data_set * index_data_set
+            for index_data_set in range(num_data_sets_treloar)
+        ]
     else:
         raise DataError("""There is no implementation for the specified data set""")
 
