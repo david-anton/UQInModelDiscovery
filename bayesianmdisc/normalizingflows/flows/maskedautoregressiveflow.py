@@ -16,7 +16,7 @@ def create_masked_autoregressive_flow(
         num_blocks=1,
         use_residual_blocks=False,
         random_mask=False,
-        activation=torch.nn.functional.leaky_relu,  # torch.nn.functional.relu,
+        activation=torch.nn.functional.softplus,
         dropout_probability=0.0,
         use_batch_norm=False,
     )

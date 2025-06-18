@@ -85,7 +85,7 @@ def extract_gp_inducing_parameter_distribution(
         layer_sizes += [1]
         return FFNN(
             layer_sizes=layer_sizes,
-            activation=nn.LeakyReLU(),
+            activation=nn.Softplus(),
             init_weights=nn.init.xavier_uniform_,
             init_bias=nn.init.zeros_,
             use_layer_norm=False,
