@@ -19,7 +19,7 @@ from bayesianmdisc.normalizingflows import NormalizingFlowDistribution
 from bayesianmdisc.normalizingflows.base import BaseDistributionProtocol
 from bayesianmdisc.normalizingflows.flows import (
     NormalizingFlow,
-    create_exponential_constrained_flow,
+    create_softplus_constrained_flow,
     create_masked_autoregressive_flow,
 )
 from bayesianmdisc.normalizingflows.utility import freeze_model
@@ -527,7 +527,7 @@ class NormalizingFlowParameterDistribution(nn.Module):
             for _ in range(self._num_layers)
         ]
         flows += [
-            create_exponential_constrained_flow(
+            create_softplus_constrained_flow(
                 total_num_outputs=self._dim,
                 indices_constrained_outputs=indices_constrained_outputs,
                 device=self._device,

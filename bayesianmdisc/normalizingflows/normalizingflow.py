@@ -20,7 +20,7 @@ from bayesianmdisc.io.loaderssavers import PytorchModelLoader, PytorchModelSaver
 from bayesianmdisc.normalizingflows.flows import (
     NormalizingFlow,
     NormalizingFlowProtocol,
-    create_exponential_constrained_flow,
+    create_softplus_constrained_flow,
     create_masked_autoregressive_flow,
 )
 from bayesianmdisc.normalizingflows.target import (
@@ -83,7 +83,7 @@ def _create_normalizing_flow(
         for _ in range(num_flows)
     ]
     flows += [
-        create_exponential_constrained_flow(
+        create_softplus_constrained_flow(
             num_parameters, constrained_output_indices, device
         )
     ]
