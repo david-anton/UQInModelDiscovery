@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:ampere:1
 
 ## Build command
-## singularity build --fakeroot --force bayesianmdisc.sif app/.devcontainer/container.def
+## singularity build --fakeroot --force statisticalmdisc.sif app/.devcontainer/container.def
 
 SCRIPT=main.py
 
@@ -16,7 +16,7 @@ srun singularity run \
  --env CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES \
  --nv \
  --nvccli \
- bayesianmdisc.sif \
- python3 /home/davanton/BayesianModelDiscovery/app/${SCRIPT}
+ statisticalmdisc.sif \
+ python3 /home/davanton/StatisticalModelDiscovery/app/${SCRIPT}
 
 
