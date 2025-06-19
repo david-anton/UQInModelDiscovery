@@ -1,4 +1,4 @@
-name: venv-bayesianmdisc
+name: venv-statisticalmdisc
 channels:
   - defaults
   - conda-forge

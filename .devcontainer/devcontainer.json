@@ -1,6 +1,6 @@
 // For format details, see https://aka.ms/devcontainer.json.
 {
-	"name": "bayesianmodeldiscovery",
+	"name": "statisticalmodeldiscovery",
 
 	"containerUser": "docker_user",
 
