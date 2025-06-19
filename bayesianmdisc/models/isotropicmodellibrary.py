@@ -232,47 +232,6 @@ class IsotropicModelLibrary:
         validate_stress_output_dimension(output_dim, self._allowed_output_dimensions)
         self.output_dim = output_dim
 
-    def assemble_linear_system_of_equations(
-        self,
-        inputs: DeformationInputs,
-        test_cases: TestCases,
-        outputs: StressOutputs,
-        validate_args=True,
-    ) -> tuple[LSDesignMatrix, LSTargets]:
-        parameters = torch.ones((self.num_parameters,), device=self._device)
-
-        if validate_args:
-            self._validate_inputs(inputs, test_cases, parameters)
-
-        def flatten_outputs(outputs: Tensor) -> Tensor:
-            if outputs.dim() == 1:
-                return outputs
-            else:
-                return torch.transpose(outputs, 1, 0).ravel()
-
-        def assemble_design_matrix(
-            inputs: DeformationInputs, test_cases: TestCases, parameters: Parameters
-        ) -> LSDesignMatrix:
-            covariates = []
-
-            for parameter_index in range(self.num_parameters):
-                self._deactivate_all_parameters()
-                self.activate_parameters([parameter_index])
-                outputs = self.forward(inputs, test_cases, parameters)
-                flattened_outputs = flatten_outputs(outputs)
-                covariates += [flattened_outputs.cpu().detach().numpy()]
-
-            self.reset_parameter_deactivations()
-            return np.vstack(covariates)
-
-        def assemble_targets(outputs: StressOutputs) -> LSTargets:
-            flattened_outputs = flatten_outputs(outputs)
-            return flattened_outputs.cpu().detach().numpy()
-
-        design_matrix = assemble_design_matrix(inputs, test_cases, parameters)
-        targets = assemble_targets(outputs)
-        return design_matrix, targets
-
     def _determine_mr_exponents(self) -> MRExponents:
         exponents = []
         for n in range(1, self._degree_mr_terms + 1):

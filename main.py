@@ -119,12 +119,12 @@ elif data_set_label == data_set_label_synthetic_linka:
     model_data_generation = OrthotropicCANN(device)
     active_parameter_names = (
         "W_2_7 (l2, I_2, p2, I)",
-        "W_1_12 (l1, I_4f, p2, exp)",
-        "W_2_12 (l2, I_4f, p2, exp)",
-        "W_1_20 (l1, I_4n, p2, exp)",
-        "W_2_20 (l2, I_4n, p2, exp)",
-        "W_1_24 (l1, I_8fs, p2, exp)",
-        "W_2_24 (l2, I_8fs, p2, exp)",
+        "W_1_10 (l1, I_4f, p2, exp)",  # "W_1_12 (l1, I_4f, p2, exp)",
+        "W_2_10 (l2, I_4f, p2, exp)",  # "W_2_12 (l2, I_4f, p2, exp)",
+        "W_1_14 (l1, I_4n, p2, exp)",  # "W_1_20 (l1, I_4n, p2, exp)",
+        "W_2_14 (l2, I_4n, p2, exp)",  # "W_2_20 (l2, I_4n, p2, exp)",
+        "W_1_16 (l1, I_8fs, p2, exp)",  # "W_1_24 (l1, I_8fs, p2, exp)",
+        "W_2_16 (l2, I_8fs, p2, exp)",  # "W_2_24 (l2, I_8fs, p2, exp)",
     )
     model_data_generation.reduce_model_to_parameter_names(active_parameter_names)
     mu = 10.324  # [kPa]
@@ -171,7 +171,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{first_sobol_index_thresshold}_maternkernel"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{first_sobol_index_thresshold}"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -455,23 +455,14 @@ if retrain_models:
 
             def create_single_output_gp() -> GP:
                 gp_mean = "zero"
-                gaussian_process = create_scaled_matern_gaussian_process(
+                gaussian_process = create_scaled_rbf_gaussian_process(
                     mean=gp_mean,
-                    smoothness_parameter=2.5,
                     input_dim=input_dim,
                     min_inputs=min_inputs,
                     max_inputs=max_inputs,
                     jitter=jitter,
                     device=device,
                 )
-                # gaussian_process = create_scaled_rbf_gaussian_process(
-                #     mean=gp_mean,
-                #     input_dim=input_dim,
-                #     min_inputs=min_inputs,
-                #     max_inputs=max_inputs,
-                #     jitter=jitter,
-                #     device=device,
-                # )
                 initial_parameters_output_scale = [1.0]
                 initial_parameters_length_scale = [0.1 for _ in range(input_dim)]
                 initial_parameters_kernel = (
@@ -501,7 +492,7 @@ if retrain_models:
             num_iterations = int(1e4)
             learning_rate = 2e-1
             if data_set_label == data_set_label_synthetic_linka:
-                factor_length_scales = 0.5
+                factor_length_scales = 0.6
             else:
                 factor_length_scales = 0.8
 

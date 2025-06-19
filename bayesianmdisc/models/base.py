@@ -13,6 +13,7 @@ DeformationGradient: TypeAlias = Tensor
 FlattenedDeformationGradient: TypeAlias = Tensor
 Invariant: TypeAlias = Tensor
 Invariants: TypeAlias = tuple[Invariant, ...]
+SplittedInvariants: TypeAlias = tuple[Invariants, Invariants]
 CauchyStresses: TypeAlias = Tensor
 FlattenedCauchyStresses: TypeAlias = Tensor
 PiolaStress: TypeAlias = Tensor
