@@ -34,6 +34,8 @@ from bayesianmdisc.gps import (
     create_scaled_rbf_gaussian_process,
     create_scaled_matern_gaussian_process,
     optimize_gp_hyperparameters,
+    load_gp,
+    save_gp,
 )
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import (
@@ -107,7 +109,7 @@ elif data_set_label == data_set_label_linka:
 
     model = OrthotropicCANN(device)
 
-    relative_noise_stddevs = 5e-2
+    relative_noise_stddevs = 2e-2  # 5e-2
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [10_000, 10_000]
     first_sobol_index_thresshold = 1e-2
@@ -433,6 +435,7 @@ num_discovery_steps = len(list_num_wasserstein_iterations)
 
 if retrain_models:
     for step in range(num_discovery_steps):
+        is_first_step = step == 0
         is_last_step = step == num_discovery_steps - 1
         output_directory_step = os.path.join(output_directory, f"discovery_step_{step}")
         output_subdirectory_gp = os.path.join(
@@ -563,7 +566,6 @@ if retrain_models:
                 output_selector: OutputSelectorProtocol = OutputSelectorTreloar(
                     test_cases_extraction, cast(IsotropicModelLibrary, model), device
                 )
-
             elif (
                 data_set_label == data_set_label_linka
                 or data_set_label == data_set_label_synthetic_linka
@@ -610,7 +612,11 @@ if retrain_models:
         parameter_names = model.parameter_names
 
         gaussian_process = create_gp()
-        select_gp_prior()
+        if is_first_step:
+            select_gp_prior()
+            save_gp(gaussian_process, output_directory, project_directory, device)
+        else:
+            load_gp(gaussian_process, output_directory, project_directory, device)
         infer_gp_posterior()
         parameter_distribution = extract_parameter_distribution()
 

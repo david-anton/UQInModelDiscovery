@@ -7,6 +7,7 @@ from bayesianmdisc.gps.gp import (
 )
 from bayesianmdisc.gps.multioutputgp import IndependentMultiOutputGP
 from bayesianmdisc.gps.training import condition_gp, optimize_gp_hyperparameters
+from bayesianmdisc.gps.utility import load_gp, save_gp
 
 GaussianProcess: TypeAlias = GP | IndependentMultiOutputGP
 
@@ -17,4 +18,6 @@ __all__ = [
     "IndependentMultiOutputGP",
     "condition_gp",
     "optimize_gp_hyperparameters",
+    "load_gp",
+    "save_gp",
 ]
