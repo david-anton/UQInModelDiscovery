@@ -71,7 +71,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_treloar
+data_set_label = data_set_label_synthetic_linka
 retrain_models = True
 
 # Settings
@@ -492,7 +492,7 @@ if retrain_models:
             num_iterations = int(1e4)
             learning_rate = 2e-1
             if data_set_label == data_set_label_synthetic_linka:
-                factor_length_scales = 0.6
+                factor_length_scales = 0.8
             else:
                 factor_length_scales = 0.8
 
@@ -569,7 +569,7 @@ if retrain_models:
                 num_points_per_test_case = 32
                 lipschitz_penalty_coefficient = 100.0
                 num_layers_lipschitz_nn = 4
-                layer_size_lipschitz_nn = 512
+                layer_size_lipschitz_nn = 256
                 data_set_linka = cast(LinkaHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_linka.generate_uniform_inputs(num_points_per_test_case)
