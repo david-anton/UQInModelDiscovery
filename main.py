@@ -107,7 +107,7 @@ elif data_set_label == data_set_label_linka:
     )
     num_points_per_test_case = 11
 
-    use_only_squared_anisotropic_invariants = True
+    use_only_squared_anisotropic_invariants = False
     model = OrthotropicCANN(device, use_only_squared_anisotropic_invariants)
 
     relative_noise_stddevs = 2e-2  # 5e-2
@@ -118,7 +118,7 @@ elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
     file_name = "CANNsHEARTdata_synthetic.xlsx"
     num_points_per_test_case = 32
-    use_only_squared_anisotropic_invariants = False
+    use_only_squared_anisotropic_invariants = True
 
     model_data_generation = OrthotropicCANN(
         device, use_only_squared_anisotropic_invariants
