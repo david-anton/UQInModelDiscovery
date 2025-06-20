@@ -121,12 +121,12 @@ elif data_set_label == data_set_label_synthetic_linka:
     model_data_generation = OrthotropicCANN(device)
     active_parameter_names = (
         "W_2_7 (l2, I_2, p2, I)",
-        "W_1_10 (l1, I_4f, p2, exp)",  # "W_1_12 (l1, I_4f, p2, exp)",
-        "W_2_10 (l2, I_4f, p2, exp)",  # "W_2_12 (l2, I_4f, p2, exp)",
-        "W_1_14 (l1, I_4n, p2, exp)",  # "W_1_20 (l1, I_4n, p2, exp)",
-        "W_2_14 (l2, I_4n, p2, exp)",  # "W_2_20 (l2, I_4n, p2, exp)",
-        "W_1_16 (l1, I_8fs, p2, exp)",  # "W_1_24 (l1, I_8fs, p2, exp)",
-        "W_2_16 (l2, I_8fs, p2, exp)",  # "W_2_24 (l2, I_8fs, p2, exp)",
+        "W_1_12 (l1, I_4f, p2, exp)",
+        "W_2_12 (l2, I_4f, p2, exp)",
+        "W_1_14 (l1, I_4n, p2, exp)",
+        "W_2_14 (l2, I_4n, p2, exp)",
+        "W_1_16 (l1, I_8fs, p2, exp)",
+        "W_2_16 (l2, I_8fs, p2, exp)",
     )
     model_data_generation.reduce_model_to_parameter_names(active_parameter_names)
     mu = 10.324  # [kPa]
@@ -612,11 +612,12 @@ if retrain_models:
         parameter_names = model.parameter_names
 
         gaussian_process = create_gp()
-        if is_first_step:
-            select_gp_prior()
-            save_gp(gaussian_process, output_directory, project_directory, device)
-        else:
-            load_gp(gaussian_process, output_directory, project_directory, device)
+        # if is_first_step:
+        #     select_gp_prior()
+        #     save_gp(gaussian_process, output_directory, project_directory, device)
+        # else:
+        #     load_gp(gaussian_process, output_directory, project_directory, device)
+        select_gp_prior()
         infer_gp_posterior()
         parameter_distribution = extract_parameter_distribution()
 

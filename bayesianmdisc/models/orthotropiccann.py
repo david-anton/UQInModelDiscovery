@@ -65,12 +65,16 @@ ParameterCouplingTuples: TypeAlias = list[tuple[str, str]]
 
 class OrthotropicCANN:
 
-    def __init__(self, device: Device):
+    def __init__(self, device: Device, use_only_squared_anisotropic_invariants=False):
         self._device = device
+        self._use_reduced_model = use_only_squared_anisotropic_invariants
         self._num_invariants_isotropic = 2
         self._num_invariants_anisotropic = 6
         self._num_power_terms_isotropic = 2
-        self._num_power_terms_anisotropic = 1
+        if self._use_reduced_model:
+            self._num_power_terms_anisotropic = 1
+        else:
+            self._num_power_terms_anisotropic = 2
         self._num_activation_functions = 2
         self._test_case_identifier_bt = test_case_identifier_biaxial_tension
         self._test_case_identifier_ss_12 = test_case_identifier_simple_shear_12
@@ -299,7 +303,16 @@ class OrthotropicCANN:
             "I_8sn",
         ]
         power_term_names_isotropic = ["p1", "p2"]
-        power_term_names_anisotropic = ["p2"]
+        first_layer_index_offset_isotropic = 0
+        second_layer_index_offset_isotropic = 0
+        if self._use_reduced_model:
+            first_layer_index_offset_anisotropic = 1
+            second_layer_index_offset_anisotropic = 2
+            power_term_names_anisotropic = ["p2"]
+        else:
+            first_layer_index_offset_anisotropic = 0
+            second_layer_index_offset_anisotropic = 0
+            power_term_names_anisotropic = ["p1", "p2"]
         activation_names = ["I", "exp"]
 
         first_layer_index = 1
@@ -310,10 +323,13 @@ class OrthotropicCANN:
             power_term_names: list[str],
             first_layer_index: int,
             second_layer_index: int,
+            first_layer_index_offset: int = 0,
+            second_layer_index_offset: int = 0,
         ) -> tuple[ParameterNames, int, int]:
-
             parameter_names = []
             for invariant in invariant_names:
+                first_layer_index += first_layer_index_offset
+                second_layer_index += second_layer_index_offset
                 # first layer
                 for power in power_term_names:
                     for activation in activation_names[1:]:
@@ -338,6 +354,8 @@ class OrthotropicCANN:
                 power_term_names_isotropic,
                 first_layer_index,
                 second_layer_index,
+                first_layer_index_offset_isotropic,
+                second_layer_index_offset_isotropic,
             )
         )
         parameter_names_anisotropic, first_layer_index, second_layer_index = (
@@ -346,18 +364,23 @@ class OrthotropicCANN:
                 power_term_names_anisotropic,
                 first_layer_index,
                 second_layer_index,
+                first_layer_index_offset_anisotropic,
+                second_layer_index_offset_anisotropic,
             )
         )
         return parameter_names_isotropic, parameter_names_anisotropic
 
     def _init_parameter_couplings(self) -> ParameterCouplingTuples:
 
-        def _init_isotropic_parameter_couplings() -> ParameterCouplingTuples:
-            parameter_names = self._initial_parameter_names_isotropic
+        def init_parameter_couplings_for_all_invariant_terms(
+            parameter_names: ParameterNames,
+            num_invariants: int,
+            initial_num_parameters_per_invariant: int,
+        ) -> ParameterCouplingTuples:
             pointer_index = 0
             parameter_coupling_tuples: ParameterCouplingTuples = []
-            step_size = self._initial_num_parameters_per_invariant_isotropic
-            for _ in range(self._num_invariants_isotropic):
+            step_size = initial_num_parameters_per_invariant
+            for _ in range(num_invariants):
                 linear_param_1 = parameter_names[pointer_index + 3]
                 linear_param_2 = parameter_names[pointer_index + 5]
                 nonlinear_param_1 = parameter_names[pointer_index + 0]
@@ -367,20 +390,41 @@ class OrthotropicCANN:
                 pointer_index += step_size
             return parameter_coupling_tuples
 
-        def _init_anisotropic_parameter_couplings() -> ParameterCouplingTuples:
-            parameter_names = self._initial_parameter_names_anisotropic
+        def init_parameter_couplings_for_squared_invariant_terms_only(
+            parameter_names: ParameterNames,
+            num_invariants: int,
+            initial_num_parameters_per_invariant: int,
+        ) -> ParameterCouplingTuples:
             pointer_index = 0
             parameter_coupling_tuples: ParameterCouplingTuples = []
-            step_size = self._initial_num_parameters_per_invariant_anisotropic
-            for _ in range(self._num_invariants_anisotropic):
+            step_size = initial_num_parameters_per_invariant
+            for _ in range(num_invariants):
                 linear_param = parameter_names[pointer_index + 2]
                 nonlinear_param = parameter_names[pointer_index + 0]
                 parameter_coupling_tuples += [(linear_param, nonlinear_param)]
                 pointer_index += step_size
             return parameter_coupling_tuples
 
-        parameter_couplings_isotropic = _init_isotropic_parameter_couplings()
-        parameter_couplings_anisotropic = _init_anisotropic_parameter_couplings()
+        parameter_couplings_isotropic = (
+            init_parameter_couplings_for_all_invariant_terms(
+                self._initial_parameter_names_isotropic,
+                self._num_invariants_isotropic,
+                self._initial_num_parameters_per_invariant_isotropic,
+            )
+        )
+        if self._use_reduced_model:
+            init_parameter_coupling_func_anisotropic = (
+                init_parameter_couplings_for_squared_invariant_terms_only
+            )
+        else:
+            init_parameter_coupling_func_anisotropic = (
+                init_parameter_couplings_for_all_invariant_terms
+            )
+        parameter_couplings_anisotropic = init_parameter_coupling_func_anisotropic(
+            self._initial_parameter_names_anisotropic,
+            self._num_invariants_anisotropic,
+            self._initial_num_parameters_per_invariant_anisotropic,
+        )
         return parameter_couplings_isotropic + parameter_couplings_anisotropic
 
     def _expand_parameter_indices_by_coupled_indices(
@@ -454,7 +498,7 @@ class OrthotropicCANN:
         self, deformation_gradient: DeformationGradient, parameters: Parameters
     ) -> StrainEnergy:
 
-        def calculate_strain_energy_terms_for_isotropic_invariant(
+        def calculate_strain_energy_term_for_all_invariant_terms(
             invariant: Invariant, parameters: Parameters
         ) -> StrainEnergy:
             one = torch.tensor(1.0, device=self._device)
@@ -470,7 +514,7 @@ class OrthotropicCANN:
             sub_term_4 = param_5 * (torch.exp(param_1 * invariant**2) - one)
             return sub_term_1 + sub_term_2 + sub_term_3 + sub_term_4
 
-        def calculate_strain_energy_terms_for_anisotropic_invariant(
+        def calculate_strain_energy_term_for_squared_invariant_terms_only(
             invariant: Invariant, parameters: Parameters
         ) -> StrainEnergy:
             one = torch.tensor(1.0, device=self._device)
@@ -496,19 +540,27 @@ class OrthotropicCANN:
         ):
             strain_energy_terms += [
                 torch.unsqueeze(
-                    calculate_strain_energy_terms_for_isotropic_invariant(
+                    calculate_strain_energy_term_for_all_invariant_terms(
                         invariant, params_invariant
                     ),
                     dim=0,
                 )
             ]
 
+        if self._use_reduced_model:
+            calculate_strain_energy_term_for_anisotropic_invariants = (
+                calculate_strain_energy_term_for_squared_invariant_terms_only
+            )
+        else:
+            calculate_strain_energy_term_for_anisotropic_invariants = (
+                calculate_strain_energy_term_for_all_invariant_terms
+            )
         for invariant, params_invariant in zip(
             invariants_anisotropic, params_invariants_anisotropic
         ):
             strain_energy_terms += [
                 torch.unsqueeze(
-                    calculate_strain_energy_terms_for_anisotropic_invariant(
+                    calculate_strain_energy_term_for_anisotropic_invariants(
                         invariant, params_invariant
                     ),
                     dim=0,
