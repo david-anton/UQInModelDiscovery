@@ -177,7 +177,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{first_sobol_index_thresshold}"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{first_sobol_index_thresshold}_expconstrained"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
