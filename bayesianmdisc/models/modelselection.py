@@ -28,10 +28,10 @@ from bayesianmdisc.statistics.metrics import (
     root_mean_squared_error,
 )
 from bayesianmdisc.testcases import (
+    TestCaseIdentifier,
+    TestCaseIdentifiers,
     TestCaseLabels,
     TestCases,
-    TestCaseIdentifiers,
-    TestCaseIdentifier,
     map_test_case_identifiers_to_labels,
 )
 

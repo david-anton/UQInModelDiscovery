@@ -9,7 +9,7 @@ from bayesianmdisc.bayes.distributions import (
     sample_and_analyse_distribution,
 )
 from bayesianmdisc.bayes.likelihood import create_likelihood
-from bayesianmdisc.customtypes import NPArray, GPModel
+from bayesianmdisc.customtypes import GPModel, NPArray
 from bayesianmdisc.data import (
     DataSetProtocol,
     KawabataDataSet,
@@ -31,10 +31,10 @@ from bayesianmdisc.gps import (
     GaussianProcess,
     IndependentMultiOutputGP,
     condition_gp,
-    create_scaled_rbf_gaussian_process,
     create_scaled_matern_gaussian_process,
-    optimize_gp_hyperparameters,
+    create_scaled_rbf_gaussian_process,
     load_gp,
+    optimize_gp_hyperparameters,
     save_gp,
 )
 from bayesianmdisc.io import ProjectDirectory

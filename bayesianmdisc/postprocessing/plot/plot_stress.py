@@ -26,8 +26,8 @@ from bayesianmdisc.postprocessing.plot.utility import (
 )
 from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
-    model_coverage_test,
     gp_coverage_test,
+    model_coverage_test,
     root_mean_squared_error,
 )
 from bayesianmdisc.statistics.utility import determine_quantiles_from_samples

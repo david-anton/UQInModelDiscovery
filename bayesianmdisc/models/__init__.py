@@ -6,10 +6,7 @@ from .modelselection import (
     select_model_through_sobol_sensitivity_analysis,
 )
 from .orthotropiccann import OrthotropicCANN, OutputSelectorLinka
-from .utility import (
-    load_model_state,
-    save_model_state,
-)
+from .utility import load_model_state, save_model_state
 
 __all__ = [
     "ModelProtocol",

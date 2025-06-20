@@ -3,7 +3,7 @@ from typing import TypeAlias, cast
 import gpytorch
 import torch
 
-from bayesianmdisc.customtypes import Tensor, TensorSize, GPModel, Device, Module
+from bayesianmdisc.customtypes import Device, GPModel, Module, Tensor, TensorSize
 from bayesianmdisc.errors import GPError
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.loaderssavers import PytorchModelLoader, PytorchModelSaver

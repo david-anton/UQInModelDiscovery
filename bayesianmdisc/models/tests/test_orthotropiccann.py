@@ -1,5 +1,5 @@
-import torch
 import pytest
+import torch
 
 from bayesianmdisc.models.orthotropiccann import (
     OrthotropicCANN,

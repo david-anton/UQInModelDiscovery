@@ -1,20 +1,20 @@
 from typing import TypeAlias
 
-from .testcases import (
-    test_case_identifier_uniaxial_tension,
-    test_case_identifier_equibiaxial_tension,
-    test_case_identifier_biaxial_tension,
-    test_case_identifier_pure_shear,
-    test_case_identifier_simple_shear_12,
-    test_case_identifier_simple_shear_21,
-    test_case_identifier_simple_shear_13,
-    test_case_identifier_simple_shear_31,
-    test_case_identifier_simple_shear_23,
-    test_case_identifier_simple_shear_32,
-    TestCaseIdentifier,
-)
 from .customtypes import Tensor
 from .errors import DataError
+from .testcases import (
+    TestCaseIdentifier,
+    test_case_identifier_biaxial_tension,
+    test_case_identifier_equibiaxial_tension,
+    test_case_identifier_pure_shear,
+    test_case_identifier_simple_shear_12,
+    test_case_identifier_simple_shear_13,
+    test_case_identifier_simple_shear_21,
+    test_case_identifier_simple_shear_23,
+    test_case_identifier_simple_shear_31,
+    test_case_identifier_simple_shear_32,
+    test_case_identifier_uniaxial_tension,
+)
 
 data_set_label_treloar = "treloar"
 data_set_label_kawabata = "kawabata"
