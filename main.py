@@ -73,7 +73,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_linka
+data_set_label = data_set_label_synthetic_linka
 retrain_models = True
 
 # Settings
@@ -107,7 +107,7 @@ elif data_set_label == data_set_label_linka:
     )
     num_points_per_test_case = 11
 
-    use_only_squared_anisotropic_invariants = True  # False
+    use_only_squared_anisotropic_invariants = False
     model = OrthotropicCANN(device, use_only_squared_anisotropic_invariants)
 
     relative_noise_stddevs = 5e-2
