@@ -73,7 +73,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_treloar
+data_set_label = data_set_label_linka
 retrain_models = True
 
 # Settings
@@ -110,7 +110,7 @@ elif data_set_label == data_set_label_linka:
     use_only_squared_anisotropic_invariants = False
     model = OrthotropicCANN(device, use_only_squared_anisotropic_invariants)
 
-    relative_noise_stddevs = 2e-2  # 5e-2
+    relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [10_000, 10_000]
     first_sobol_index_thresshold = 1e-2
@@ -177,7 +177,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{first_sobol_index_thresshold}_lipschitz_nn_2_512_lambda_10"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{first_sobol_index_thresshold}_lipschitz_nn_4_512_lambda_100_kernel_rbf_0.8"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -498,11 +498,11 @@ if retrain_models:
         def select_gp_prior() -> None:
             num_iterations = int(1e4)
             learning_rate = 2e-1
-            if data_set_label == data_set_label_linka:
-                factor_length_scales = 0.9
-            elif data_set_label == data_set_label_synthetic_linka:
+            if data_set_label == data_set_label_treloar:
                 factor_length_scales = 0.8
-            elif data_set_label == data_set_label_treloar:
+            elif data_set_label == data_set_label_linka:
+                factor_length_scales = 0.8
+            elif data_set_label == data_set_label_synthetic_linka:
                 factor_length_scales = 0.8
 
             def optimize_hyperparameters() -> None:
