@@ -168,8 +168,8 @@ elif data_set_label == data_set_label_synthetic_linka:
 
     model = OrthotropicCANN(device, use_only_squared_anisotropic_invariants)
 
-    relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 1e-2
+    relative_noise_stddevs = 0.0  # 5e-2
+    min_absolute_noise_stddev = 1e-3  # 1e-2
     list_num_wasserstein_iterations = [10_000, 10_000]
     first_sobol_index_thresshold = 1e-2
 
