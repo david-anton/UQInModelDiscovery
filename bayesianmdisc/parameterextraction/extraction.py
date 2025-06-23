@@ -46,6 +46,7 @@ def extract_gp_inducing_parameter_distribution(
     is_mean_trainable: bool,
     inputs: Tensor,
     test_cases: TestCases,
+    noise_stddevs: Tensor,
     num_func_samples: int,
     resample: bool,
     lipschitz_penalty_coefficient: float,
@@ -98,6 +99,11 @@ def extract_gp_inducing_parameter_distribution(
         likelihood = gp.likelihood
         for parameters in likelihood.parameters():
             parameters.requires_grad = False
+
+    def infer_predictive_posterior_gp_distribution() -> GPMultivariateNormal:
+        gp_likelihood = gp.likelihood
+        return gp_likelihood(gp(inputs), noise=noise_stddevs)
+        # return gp_distribution: GPMultivariateNormal = gp(inputs)
 
     def create_distribution_optimizer() -> TorchOptimizer:
         return torch.optim.RMSprop(
@@ -221,12 +227,12 @@ def extract_gp_inducing_parameter_distribution(
         device=device,
     )
 
-    gp_distribution: GPMultivariateNormal = gp(inputs)
+    freeze_gp(gp)
+    gp_distribution = infer_predictive_posterior_gp_distribution()
 
     if not resample:
         fixed_gp_func_values = sample_from_gp()
 
-    freeze_gp(gp)
     if lipschitz_func_pretraining:
         pretrain_lipschitz_func()
 

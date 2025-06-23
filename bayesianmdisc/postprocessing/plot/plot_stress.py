@@ -35,6 +35,7 @@ from bayesianmdisc.testcases import (
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_uniaxial_tension,
 )
+from bayesianmdisc.utility import from_numpy_to_torch, from_torch_to_numpy
 
 GaussianProcess: TypeAlias = GP | IndependentMultiOutputGP
 
@@ -1346,6 +1347,7 @@ def plot_gp_stresses_treloar(
     inputs: NPArray,
     outputs: NPArray,
     test_cases: NPArray,
+    noise_stddevs: NPArray,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
     device: Device,
@@ -1881,56 +1883,68 @@ def plot_gp_stresses_linka(
 def calculate_gp_means(
     gaussian_process: GaussianProcess,
     inputs: NPArray,
+    noise_stddevs: NPArray,
     device: Device,
     output_dim: Optional[int] = None,
 ) -> NPArray:
-    inputs_torch = torch.from_numpy(inputs).type(torch.get_default_dtype()).to(device)
+    inputs_torch = from_numpy_to_torch(inputs, device)
+    noise_stddevs_torch = from_numpy_to_torch(noise_stddevs, device)
     gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
-    posterior_distribution = infer_posterior_distribution(gp, inputs_torch)
+    posterior_distribution = infer_predictive_posterior_gp_distribution(
+        gp, inputs_torch, noise_stddevs_torch
+    )
     means_torch = posterior_distribution.mean
-    return means_torch.cpu().detach().numpy()
+    return from_torch_to_numpy(means_torch)
 
 
 def calculate_gp_quantiles(
     gaussian_process: GaussianProcess,
     inputs: NPArray,
+    noise_stddevs: NPArray,
     device: Device,
     output_dim: Optional[int] = None,
 ) -> tuple[NPArray, NPArray]:
-    inputs_torch = torch.from_numpy(inputs).type(torch.get_default_dtype()).to(device)
+    inputs_torch = from_numpy_to_torch(inputs, device)
+    noise_stddevs_torch = from_numpy_to_torch(noise_stddevs, device)
     gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
-    posterior_distribution = infer_posterior_distribution(gp, inputs_torch)
+    posterior_distribution = infer_predictive_posterior_gp_distribution(
+        gp, inputs_torch, noise_stddevs_torch
+    )
     means_torch = posterior_distribution.mean
     stddevs_torch = posterior_distribution.stddev
     min_quantiles_torch = means_torch - factor_stddev_credible_interval * stddevs_torch
     max_quantiles_torch = means_torch + factor_stddev_credible_interval * stddevs_torch
-    min_quantiles = min_quantiles_torch.cpu().detach().numpy()
-    max_quantiles = max_quantiles_torch.cpu().detach().numpy()
+    min_quantiles = from_torch_to_numpy(min_quantiles_torch)
+    max_quantiles = from_torch_to_numpy(max_quantiles_torch)
     return min_quantiles, max_quantiles
 
 
 def sample_from_gp(
     gaussian_process: GaussianProcess,
     inputs: NPArray,
+    noise_stddevs: NPArray,
     num_samples: int,
     device: Device,
     output_dim: Optional[int] = None,
 ) -> NPArray:
-    inputs_torch = torch.from_numpy(inputs).type(torch.get_default_dtype()).to(device)
+    inputs_torch = from_numpy_to_torch(inputs, device)
+    noise_stddevs_torch = from_numpy_to_torch(noise_stddevs, device)
     gp = reduce_gp_to_output_dimension(gaussian_process, output_dim)
-    posterior_distribution = infer_posterior_distribution(gp, inputs_torch)
+    posterior_distribution = infer_predictive_posterior_gp_distribution(
+        gp, inputs_torch, noise_stddevs_torch
+    )
     samples_torch = posterior_distribution.sample(
         sample_shape=torch.Size((num_samples,))
     )
-    return samples_torch.cpu().detach().numpy()
+    return from_torch_to_numpy(samples_torch)
 
 
-def infer_posterior_distribution(
-    gaussian_process: GaussianProcess, inputs: Tensor
+def infer_predictive_posterior_gp_distribution(
+    gaussian_process: GaussianProcess, inputs: Tensor, noise_stddevs: Tensor
 ) -> GPMultivariateNormal:
-    # likelihood = gaussian_process.likelihood
-    # return likelihood(gaussian_process(inputs))
-    return gaussian_process(inputs)
+    gp_likelihood = gaussian_process.likelihood
+    return gp_likelihood(gaussian_process(inputs), noise=noise_stddevs)
+    # return gaussian_process(inputs)
 
 
 def reduce_gp_to_output_dimension(

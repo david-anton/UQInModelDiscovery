@@ -1,7 +1,10 @@
+from typing import TypeAlias
+
 import itertools
 from dataclasses import dataclass
 
 import torch
+from scipy.interpolate import LinearNDInterpolator
 
 from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.data.base import DeformationInputs, StressOutputs
@@ -16,6 +19,10 @@ from bayesianmdisc.testcases import (
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_uniaxial_tension,
 )
+from bayesianmdisc.utility import from_numpy_to_torch, from_torch_to_numpy
+
+
+NoiseStddevs: TypeAlias = Tensor
 
 
 @dataclass
@@ -248,13 +255,68 @@ def determine_heteroscedastic_noise(
     relative_noise_stddevs: float | Tensor,
     min_absolute_noise_stddev: float,
     outputs: StressOutputs,
-) -> Tensor:
+) -> NoiseStddevs:
     noise_stddevs = relative_noise_stddevs * outputs
     return torch.where(
         noise_stddevs < min_absolute_noise_stddev,
         min_absolute_noise_stddev,
         noise_stddevs,
     )
+
+
+def interpolate_heteroscedastic_noise(
+    new_inputs: DeformationInputs,
+    new_test_cases: TestCases,
+    inputs: DeformationInputs,
+    test_cases: TestCases,
+    noise_stddevs: NoiseStddevs,
+    device: Device,
+) -> NoiseStddevs:
+
+    def validate_new_inputs(
+        new_inputs: DeformationInputs, new_test_cases: TestCases
+    ) -> None:
+        num_new_inputs = len(new_inputs)
+        num_new_test_cases = len(new_test_cases)
+
+        if not num_new_inputs == num_new_test_cases:
+            raise DataError(
+                f"""The number of new inputs and new test cases is expected to be the same,
+                but is {num_new_inputs} and {num_new_test_cases}."""
+            )
+
+    def validate_inputs(
+        inputs: DeformationInputs, test_cases: TestCases, noise_stddevs: NoiseStddevs
+    ) -> None:
+        num_inputs = len(inputs)
+        num_test_cases = len(test_cases)
+        num_noise_stddevs = len(noise_stddevs)
+
+        if not num_inputs == num_test_cases and num_inputs == num_noise_stddevs:
+            raise DataError(
+                f"""The number of inputs, test cases and noise standard deviations is expected to be the same,
+                but is {num_inputs}, {num_test_cases} and {num_noise_stddevs}."""
+            )
+
+    validate_new_inputs(new_inputs, new_test_cases)
+    validate_inputs(inputs, test_cases, noise_stddevs)
+
+    considered_new_test_cases = list(set(new_test_cases.tolist()))
+    new_noise_stddevs_list = []
+
+    for test_case in considered_new_test_cases:
+        new_indices_ = test_case == new_test_cases
+        indices_ = test_case == test_cases
+
+        new_inputs_ = from_torch_to_numpy(new_inputs[new_indices_])
+        inputs_ = from_torch_to_numpy(inputs[indices_])
+        noise_stddevs_ = from_torch_to_numpy(noise_stddevs[indices_])
+
+        interpolator = LinearNDInterpolator(inputs_, noise_stddevs_)
+        new_noise_stddevs = interpolator(new_inputs_)
+        new_noise_stddevs_list += [from_numpy_to_torch(new_noise_stddevs, device)]
+
+    return torch.vstack(new_noise_stddevs_list)
 
 
 def add_noise_to_data(

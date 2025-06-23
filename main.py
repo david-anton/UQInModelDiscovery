@@ -18,6 +18,7 @@ from bayesianmdisc.data import (
     TreloarDataSet,
     add_noise_to_data,
     determine_heteroscedastic_noise,
+    interpolate_heteroscedastic_noise,
     validate_data,
 )
 from bayesianmdisc.datasettings import (
@@ -575,6 +576,15 @@ if retrain_models:
                     test_cases_extraction, cast(OrthotropicCANN, model), device
                 )
 
+            noise_stddevs_extraction = interpolate_heteroscedastic_noise(
+                new_inputs=inputs_extraction,
+                new_test_cases=test_cases_extraction,
+                inputs=inputs,
+                test_cases=test_cases,
+                noise_stddevs=noise_stddevs,
+                device=device,
+            )
+
             distribution = extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
                 model=model,
@@ -583,6 +593,7 @@ if retrain_models:
                 is_mean_trainable=True,
                 inputs=inputs_extraction,
                 test_cases=test_cases_extraction,
+                noise_stddevs=noise_stddevs_extraction,
                 num_func_samples=num_func_samples,
                 lipschitz_penalty_coefficient=lipschitz_penalty_coefficient,
                 resample=True,
