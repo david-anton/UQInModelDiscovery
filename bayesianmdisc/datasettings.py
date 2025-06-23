@@ -1,4 +1,5 @@
 from typing import TypeAlias
+from dataclasses import dataclass
 
 from .customtypes import Tensor
 from .errors import DataError
@@ -76,3 +77,38 @@ def determine_relevant_test_cases_for_outputs(data_set_label) -> RelevantTestCas
         return relevant_test_cases_for_sensitivity_analysis_linka
     else:
         raise DataError(f"""There is no implementation for the specified data set""")
+
+
+@dataclass
+class LinkasModelParameters:
+    names: tuple[str, ...]
+    values: tuple[float, ...]
+
+
+def create_four_terms_linka_model_parameters() -> LinkasModelParameters:
+    parameter_names = (
+        "W_2_7 (l2, I_2, p2, I)",
+        "W_1_12 (l1, I_4f, p2, exp)",
+        "W_2_12 (l2, I_4f, p2, exp)",
+        "W_2_20 (l2, I_4n, p2, exp)",
+        "W_1_20 (l1, I_4n, p2, exp)",
+        "W_1_24 (l1, I_8fs, p2, exp)",
+        "W_2_24 (l2, I_8fs, p2, exp)",
+    )
+    mu = 10.324  # [kPa]
+    a_f = 3.427  # [kPa]
+    a_n = 2.754  # [kPa]
+    a_fs = 0.494  # [kPa]
+    b_f = 21.151
+    b_n = 4.371
+    b_fs = 0.508
+    parameter_values = (
+        mu / 2,
+        b_f,
+        a_f / (2 * b_f),
+        b_n,
+        a_n / (2 * b_n),
+        b_fs,
+        a_fs / (2 * b_fs),
+    )
+    return LinkasModelParameters(names=parameter_names, values=parameter_values)
