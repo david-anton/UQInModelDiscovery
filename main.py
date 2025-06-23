@@ -121,62 +121,23 @@ elif data_set_label == data_set_label_synthetic_linka:
     num_points_per_test_case = 32
     use_only_squared_anisotropic_invariants = True
 
-    active_parameter_names = (
-        "W_2_7 (l2, I_2, p2, I)",
-        "W_1_12 (l1, I_4f, p2, exp)",
-        "W_2_12 (l2, I_4f, p2, exp)",
-        "W_2_20 (l2, I_4n, p2, exp)",
-        "W_1_20 (l1, I_4n, p2, exp)",
-        "W_1_24 (l1, I_8fs, p2, exp)",
-        "W_2_24 (l2, I_8fs, p2, exp)",
-    )
-    mu = 10.324  # [kPa]
-    a_f = 3.427  # [kPa]
-    a_n = 2.754  # [kPa]
-    a_fs = 0.494  # [kPa]
-    b_f = 21.151
-    b_n = 4.371
-    b_fs = 0.508
-    active_parameter_values = (
-        mu / 2,
-        b_f,
-        a_f / (2 * b_f),
-        b_n,
-        a_n / (2 * b_n),
-        b_fs,
-        a_fs / (2 * b_fs),
-    )
     model_data_generation = OrthotropicCANN(
         device, use_only_squared_anisotropic_invariants
     )
-    model_data_generation.reduce_model_to_parameter_names(active_parameter_names)
+    four_terms_model_parameters = create_four_terms_linka_model_parameters()
+    model_data_generation.reduce_model_to_parameter_names(
+        four_terms_model_parameters.names
+    )
 
     data_generator = LinkaHeartDataSetGenerator(
         model=model_data_generation,
-        parameters=active_parameter_values,
+        parameters=four_terms_model_parameters.values,
         num_point_per_test_case=num_points_per_test_case,
         file_name=file_name,
         output_directory=input_directory,
         project_directory=project_directory,
         device=device,
     )
-    # model_data_generation = OrthotropicCANN(
-    #     device, use_only_squared_anisotropic_invariants
-    # )
-    # four_terms_model_parameters = create_four_terms_linka_model_parameters()
-    # model_data_generation.reduce_model_to_parameter_names(
-    #     four_terms_model_parameters.names
-    # )
-
-    # data_generator = LinkaHeartDataSetGenerator(
-    #     model=model_data_generation,
-    #     parameters=four_terms_model_parameters.values,
-    #     num_point_per_test_case=num_points_per_test_case,
-    #     file_name=file_name,
-    #     output_directory=input_directory,
-    #     project_directory=project_directory,
-    #     device=device,
-    # )
     data_generator.generate()
     data_set = LinkaHeartDataSet(
         input_directory=input_directory,
@@ -196,7 +157,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{first_sobol_index_thresshold}_lipschitz_nn_4_512_lambda_100_kernel_matern_nf_16_4_noaddednoise"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{first_sobol_index_thresshold}_lipschitz_nn_4_512_lambda_100_kernel_matern_nf_16_4_nonoise"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
