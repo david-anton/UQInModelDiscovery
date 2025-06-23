@@ -160,7 +160,7 @@ pd_column_lable_test_cases = "test cases"
 def select_model_through_sobol_sensitivity_analysis(
     model: ModelProtocol,
     parameter_distribution: DistributionProtocol,
-    first_sobol_index_thresshold: float,
+    total_sobol_index_thresshold: float,
     num_samples_factor: int,
     data_set_label: str,
     inputs: DeformationInputs,
@@ -358,10 +358,10 @@ def select_model_through_sobol_sensitivity_analysis(
         total_indices_outputs_list += [mean_total_indices_inputs]
 
     def select_relevant_parameter_indices(
-        mean_first_indices_outputs: SIndices,
+        mean_total_indices_outputs: SIndices,
     ) -> ParameterIndices:
         return (
-            np.where(mean_first_indices_outputs >= first_sobol_index_thresshold)[0]
+            np.where(mean_total_indices_outputs >= total_sobol_index_thresshold)[0]
             .reshape((-1,))
             .tolist()
         )
@@ -376,11 +376,11 @@ def select_model_through_sobol_sensitivity_analysis(
 
     first_indices_outputs = np.vstack(first_indices_outputs_list)
     total_indices_outputs = np.vstack(total_indices_outputs_list)
-    mean_first_indices_outputs = np.mean(first_indices_outputs, axis=0)
-    _ = np.mean(total_indices_outputs, axis=0)
+    _ = np.mean(first_indices_outputs, axis=0)
+    mean_total_indices_outputs = np.mean(total_indices_outputs, axis=0)
 
     relevant_parameter_indices = select_relevant_parameter_indices(
-        mean_first_indices_outputs
+        mean_total_indices_outputs
     )
     deactivate_irrelevant_parameters(relevant_parameter_indices)
 

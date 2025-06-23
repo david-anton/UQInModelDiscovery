@@ -97,7 +97,7 @@ if data_set_label == data_set_label_treloar:
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [40_000, 20_000]
-    first_sobol_index_thresshold = 1e-6
+    total_sobol_index_thresshold = 1e-6
 elif data_set_label == data_set_label_linka:
     input_directory = data_set_label
     data_set = LinkaHeartDataSet(
@@ -114,7 +114,7 @@ elif data_set_label == data_set_label_linka:
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [10_000, 10_000]
-    first_sobol_index_thresshold = 1e-2
+    total_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
     file_name = "CANNsHEARTdata_synthetic.xlsx"
@@ -151,13 +151,13 @@ elif data_set_label == data_set_label_synthetic_linka:
     relative_noise_stddevs = 1e-1  # 5e-2
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [10_000, 10_000]
-    first_sobol_index_thresshold = 1e-2
+    total_sobol_index_thresshold = 1e-2
 
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{first_sobol_index_thresshold}_lipschitz_nn_4_512_lambda_100_kernel_matern_nf_16_4_nonoise"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_4_512_lambda_100_kernel_matern_nf_16_4_nonoise"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -638,7 +638,7 @@ if retrain_models:
         select_model_through_sobol_sensitivity_analysis(
             model=model,
             parameter_distribution=parameter_distribution,
-            first_sobol_index_thresshold=first_sobol_index_thresshold,
+            total_sobol_index_thresshold=total_sobol_index_thresshold,
             num_samples_factor=num_samples_factor_sensitivity_analysis,
             data_set_label=data_set_label,
             inputs=inputs,
@@ -729,7 +729,7 @@ else:
         select_model_through_sobol_sensitivity_analysis(
             model=model,
             parameter_distribution=parameter_distribution,
-            first_sobol_index_thresshold=first_sobol_index_thresshold,
+            total_sobol_index_thresshold=total_sobol_index_thresshold,
             num_samples_factor=num_samples_factor_sensitivity_analysis,
             data_set_label=data_set_label,
             inputs=inputs,
