@@ -13,7 +13,7 @@ SCRIPT=main.py
 
 srun singularity run \
  --cleanenv \
- --env CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES \
+ --env CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES CUDA_LAUNCH_BLOCKING=1\
  --nv \
  --nvccli \
  statisticalmdisc.sif \
