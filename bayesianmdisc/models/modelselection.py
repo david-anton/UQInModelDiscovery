@@ -12,6 +12,7 @@ from bayesianmdisc.datasettings import (
     determine_relevant_test_cases_for_outputs,
     determine_skipped_input_indices,
 )
+from bayesianmdisc.utility import from_numpy_to_torch, from_torch_to_numpy
 from bayesianmdisc.errors import ModelSelectionError
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.readerswriters import PandasDataWriter
@@ -404,14 +405,6 @@ def print_relevant_parameter_names(model: ModelProtocol) -> None:
 
     for parameter_name in relevant_parameter_names:
         print(parameter_name)
-
-
-def from_numpy_to_torch(array: NPArray, device: Device) -> Tensor:
-    return torch.from_numpy(array).type(torch.get_default_dtype()).to(device)
-
-
-def from_torch_to_numpy(tensor: Tensor) -> NPArray:
-    return tensor.detach().cpu().numpy()
 
 
 def join_analysis_results_file_name(file_name_prefix: str, output_index: int) -> str:
