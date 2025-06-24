@@ -257,6 +257,64 @@ def determine_heteroscedastic_noise(
     )
 
 
+def interpolate_heteroscedastic_noise(
+    new_inputs: DeformationInputs,
+    new_test_cases: TestCases,
+    inputs: DeformationInputs,
+    test_cases: TestCases,
+    noise_stddevs: NoiseStddevs,
+    device: Device,
+) -> NoiseStddevs:
+
+    def validate_new_inputs(
+        new_inputs: DeformationInputs, new_test_cases: TestCases
+    ) -> None:
+        num_new_inputs = len(new_inputs)
+        num_new_test_cases = len(new_test_cases)
+
+        if not num_new_inputs == num_new_test_cases:
+            raise DataError(
+                f"""The number of new inputs and new test cases is expected to be the same,
+                but is {num_new_inputs} and {num_new_test_cases}."""
+            )
+
+    def validate_inputs(
+        inputs: DeformationInputs, test_cases: TestCases, noise_stddevs: NoiseStddevs
+    ) -> None:
+        num_inputs = len(inputs)
+        num_test_cases = len(test_cases)
+        num_noise_stddevs = len(noise_stddevs)
+
+        if not num_inputs == num_test_cases and num_inputs == num_noise_stddevs:
+            raise DataError(
+                f"""The number of inputs, test cases and noise standard deviations is expected to be the same,
+                but is {num_inputs}, {num_test_cases} and {num_noise_stddevs}."""
+            )
+
+    def find_all_new_test_cases(new_test_cases: TestCases) -> list[int]:
+        return list(set(new_test_cases.tolist()))
+
+    validate_new_inputs(new_inputs, new_test_cases)
+    validate_inputs(inputs, test_cases, noise_stddevs)
+
+    new_test_cases_list = find_all_new_test_cases(new_test_cases)
+    new_noise_stddevs_list = []
+
+    for new_test_case in new_test_cases_list:
+        new_indices_ = new_test_case == new_test_cases
+        indices_ = new_test_case == test_cases
+
+        new_inputs_ = from_torch_to_numpy(new_inputs[new_indices_])
+        inputs_ = from_torch_to_numpy(inputs[indices_])
+        noise_stddevs_ = from_torch_to_numpy(noise_stddevs[indices_])
+
+        interpolator = LinearNDInterpolator(inputs_, noise_stddevs_)
+        new_noise_stddevs = interpolator(new_inputs_)
+        new_noise_stddevs_list += [from_numpy_to_torch(new_noise_stddevs, device)]
+
+    return torch.vstack(new_noise_stddevs_list)
+
+
 def add_noise_to_data(
     noise_stddevs: Tensor, outputs: StressOutputs, device: Device
 ) -> StressOutputs:

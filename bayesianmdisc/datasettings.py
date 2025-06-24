@@ -99,9 +99,9 @@ def create_four_terms_linka_model_parameters() -> LinkasModelParameters:
     a_f = 3.427  # [kPa]
     a_n = 2.754  # [kPa]
     a_fs = 0.494  # [kPa]
-    b_f = 21.151
-    b_n = 4.371
-    b_fs = 0.508
+    b_f = 21.151  # [-]
+    b_n = 4.371  # [-]
+    b_fs = 0.508  # [-]
     parameter_values = (
         mu / 2,
         b_f,

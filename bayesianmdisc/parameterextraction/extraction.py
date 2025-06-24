@@ -99,6 +99,15 @@ def extract_gp_inducing_parameter_distribution(
         for parameters in likelihood.parameters():
             parameters.requires_grad = False
 
+    def infer_predictive_posterior_gp_distribution() -> GPMultivariateNormal:
+        if not gp.num_gps == 1:
+            noise_stddevs_ = flatten_outputs(noise_stddevs)
+        else:
+            noise_stddevs_ = noise_stddevs
+        gp_likelihood = gp.likelihood
+        return gp_likelihood(gp(inputs), noise=noise_stddevs_)
+        # return gp_distribution: GPMultivariateNormal = gp(inputs)
+
     def create_distribution_optimizer() -> TorchOptimizer:
         return torch.optim.RMSprop(
             params=distribution.parameters(),
