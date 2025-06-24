@@ -298,15 +298,18 @@ def interpolate_heteroscedastic_noise(
                 but is {num_inputs}, {num_test_cases} and {num_noise_stddevs}."""
             )
 
+    def find_all_new_test_cases(new_test_cases: TestCases) -> list[int]:
+        return list(set(new_test_cases.tolist()))
+
     validate_new_inputs(new_inputs, new_test_cases)
     validate_inputs(inputs, test_cases, noise_stddevs)
 
-    considered_new_test_cases = list(set(new_test_cases.tolist()))
+    new_test_cases_list = find_all_new_test_cases(new_test_cases)
     new_noise_stddevs_list = []
 
-    for test_case in considered_new_test_cases:
-        new_indices_ = test_case == new_test_cases
-        indices_ = test_case == test_cases
+    for new_test_case in new_test_cases_list:
+        new_indices_ = new_test_case == new_test_cases
+        indices_ = new_test_case == test_cases
 
         new_inputs_ = from_torch_to_numpy(new_inputs[new_indices_])
         inputs_ = from_torch_to_numpy(inputs[indices_])

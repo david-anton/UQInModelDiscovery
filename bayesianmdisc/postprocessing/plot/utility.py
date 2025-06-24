@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import numpy as np
 
 from bayesianmdisc.customtypes import NPArray
@@ -9,9 +11,8 @@ from bayesianmdisc.testcases import (
 )
 
 
-def split_treloar_inputs_and_outputs(
-    inputs: NPArray, test_cases: NPArray, outputs: NPArray
-) -> tuple[list[NPArray], list[int], list[NPArray]]:
+@dataclass
+class TreloarDataConfig:
     considered_test_cases = [
         test_case_identifier_uniaxial_tension,
         test_case_identifier_equibiaxial_tension,
@@ -22,12 +23,20 @@ def split_treloar_inputs_and_outputs(
     num_data_points_ps = 14
     expected_set_sizes = [num_data_points_ut, num_data_points_ebt, num_data_points_ps]
 
+
+def split_treloar_inputs_and_outputs(
+    inputs: NPArray,
+    test_cases: NPArray,
+    outputs: NPArray,
+) -> tuple[list[NPArray], list[int], list[NPArray]]:
+    config = TreloarDataConfig()
+
     def split_data() -> tuple[list[NPArray], list[int], list[NPArray]]:
         input_sets = []
         test_case_identifiers = []
         output_sets = []
 
-        for test_case in considered_test_cases:
+        for test_case in config.considered_test_cases:
             filter = test_cases == test_case
             input_sets += [inputs[filter]]
             test_case_identifiers += [test_case]
@@ -44,11 +53,11 @@ def split_treloar_inputs_and_outputs(
         output_set_sizes = [len(set) for set in output_sets]
 
         valid_set_sizes = (
-            input_set_sizes == expected_set_sizes
+            input_set_sizes == config.expected_set_sizes
             and len(test_case_identifiers) == 3
-            and output_set_sizes == expected_set_sizes
+            and output_set_sizes == config.expected_set_sizes
         )
-        valid_test_case_sets = test_case_identifiers == considered_test_cases
+        valid_test_case_sets = test_case_identifiers == config.considered_test_cases
 
         if not valid_set_sizes and valid_test_case_sets:
             raise PlotterError(
@@ -59,6 +68,39 @@ def split_treloar_inputs_and_outputs(
     input_sets, test_case_identifiers, output_sets = split_data()
     validate_data_sets(input_sets, test_case_identifiers, output_sets)
     return input_sets, test_case_identifiers, output_sets
+
+
+def split_treloar_noise_stddevs(
+    noise_stddevs: NPArray,
+    test_cases: NPArray,
+) -> list[NPArray]:
+    config = TreloarDataConfig()
+
+    def split_noise_stddevs() -> list[NPArray]:
+        noise_stddev_sets = []
+
+        for test_case in config.considered_test_cases:
+            filter = test_cases == test_case
+            noise_stddev_sets += [noise_stddevs[filter]]
+
+        return noise_stddev_sets
+
+    def validate_noise_stddev_sets(
+        noise_stddev_sets: list[NPArray],
+    ) -> None:
+        noise_stddev_set_sizes = [len(set) for set in noise_stddev_sets]
+
+        valid_set_sizes = noise_stddev_set_sizes == config.expected_set_sizes
+
+        if not valid_set_sizes:
+            raise PlotterError(
+                """The number of noise standard deviations
+                does not match the size of the Treloar data set."""
+            )
+
+    noise_stddev_sets = split_noise_stddevs()
+    validate_noise_stddev_sets(noise_stddev_sets)
+    return noise_stddev_sets
 
 
 def split_kawabata_inputs_and_outputs(
@@ -108,6 +150,11 @@ def split_kawabata_inputs_and_outputs(
     return split_data_sets(split_indices)
 
 
+@dataclass
+class LinkaDataConfig:
+    num_data_sets = 11
+
+
 def split_linka_inputs_and_outputs(
     inputs: NPArray,
     test_cases: NPArray,
@@ -118,7 +165,8 @@ def split_linka_inputs_and_outputs(
     list[int],
     list[NPArray],
 ]:
-    num_data_sets = 11
+    config = LinkaDataConfig()
+    num_data_sets = config.num_data_sets
     num_points_per_set = num_points_per_test_case
     num_data_points = int(round(num_data_sets * num_points_per_set))
 
@@ -150,3 +198,29 @@ def split_linka_inputs_and_outputs(
 
     validate_data()
     return split_data_sets()
+
+
+def split_linka_noise_stddevs(
+    noise_stddevs: NPArray,
+    num_points_per_test_case: int = 11,
+) -> list[NPArray]:
+    config = LinkaDataConfig()
+    num_data_sets = config.num_data_sets
+    num_points_per_set = num_points_per_test_case
+    num_data_points = int(round(num_data_sets * num_points_per_set))
+
+    def validate_noise_stddevs() -> None:
+        num_noise_stddevs = len(noise_stddevs)
+        valid_data = num_noise_stddevs == num_data_points
+
+        if not valid_data:
+            raise PlotterError(
+                f"""The noise standard deviations do not comprise the expected number of data points 
+                    (it comprises {num_noise_stddevs} points but {num_data_points} data points are expected)."""
+            )
+
+    def split_noise_stddevs() -> list[NPArray]:
+        return np.split(noise_stddevs, num_data_sets, axis=0)
+
+    validate_noise_stddevs()
+    return split_noise_stddevs()
