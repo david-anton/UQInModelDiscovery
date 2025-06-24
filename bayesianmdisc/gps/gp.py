@@ -115,6 +115,31 @@ class GP(gpytorch.models.ExactGP):
         validate_likelihoods(likelihood, self.num_gps)
         self.likelihood = likelihood[0].to(self._device)
 
+    def infer_predictive_distribution(
+        self, x: Tensor, noise_stddevs: Optional[Tensor] = None
+    ) -> GPMultivariateNormal:
+
+        def validate_noise_stddevs(x: Tensor, noise_stddevs: Tensor) -> None:
+            num_inputs = len(x)
+            actual_size = noise_stddevs.shape
+            expected_size = torch.Size([num_inputs, self.num_gps])
+
+            if not actual_size == expected_size:
+                raise GPError(
+                    f"""The noise stdandard deviation has not the expected size
+                         (actual size: {actual_size}, expected size{expected_size}) """
+                )
+
+        gp_distribution = self.forward(x)
+        likelihood = self.likelihood
+        if noise_stddevs is not None:
+            validate_noise_stddevs(x, noise_stddevs)
+            noise_stddevs = noise_stddevs.reshape((-1,))
+            noise_variance = noise_stddevs**2
+            return likelihood(gp_distribution, noise=noise_variance)
+        else:
+            return likelihood(gp_distribution)
+
     def _preprocess_training_data(
         self, train_x: TrainingDataTuple, train_y: TrainingDataTuple
     ) -> tuple[Optional[Tensor], Optional[Tensor]]:

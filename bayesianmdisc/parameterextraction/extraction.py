@@ -101,14 +101,7 @@ def extract_gp_inducing_parameter_distribution(
             parameters.requires_grad = False
 
     def infer_predictive_distribution() -> GPMultivariateNormal:
-        if not gp.num_gps == 1:
-            noise_stddevs_ = flatten_outputs(noise_stddevs)
-        else:
-            noise_stddevs_ = noise_stddevs
-        noise_stddevs_ = noise_stddevs_.reshape((-1,))
-        noise_variance = noise_stddevs_**2
-        gp_likelihood = gp.likelihood
-        return gp_likelihood(gp(inputs), noise=noise_variance)
+        return gp.infer_predictive_distribution(inputs, noise_stddevs)
         # return gaussian_process(inputs)
 
     def create_distribution_optimizer() -> TorchOptimizer:

@@ -2022,12 +2022,7 @@ def infer_predictive_distribution(
 def infer_predictive_distribution_for_one_dimension(
     gaussian_process: GaussianProcess, inputs: Tensor, noise_stddevs: Tensor
 ) -> GPMultivariateNormal:
-    gaussian_process.eval()
-    gaussian_process.likelihood.eval()
-    noise_stddevs = noise_stddevs.reshape((-1,))
-    noise_variance = noise_stddevs**2
-    gp_likelihood = gaussian_process.likelihood
-    return gp_likelihood(gaussian_process(inputs), noise=noise_variance)
+    return gaussian_process.infer_predictive_distribution(inputs, noise_stddevs)
     # return gaussian_process(inputs)
 
 
