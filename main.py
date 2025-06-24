@@ -22,13 +22,12 @@ from bayesianmdisc.data import (
     validate_data,
 )
 from bayesianmdisc.datasettings import (
+    create_four_terms_linka_model_parameters,
     data_set_label_kawabata,
     data_set_label_linka,
     data_set_label_synthetic_linka,
     data_set_label_treloar,
-    create_four_terms_linka_model_parameters,
 )
-from bayesianmdisc.utility import from_torch_to_numpy
 from bayesianmdisc.gps import (
     GP,
     GaussianProcess,
@@ -75,6 +74,7 @@ from bayesianmdisc.postprocessing.plot import (
     plot_sobol_indice_statistics,
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
+from bayesianmdisc.utility import from_torch_to_numpy
 
 data_set_label = data_set_label_treloar
 retrain_models = True

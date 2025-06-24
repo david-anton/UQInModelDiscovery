@@ -8,11 +8,11 @@ from matplotlib.patches import Patch
 from torch import vmap
 
 from bayesianmdisc.customtypes import Device, NPArray, Tensor
+from bayesianmdisc.data import interpolate_heteroscedastic_noise
 from bayesianmdisc.data.linkaheartdataset import (
     assemble_flattened_deformation_gradients,
     generate_principal_stretches,
 )
-from bayesianmdisc.data import interpolate_heteroscedastic_noise
 from bayesianmdisc.errors import PlotterError
 from bayesianmdisc.gps.base import GPMultivariateNormal
 from bayesianmdisc.gps.gp import GP
@@ -23,8 +23,8 @@ from bayesianmdisc.models.base_mechanics import assemble_stretches_from_factors
 from bayesianmdisc.postprocessing.plot.utility import (
     split_kawabata_inputs_and_outputs,
     split_linka_inputs_and_outputs,
-    split_treloar_inputs_and_outputs,
     split_linka_noise_stddevs,
+    split_treloar_inputs_and_outputs,
     split_treloar_noise_stddevs,
 )
 from bayesianmdisc.statistics.metrics import (

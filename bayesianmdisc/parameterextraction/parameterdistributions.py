@@ -19,8 +19,8 @@ from bayesianmdisc.normalizingflows import NormalizingFlowDistribution
 from bayesianmdisc.normalizingflows.base import BaseDistributionProtocol
 from bayesianmdisc.normalizingflows.flows import (
     NormalizingFlow,
-    create_masked_autoregressive_flow,
     create_exponential_constrained_flow,
+    create_masked_autoregressive_flow,
 )
 from bayesianmdisc.normalizingflows.utility import freeze_model
 

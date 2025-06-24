@@ -20,8 +20,8 @@ from bayesianmdisc.io.loaderssavers import PytorchModelLoader, PytorchModelSaver
 from bayesianmdisc.normalizingflows.flows import (
     NormalizingFlow,
     NormalizingFlowProtocol,
-    create_masked_autoregressive_flow,
     create_exponential_constrained_flow,
+    create_masked_autoregressive_flow,
 )
 from bayesianmdisc.normalizingflows.target import TargetDistributionWrapper
 from bayesianmdisc.normalizingflows.utility import freeze_model

@@ -12,7 +12,6 @@ from bayesianmdisc.datasettings import (
     determine_relevant_test_cases_for_outputs,
     determine_skipped_input_indices,
 )
-from bayesianmdisc.utility import from_numpy_to_torch, from_torch_to_numpy
 from bayesianmdisc.errors import ModelSelectionError
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.io.readerswriters import PandasDataWriter
@@ -35,6 +34,7 @@ from bayesianmdisc.testcases import (
     TestCases,
     map_test_case_identifiers_to_labels,
 )
+from bayesianmdisc.utility import from_numpy_to_torch, from_torch_to_numpy
 
 ModelAccuracies: TypeAlias = list[float]
 Problem: TypeAlias = ProblemSpec

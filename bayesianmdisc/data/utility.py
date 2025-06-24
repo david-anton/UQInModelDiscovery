@@ -1,12 +1,11 @@
-from typing import TypeAlias
-
 import itertools
 from dataclasses import dataclass
+from typing import TypeAlias
 
 import torch
 from scipy.interpolate import NearestNDInterpolator
 
-from bayesianmdisc.customtypes import Device, Tensor, NPArray
+from bayesianmdisc.customtypes import Device, NPArray, Tensor
 from bayesianmdisc.data.base import DeformationInputs, StressOutputs
 from bayesianmdisc.datasettings import (
     data_set_label_kawabata,
@@ -20,7 +19,6 @@ from bayesianmdisc.testcases import (
     test_case_identifier_uniaxial_tension,
 )
 from bayesianmdisc.utility import from_numpy_to_torch, from_torch_to_numpy
-
 
 NoiseStddevs: TypeAlias = Tensor
 
