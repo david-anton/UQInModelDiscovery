@@ -100,14 +100,16 @@ def extract_gp_inducing_parameter_distribution(
         for parameters in likelihood.parameters():
             parameters.requires_grad = False
 
-    def infer_predictive_posterior_gp_distribution() -> GPMultivariateNormal:
+    def infer_predictive_distribution() -> GPMultivariateNormal:
         if not gp.num_gps == 1:
             noise_stddevs_ = flatten_outputs(noise_stddevs)
         else:
             noise_stddevs_ = noise_stddevs
+        noise_stddevs_ = noise_stddevs_.reshape((-1,))
+        noise_variance = noise_stddevs_**2
         gp_likelihood = gp.likelihood
-        return gp_likelihood(gp(inputs), noise=noise_stddevs_)
-        # return gp_distribution: GPMultivariateNormal = gp(inputs)
+        return gp_likelihood(gp(inputs), noise=noise_variance)
+        # return gaussian_process(inputs)
 
     def create_distribution_optimizer() -> TorchOptimizer:
         return torch.optim.RMSprop(
@@ -232,7 +234,7 @@ def extract_gp_inducing_parameter_distribution(
     )
 
     freeze_gp(gp)
-    gp_distribution = infer_predictive_posterior_gp_distribution()
+    gp_distribution = infer_predictive_distribution()
 
     if not resample:
         fixed_gp_func_values = sample_from_gp()

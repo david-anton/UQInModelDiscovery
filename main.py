@@ -28,6 +28,7 @@ from bayesianmdisc.datasettings import (
     data_set_label_treloar,
     create_four_terms_linka_model_parameters,
 )
+from bayesianmdisc.utility import from_torch_to_numpy
 from bayesianmdisc.gps import (
     GP,
     GaussianProcess,
@@ -75,7 +76,7 @@ from bayesianmdisc.postprocessing.plot import (
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 
-data_set_label = data_set_label_synthetic_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -95,8 +96,8 @@ if data_set_label == data_set_label_treloar:
 
     model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)
 
-    relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 1e-2
+    relative_noise_stddevs = 2e-2  # 5e-2
+    min_absolute_noise_stddev = 5e-3  # 1e-2
     list_num_wasserstein_iterations = [40_000, 20_000]
     total_sobol_index_thresshold = 1e-6
 elif data_set_label == data_set_label_linka:
@@ -158,7 +159,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_4_512_lambda_100_kernel_matern_nf_16_4_nonoise"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_2_512_lambda_100_kernel_matern_nf_32_8"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -173,9 +174,10 @@ def plot_gp_stresses(
     def plot_treloar() -> None:
         plot_gp_stresses_treloar(
             gaussian_process=gaussian_process,
-            inputs=inputs.detach().cpu().numpy(),
-            outputs=outputs.detach().cpu().numpy(),
-            test_cases=test_cases.detach().cpu().numpy(),
+            inputs=from_torch_to_numpy(inputs),
+            outputs=from_torch_to_numpy(outputs),
+            test_cases=from_torch_to_numpy(test_cases),
+            noise_stddevs=from_torch_to_numpy(noise_stddevs),
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
             device=device,
@@ -184,9 +186,10 @@ def plot_gp_stresses(
     def plot_linka() -> None:
         plot_gp_stresses_linka(
             gaussian_process=gaussian_process,
-            inputs=inputs.detach().cpu().numpy(),
-            outputs=outputs.detach().cpu().numpy(),
-            test_cases=test_cases.detach().cpu().numpy(),
+            inputs=from_torch_to_numpy(inputs),
+            outputs=from_torch_to_numpy(outputs),
+            test_cases=from_torch_to_numpy(test_cases),
+            noise_stddevs=from_torch_to_numpy(noise_stddevs),
             num_points_per_test_case=num_points_per_test_case,
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
@@ -219,9 +222,9 @@ def plot_model_stresses(
         plot_model_stresses_treloar(
             model=cast(IsotropicModelLibrary, model),
             parameter_samples=model_parameter_samples,
-            inputs=inputs.detach().cpu().numpy(),
-            outputs=outputs.detach().cpu().numpy(),
-            test_cases=test_cases.detach().cpu().numpy(),
+            inputs=from_torch_to_numpy(inputs),
+            outputs=from_torch_to_numpy(outputs),
+            test_cases=from_torch_to_numpy(test_cases),
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
             device=device,
@@ -239,9 +242,9 @@ def plot_model_stresses(
             plot_model_stresses_kawabata(
                 model=isotropic_model,
                 parameter_samples=model_parameter_samples,
-                inputs=inputs.detach().cpu().numpy(),
-                outputs=outputs.detach().cpu().numpy(),
-                test_cases=test_cases.detach().cpu().numpy(),
+                inputs=from_torch_to_numpy(inputs),
+                outputs=from_torch_to_numpy(outputs),
+                test_cases=from_torch_to_numpy(test_cases),
                 output_subdirectory=output_subdirectory_kawabata,
                 project_directory=project_directory,
                 device=device,
@@ -255,9 +258,9 @@ def plot_model_stresses(
         plot_model_stresses_kawabata(
             model=cast(IsotropicModelLibrary, model),
             parameter_samples=model_parameter_samples,
-            inputs=inputs.detach().cpu().numpy(),
-            outputs=outputs.detach().cpu().numpy(),
-            test_cases=test_cases.detach().cpu().numpy(),
+            inputs=from_torch_to_numpy(inputs),
+            outputs=from_torch_to_numpy(outputs),
+            test_cases=from_torch_to_numpy(test_cases),
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
             device=device,
@@ -267,9 +270,9 @@ def plot_model_stresses(
         plot_model_stresses_linka(
             model=cast(OrthotropicCANN, model),
             parameter_samples=model_parameter_samples,
-            inputs=inputs.detach().cpu().numpy(),
-            test_cases=test_cases.detach().cpu().numpy(),
-            outputs=outputs.detach().cpu().numpy(),
+            inputs=from_torch_to_numpy(inputs),
+            test_cases=from_torch_to_numpy(test_cases),
+            outputs=from_torch_to_numpy(outputs),
             num_points_per_test_case=num_points_per_test_case,
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
@@ -303,9 +306,9 @@ def plot_relevenat_sobol_indices_results(
     if data_set_label == data_set_label_treloar:
         plot_sobol_indice_paths_treloar(
             relevant_parameter_indices=relevant_parameter_indices,
-            inputs=inputs.detach().cpu().numpy(),
-            test_cases=test_cases.detach().cpu().numpy(),
-            outputs=outputs.detach().cpu().numpy(),
+            inputs=from_torch_to_numpy(inputs),
+            test_cases=from_torch_to_numpy(test_cases),
+            outputs=from_torch_to_numpy(outputs),
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
         )
@@ -398,9 +401,9 @@ def perform_baysian_inference_on_kawabata_data(
     plot_model_stresses_kawabata(
         model=cast(IsotropicModelLibrary, model),
         parameter_samples=parameter_samples,
-        inputs=inputs.detach().cpu().numpy(),
-        outputs=outputs.detach().cpu().numpy(),
-        test_cases=test_cases.detach().cpu().numpy(),
+        inputs=from_torch_to_numpy(inputs),
+        outputs=from_torch_to_numpy(outputs),
+        test_cases=from_torch_to_numpy(test_cases),
         output_subdirectory=output_directory,
         project_directory=project_directory,
         device=device,
@@ -443,23 +446,23 @@ if retrain_models:
 
             def create_single_output_gp() -> GP:
                 gp_mean = "zero"
-                gaussian_process = create_scaled_matern_gaussian_process(
-                    mean=gp_mean,
-                    smoothness_parameter=2.5,
-                    input_dim=input_dim,
-                    min_inputs=min_inputs,
-                    max_inputs=max_inputs,
-                    jitter=jitter,
-                    device=device,
-                )
-                # gaussian_process = create_scaled_rbf_gaussian_process(
+                # gaussian_process = create_scaled_matern_gaussian_process(
                 #     mean=gp_mean,
+                #     smoothness_parameter=2.5,
                 #     input_dim=input_dim,
                 #     min_inputs=min_inputs,
                 #     max_inputs=max_inputs,
                 #     jitter=jitter,
                 #     device=device,
                 # )
+                gaussian_process = create_scaled_rbf_gaussian_process(
+                    mean=gp_mean,
+                    input_dim=input_dim,
+                    min_inputs=min_inputs,
+                    max_inputs=max_inputs,
+                    jitter=jitter,
+                    device=device,
+                )
                 initial_parameters_output_scale = [1.0]
                 initial_parameters_length_scale = [0.1 for _ in range(input_dim)]
                 initial_parameters_kernel = (

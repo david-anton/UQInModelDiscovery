@@ -24,6 +24,8 @@ from bayesianmdisc.postprocessing.plot.utility import (
     split_kawabata_inputs_and_outputs,
     split_linka_inputs_and_outputs,
     split_treloar_inputs_and_outputs,
+    split_linka_noise_stddevs,
+    split_treloar_noise_stddevs,
 )
 from bayesianmdisc.statistics.metrics import (
     coefficient_of_determination,
@@ -1354,13 +1356,16 @@ def plot_gp_stresses_treloar(
     device: Device,
 ) -> None:
     config = GPStressPlotterConfigTreloar()
-    num_gp_samples = 16
+    num_gp_samples = 8
     num_gp_inputs = 256
 
     figure_all, axes_all = plt.subplots()
 
     def plot_one_input_output_set(
-        input_set: NPArray, test_case_identifier: int, output_set: NPArray
+        input_set: NPArray,
+        test_case_identifier: int,
+        output_set: NPArray,
+        noise_stddev_set: NPArray,
     ) -> None:
         if test_case_identifier == test_case_identifier_uniaxial_tension:
             test_case_label = "uniaxial_tension"
@@ -1392,7 +1397,6 @@ def plot_gp_stresses_treloar(
 
         file_name = f"treloar_data_{test_case_label}.png"
         test_case_set = np.full((len(input_set),), test_case_identifier, dtype=np.int64)
-        noise_stddev_set = noise_stddevs[test_case_identifier == test_cases]
 
         figure, axes = plt.subplots()
 
@@ -1425,23 +1429,24 @@ def plot_gp_stresses_treloar(
         # gp
         gp_stretches_plot = np.linspace(min_stretch, max_stretch, num_gp_inputs)
 
-        _gp_stretches = from_numpy_to_torch(gp_stretches_plot.reshape((-1, 1)), device)
-        _gp_test_cases = torch.full(
+        gp_stretches = from_numpy_to_torch(gp_stretches_plot.reshape((-1, 1)), device)
+        gp_test_cases_torch = torch.full(
             (num_gp_inputs,), test_case_identifier, device=device
         )
-        _gp_inputs = assemble_stretches_from_factors(
-            _gp_stretches, _gp_test_cases, device
+        gp_inputs_torch = assemble_stretches_from_factors(
+            gp_stretches, gp_test_cases_torch, device
         )
-        gp_inputs = from_torch_to_numpy(_gp_inputs)
-        _gp_noise_stddevs = interpolate_heteroscedastic_noise(
-            new_inputs=_gp_inputs,
-            new_test_cases=_gp_test_cases,
+        gp_inputs = from_torch_to_numpy(gp_inputs_torch)
+
+        gp_noise_stddevs_torch = interpolate_heteroscedastic_noise(
+            new_inputs=gp_inputs_torch,
+            new_test_cases=gp_test_cases_torch,
             inputs=from_numpy_to_torch(input_set, device),
             test_cases=from_numpy_to_torch(test_case_set, device),
             noise_stddevs=from_numpy_to_torch(noise_stddev_set, device),
             device=device,
         )
-        gp_noise_stddevs = from_torch_to_numpy(_gp_noise_stddevs)
+        gp_noise_stddevs = from_torch_to_numpy(gp_noise_stddevs_torch)
 
         mean_gp_stresses = calculate_gp_means(
             gaussian_process, gp_inputs, gp_noise_stddevs, device
@@ -1600,11 +1605,12 @@ def plot_gp_stresses_treloar(
     input_sets, test_case_sets, output_sets = split_treloar_inputs_and_outputs(
         inputs, test_cases, outputs
     )
+    noise_stddev_sets = split_treloar_noise_stddevs(noise_stddevs, test_cases)
 
-    for input_set, test_case, output_set in zip(
-        input_sets, test_case_sets, output_sets
+    for input_set, test_case, output_set, noise_stddev_set in zip(
+        input_sets, test_case_sets, output_sets, noise_stddev_sets
     ):
-        plot_one_input_output_set(input_set, test_case, output_set)
+        plot_one_input_output_set(input_set, test_case, output_set, noise_stddev_set)
 
     plot_all_input_and_output_sets()
     plt.clf()
@@ -1668,13 +1674,14 @@ def plot_gp_stresses_linka(
 ) -> None:
     plotter_config = GPStressPlotterConfigLinka()
     data_config = LinkaDataConfig()
+    num_gp_samples = 8
     num_gp_inputs = 256
-    num_gp_samples = 16
 
     def plot_one_data_set(
         input_set: NPArray,
         test_case_identifier: int,
         output_set: NPArray,
+        noise_stddev_set: NPArray,
         stress_indices: list[int],
         data_set_index: int,
     ) -> None:
@@ -1682,9 +1689,9 @@ def plot_gp_stresses_linka(
         def plot_one_stress(stress_index: int) -> None:
             is_principal_stress = stress_index in data_config.principal_stress_indices
             stress_file_name_label = data_config.stress_file_name_labels[stress_index]
-
-            # test_case_set = np.full((len(input_set),), test_case_identifier, dtype=np.int64)
-            # noise_stddev_set = noise_stddevs[test_case_identifier == test_cases]
+            test_case_set = np.full(
+                (len(input_set),), test_case_identifier, dtype=np.int64
+            )
 
             figure, axes = plt.subplots()
 
@@ -1740,12 +1747,33 @@ def plot_gp_stresses_linka(
             gp_inputs = assemble_flattened_deformation_gradients(
                 _gp_inputs, test_case_identifier
             )
+            gp_inputs_torch = from_numpy_to_torch(gp_inputs, device)
+            gp_test_cases_torch = torch.full(
+                (num_gp_inputs,), test_case_identifier, device=device
+            )
+            gp_noise_stddevs_torch = interpolate_heteroscedastic_noise(
+                new_inputs=gp_inputs_torch,
+                new_test_cases=gp_test_cases_torch,
+                inputs=from_numpy_to_torch(input_set, device),
+                test_cases=from_numpy_to_torch(test_case_set, device),
+                noise_stddevs=from_numpy_to_torch(noise_stddev_set, device),
+                device=device,
+            )
+            gp_noise_stddevs = from_torch_to_numpy(gp_noise_stddevs_torch)
 
             mean_gp_stresses = calculate_gp_means(
-                gaussian_process, gp_inputs, device, output_dim=stress_index
+                gaussian_process,
+                gp_inputs,
+                gp_noise_stddevs,
+                device,
+                output_dim=stress_index,
             )
             min_quantile_gp_stresses, max_quantile_gp_stresses = calculate_gp_quantiles(
-                gaussian_process, gp_inputs, device, output_dim=stress_index
+                gaussian_process,
+                gp_inputs,
+                gp_noise_stddevs,
+                device,
+                output_dim=stress_index,
             )
 
             means_plot = mean_gp_stresses.reshape((-1,))
@@ -1769,6 +1797,7 @@ def plot_gp_stresses_linka(
             samples = sample_from_gp(
                 gaussian_process,
                 gp_inputs,
+                gp_noise_stddevs,
                 num_gp_samples,
                 device,
                 output_dim=stress_index,
@@ -1855,6 +1884,7 @@ def plot_gp_stresses_linka(
                 gaussian_process,
                 input_set,
                 output_set,
+                noise_stddev_set,
                 device,
                 output_dim=stress_index,
             )
@@ -1882,22 +1912,32 @@ def plot_gp_stresses_linka(
     input_sets, test_case_identifiers, output_sets = split_linka_inputs_and_outputs(
         inputs, test_cases, outputs, num_points_per_test_case
     )
+    noise_stddev_sets = split_linka_noise_stddevs(
+        noise_stddevs, num_points_per_test_case
+    )
 
     for (
         input_set,
         test_case_identifier,
         output_set,
+        noise_stddev_set,
         stress_indices,
         data_set_index,
     ) in zip(
         input_sets,
         test_case_identifiers,
         output_sets,
+        noise_stddev_sets,
         data_config.stress_indices_list,
         range(data_config.num_data_sets),
     ):
         plot_one_data_set(
-            input_set, test_case_identifier, output_set, stress_indices, data_set_index
+            input_set,
+            test_case_identifier,
+            output_set,
+            noise_stddev_set,
+            stress_indices,
+            data_set_index,
         )
 
 
@@ -1982,8 +2022,13 @@ def infer_predictive_distribution(
 def infer_predictive_distribution_for_one_dimension(
     gaussian_process: GaussianProcess, inputs: Tensor, noise_stddevs: Tensor
 ) -> GPMultivariateNormal:
+    gaussian_process.eval()
+    gaussian_process.likelihood.eval()
+    noise_stddevs = noise_stddevs.reshape((-1,))
+    noise_variance = noise_stddevs**2
     gp_likelihood = gaussian_process.likelihood
-    return gp_likelihood(gaussian_process(inputs), noise=noise_stddevs)
+    return gp_likelihood(gaussian_process(inputs), noise=noise_variance)
+    # return gaussian_process(inputs)
 
 
 def reduce_gp_to_output_dimension(
