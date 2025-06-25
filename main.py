@@ -96,8 +96,8 @@ if data_set_label == data_set_label_treloar:
 
     model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)
 
-    relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 1e-2
+    relative_noise_stddevs = 1e-1  # 5e-2
+    min_absolute_noise_stddev = 5e-2  # 1e-2
     list_num_wasserstein_iterations = [40_000, 20_000]
     total_sobol_index_thresshold = 1e-6
 elif data_set_label == data_set_label_linka:
@@ -113,9 +113,9 @@ elif data_set_label == data_set_label_linka:
     use_only_squared_anisotropic_invariants = True
     model = OrthotropicCANN(device, use_only_squared_anisotropic_invariants)
 
-    relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [10_000, 10_000]
+    relative_noise_stddevs = 1e-1  # 5e-2
+    min_absolute_noise_stddev = 5e-2  # 1e-2
+    list_num_wasserstein_iterations = [20_000, 20_000]  # [10_000, 10_000]
     total_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
@@ -130,7 +130,6 @@ elif data_set_label == data_set_label_synthetic_linka:
     model_data_generation.reduce_model_to_parameter_names(
         four_terms_model_parameters.names
     )
-
     data_generator = LinkaHeartDataSetGenerator(
         model=model_data_generation,
         parameters=four_terms_model_parameters.values,
@@ -150,16 +149,16 @@ elif data_set_label == data_set_label_synthetic_linka:
 
     model = OrthotropicCANN(device, use_only_squared_anisotropic_invariants)
 
-    relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [10_000, 10_000]
+    relative_noise_stddevs = 1e-1  # 5e-2
+    min_absolute_noise_stddev = 5e-2  # 1e-2
+    list_num_wasserstein_iterations = [20_000, 20_000]  # [10_000, 10_000]
     total_sobol_index_thresshold = 1e-2
 
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_2_512_lambda_10_kernel_matern_nf_32_8"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_4_256_lambda_10_kernel_matern_spectralnorm"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -554,8 +553,8 @@ if retrain_models:
             if data_set_label == data_set_label_treloar:
                 num_points_per_test_case = 32
                 lipschitz_penalty_coefficient = 10.0
-                num_layers_lipschitz_nn = 2
-                layer_size_lipschitz_nn = 512
+                num_layers_lipschitz_nn = 4  # 2
+                layer_size_lipschitz_nn = 256  # 512
                 data_set_treloar = cast(TreloarDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_treloar.generate_uniform_inputs(num_points_per_test_case)
@@ -569,8 +568,8 @@ if retrain_models:
             ):
                 num_points_per_test_case = 32
                 lipschitz_penalty_coefficient = 100.0
-                num_layers_lipschitz_nn = 2
-                layer_size_lipschitz_nn = 1024
+                num_layers_lipschitz_nn = 4  # 2
+                layer_size_lipschitz_nn = 512  # 1024
                 data_set_linka = cast(LinkaHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_linka.generate_uniform_inputs(num_points_per_test_case)
