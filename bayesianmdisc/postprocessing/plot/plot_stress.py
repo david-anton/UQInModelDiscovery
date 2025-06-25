@@ -1973,8 +1973,8 @@ def infer_predictive_distribution(
 def infer_predictive_distribution_for_one_dimension(
     gaussian_process: GaussianProcess, inputs: Tensor, noise_stddevs: Tensor
 ) -> GPMultivariateNormal:
-    return gaussian_process.infer_predictive_distribution(inputs, noise_stddevs)
-    # return gaussian_process(inputs)
+    # return gaussian_process.infer_predictive_distribution(inputs, noise_stddevs)
+    return gaussian_process(inputs)
 
 
 def reduce_gp_to_output_dimension(

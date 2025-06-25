@@ -89,7 +89,7 @@ def extract_gp_inducing_parameter_distribution(
             activation=nn.LeakyReLU(),
             init_weights=nn.init.xavier_uniform_,
             init_bias=nn.init.zeros_,
-            use_layer_norm=False,
+            use_spectral_norm=True,
         ).to(device)
 
     def freeze_gp(gp: GaussianProcess) -> None:
@@ -101,8 +101,8 @@ def extract_gp_inducing_parameter_distribution(
             parameters.requires_grad = False
 
     def infer_predictive_distribution() -> GPMultivariateNormal:
-        return gp.infer_predictive_distribution(inputs, noise_stddevs)
-        # return gaussian_process(inputs)
+        # return gp.infer_predictive_distribution(inputs, noise_stddevs)
+        return gp(inputs)
 
     def create_distribution_optimizer() -> TorchOptimizer:
         return torch.optim.RMSprop(

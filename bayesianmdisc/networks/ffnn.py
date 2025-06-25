@@ -17,7 +17,7 @@ class LinearHiddenLayer(nn.Module):
         activation: Module,
         init_weights: InitializationFunc,
         init_bias: InitializationFunc,
-        use_layer_norm=False,
+        use_spectral_norm=False,
     ) -> None:
         super().__init__()
         self._linear_layer = nn.Linear(
@@ -25,18 +25,16 @@ class LinearHiddenLayer(nn.Module):
             out_features=size_output,
             bias=True,
         )
+        if use_spectral_norm:
+            self._linear_layer = nn.utils.parametrizations.spectral_norm(
+                self._linear_layer
+            )
         self._activation = activation
-        self._use_layer_norm = use_layer_norm
-        if self._use_layer_norm:
-            self._layer_norm = nn.RMSNorm(size_output)
         init_weights(self._linear_layer.weight)
         init_bias(self._linear_layer.bias)
 
     def forward(self, x: Tensor) -> Tensor:
-        if self._use_layer_norm:
-            return self._activation(self._layer_norm(self._linear_layer(x)))
-        else:
-            return self._activation(self._linear_layer(x))
+        return self._activation(self._linear_layer(x))
 
 
 class LinearOutputLayer(nn.Module):
@@ -46,18 +44,23 @@ class LinearOutputLayer(nn.Module):
         size_output: int,
         init_weights: InitializationFunc,
         init_bias: InitializationFunc,
+        use_spectral_norm=False,
     ) -> None:
         super().__init__()
-        self._fc_layer = nn.Linear(
+        self._linear_layer = nn.Linear(
             in_features=size_input,
             out_features=size_output,
             bias=True,
         )
-        init_weights(self._fc_layer.weight)
-        init_bias(self._fc_layer.bias)
+        if use_spectral_norm:
+            self._linear_layer = nn.utils.parametrizations.spectral_norm(
+                self._linear_layer
+            )
+        init_weights(self._linear_layer.weight)
+        init_bias(self._linear_layer.bias)
 
     def forward(self, x: Tensor) -> Tensor:
-        return self._fc_layer(x)
+        return self._linear_layer(x)
 
 
 class FFNN(torch.nn.Module):
@@ -67,11 +70,11 @@ class FFNN(torch.nn.Module):
         activation=nn.Tanh(),
         init_weights=nn.init.xavier_uniform_,
         init_bias=nn.init.zeros_,
-        use_layer_norm=False,
+        use_spectral_norm=False,
     ) -> None:
         super().__init__()
         self._layers = self._set_up_layers(
-            layer_sizes, activation, init_weights, init_bias, use_layer_norm
+            layer_sizes, activation, init_weights, init_bias, use_spectral_norm
         )
         self._output = nn.Sequential(*self._layers)
 
@@ -84,7 +87,7 @@ class FFNN(torch.nn.Module):
         activation: Module,
         init_weights: InitializationFunc,
         init_bias: InitializationFunc,
-        use_layer_norm: bool,
+        use_spectral_norm: bool,
     ) -> list[nn.Module]:
         layers: list[nn.Module] = [
             LinearHiddenLayer(
@@ -93,7 +96,7 @@ class FFNN(torch.nn.Module):
                 activation=activation,
                 init_weights=init_weights,
                 init_bias=init_bias,
-                use_layer_norm=use_layer_norm,
+                use_spectral_norm=use_spectral_norm,
             )
             for i in range(1, len(layer_sizes) - 1)
         ]
@@ -103,6 +106,7 @@ class FFNN(torch.nn.Module):
             size_output=layer_sizes[-1],
             init_weights=init_weights,
             init_bias=init_bias,
+            use_spectral_norm=use_spectral_norm,
         )
         layers.append(layer_out)
         return layers
