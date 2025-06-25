@@ -18,14 +18,15 @@ from bayesianmdisc.data import (
     TreloarDataSet,
     add_noise_to_data,
     determine_heteroscedastic_noise,
+    interpolate_heteroscedastic_noise,
     validate_data,
 )
 from bayesianmdisc.datasettings import (
+    create_four_terms_linka_model_parameters,
     data_set_label_kawabata,
     data_set_label_linka,
     data_set_label_synthetic_linka,
     data_set_label_treloar,
-    create_four_terms_linka_model_parameters,
 )
 from bayesianmdisc.gps import (
     GP,
@@ -73,8 +74,9 @@ from bayesianmdisc.postprocessing.plot import (
     plot_sobol_indice_statistics,
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
+from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_synthetic_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -148,16 +150,16 @@ elif data_set_label == data_set_label_synthetic_linka:
 
     model = OrthotropicCANN(device, use_only_squared_anisotropic_invariants)
 
-    relative_noise_stddevs = 1e-1  # 5e-2
-    min_absolute_noise_stddev = 1e-1  # 1e-2
-    list_num_wasserstein_iterations = [5_000, 5_000]  # [10_000, 10_000]
+    relative_noise_stddevs = 5e-2
+    min_absolute_noise_stddev = 1e-2
+    list_num_wasserstein_iterations = [10_000, 10_000]
     total_sobol_index_thresshold = 1e-2
 
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_2_1024_lambda_100_kernel_matern_nf_32_8"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_2_512_lambda_10_kernel_matern_nf_32_8"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -172,9 +174,10 @@ def plot_gp_stresses(
     def plot_treloar() -> None:
         plot_gp_stresses_treloar(
             gaussian_process=gaussian_process,
-            inputs=inputs.detach().cpu().numpy(),
-            outputs=outputs.detach().cpu().numpy(),
-            test_cases=test_cases.detach().cpu().numpy(),
+            inputs=from_torch_to_numpy(inputs),
+            outputs=from_torch_to_numpy(outputs),
+            test_cases=from_torch_to_numpy(test_cases),
+            noise_stddevs=from_torch_to_numpy(noise_stddevs),
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
             device=device,
@@ -183,9 +186,10 @@ def plot_gp_stresses(
     def plot_linka() -> None:
         plot_gp_stresses_linka(
             gaussian_process=gaussian_process,
-            inputs=inputs.detach().cpu().numpy(),
-            outputs=outputs.detach().cpu().numpy(),
-            test_cases=test_cases.detach().cpu().numpy(),
+            inputs=from_torch_to_numpy(inputs),
+            outputs=from_torch_to_numpy(outputs),
+            test_cases=from_torch_to_numpy(test_cases),
+            noise_stddevs=from_torch_to_numpy(noise_stddevs),
             num_points_per_test_case=num_points_per_test_case,
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
@@ -218,9 +222,9 @@ def plot_model_stresses(
         plot_model_stresses_treloar(
             model=cast(IsotropicModelLibrary, model),
             parameter_samples=model_parameter_samples,
-            inputs=inputs.detach().cpu().numpy(),
-            outputs=outputs.detach().cpu().numpy(),
-            test_cases=test_cases.detach().cpu().numpy(),
+            inputs=from_torch_to_numpy(inputs),
+            outputs=from_torch_to_numpy(outputs),
+            test_cases=from_torch_to_numpy(test_cases),
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
             device=device,
@@ -238,9 +242,9 @@ def plot_model_stresses(
             plot_model_stresses_kawabata(
                 model=isotropic_model,
                 parameter_samples=model_parameter_samples,
-                inputs=inputs.detach().cpu().numpy(),
-                outputs=outputs.detach().cpu().numpy(),
-                test_cases=test_cases.detach().cpu().numpy(),
+                inputs=from_torch_to_numpy(inputs),
+                outputs=from_torch_to_numpy(outputs),
+                test_cases=from_torch_to_numpy(test_cases),
                 output_subdirectory=output_subdirectory_kawabata,
                 project_directory=project_directory,
                 device=device,
@@ -254,9 +258,9 @@ def plot_model_stresses(
         plot_model_stresses_kawabata(
             model=cast(IsotropicModelLibrary, model),
             parameter_samples=model_parameter_samples,
-            inputs=inputs.detach().cpu().numpy(),
-            outputs=outputs.detach().cpu().numpy(),
-            test_cases=test_cases.detach().cpu().numpy(),
+            inputs=from_torch_to_numpy(inputs),
+            outputs=from_torch_to_numpy(outputs),
+            test_cases=from_torch_to_numpy(test_cases),
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
             device=device,
@@ -266,9 +270,9 @@ def plot_model_stresses(
         plot_model_stresses_linka(
             model=cast(OrthotropicCANN, model),
             parameter_samples=model_parameter_samples,
-            inputs=inputs.detach().cpu().numpy(),
-            test_cases=test_cases.detach().cpu().numpy(),
-            outputs=outputs.detach().cpu().numpy(),
+            inputs=from_torch_to_numpy(inputs),
+            test_cases=from_torch_to_numpy(test_cases),
+            outputs=from_torch_to_numpy(outputs),
             num_points_per_test_case=num_points_per_test_case,
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
@@ -302,9 +306,9 @@ def plot_relevenat_sobol_indices_results(
     if data_set_label == data_set_label_treloar:
         plot_sobol_indice_paths_treloar(
             relevant_parameter_indices=relevant_parameter_indices,
-            inputs=inputs.detach().cpu().numpy(),
-            test_cases=test_cases.detach().cpu().numpy(),
-            outputs=outputs.detach().cpu().numpy(),
+            inputs=from_torch_to_numpy(inputs),
+            test_cases=from_torch_to_numpy(test_cases),
+            outputs=from_torch_to_numpy(outputs),
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
         )
@@ -397,9 +401,9 @@ def perform_baysian_inference_on_kawabata_data(
     plot_model_stresses_kawabata(
         model=cast(IsotropicModelLibrary, model),
         parameter_samples=parameter_samples,
-        inputs=inputs.detach().cpu().numpy(),
-        outputs=outputs.detach().cpu().numpy(),
-        test_cases=test_cases.detach().cpu().numpy(),
+        inputs=from_torch_to_numpy(inputs),
+        outputs=from_torch_to_numpy(outputs),
+        test_cases=from_torch_to_numpy(test_cases),
         output_subdirectory=output_directory,
         project_directory=project_directory,
         device=device,
@@ -575,6 +579,15 @@ if retrain_models:
                     test_cases_extraction, cast(OrthotropicCANN, model), device
                 )
 
+            noise_stddevs_extraction = interpolate_heteroscedastic_noise(
+                new_inputs=inputs_extraction,
+                new_test_cases=test_cases_extraction,
+                inputs=inputs,
+                test_cases=test_cases,
+                noise_stddevs=noise_stddevs,
+                device=device,
+            )
+
             distribution = extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
                 model=model,
@@ -583,6 +596,7 @@ if retrain_models:
                 is_mean_trainable=True,
                 inputs=inputs_extraction,
                 test_cases=test_cases_extraction,
+                noise_stddevs=noise_stddevs_extraction,
                 num_func_samples=num_func_samples,
                 lipschitz_penalty_coefficient=lipschitz_penalty_coefficient,
                 resample=True,

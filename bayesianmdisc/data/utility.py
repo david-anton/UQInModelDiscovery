@@ -1,9 +1,11 @@
 import itertools
 from dataclasses import dataclass
+from typing import TypeAlias
 
 import torch
+from scipy.interpolate import NearestNDInterpolator
 
-from bayesianmdisc.customtypes import Device, Tensor
+from bayesianmdisc.customtypes import Device, NPArray, Tensor
 from bayesianmdisc.data.base import DeformationInputs, StressOutputs
 from bayesianmdisc.datasettings import (
     data_set_label_kawabata,
@@ -16,6 +18,9 @@ from bayesianmdisc.testcases import (
     test_case_identifier_equibiaxial_tension,
     test_case_identifier_uniaxial_tension,
 )
+from bayesianmdisc.utility import from_numpy_to_torch, from_torch_to_numpy
+
+NoiseStddevs: TypeAlias = Tensor
 
 
 @dataclass
@@ -248,7 +253,7 @@ def determine_heteroscedastic_noise(
     relative_noise_stddevs: float | Tensor,
     min_absolute_noise_stddev: float,
     outputs: StressOutputs,
-) -> Tensor:
+) -> NoiseStddevs:
     noise_stddevs = relative_noise_stddevs * outputs
     return torch.where(
         noise_stddevs < min_absolute_noise_stddev,
@@ -294,25 +299,51 @@ def interpolate_heteroscedastic_noise(
     def find_all_new_test_cases(new_test_cases: TestCases) -> list[int]:
         return list(set(new_test_cases.tolist()))
 
+    def flatten_noise_stddevs(noise_stddevs: NPArray) -> NPArray:
+        return noise_stddevs.reshape((-1,))
+
+    def unflatten_noise_stddevs(noise_stddevs: NPArray) -> NPArray:
+        return noise_stddevs.reshape((-1, 1))
+
     validate_new_inputs(new_inputs, new_test_cases)
     validate_inputs(inputs, test_cases, noise_stddevs)
 
+    new_inputs_np = from_torch_to_numpy(new_inputs)
+    new_test_cases_np = from_torch_to_numpy(new_test_cases)
+    inputs_np = from_torch_to_numpy(inputs)
+    test_cases_np = from_torch_to_numpy(test_cases)
+    noise_stddevs_np = from_torch_to_numpy(noise_stddevs)
+
+    output_dims = noise_stddevs.shape[1]
     new_test_cases_list = find_all_new_test_cases(new_test_cases)
-    new_noise_stddevs_list = []
 
-    for new_test_case in new_test_cases_list:
-        new_indices_ = new_test_case == new_test_cases
-        indices_ = new_test_case == test_cases
+    new_noise_stddevs_outputs = []
 
-        new_inputs_ = from_torch_to_numpy(new_inputs[new_indices_])
-        inputs_ = from_torch_to_numpy(inputs[indices_])
-        noise_stddevs_ = from_torch_to_numpy(noise_stddevs[indices_])
+    for output_dim in range(output_dims):
 
-        interpolator = LinearNDInterpolator(inputs_, noise_stddevs_)
-        new_noise_stddevs = interpolator(new_inputs_)
-        new_noise_stddevs_list += [from_numpy_to_torch(new_noise_stddevs, device)]
+        new_noise_stddevs_test_cases = []
 
-    return torch.vstack(new_noise_stddevs_list)
+        for new_test_case in new_test_cases_list:
+            new_indices = new_test_case == new_test_cases_np
+            indices = new_test_case == test_cases_np
+
+            new_inputs_selected = new_inputs_np[new_indices]
+            inputs_selected = inputs_np[indices]
+            noise_stddevs_selected = noise_stddevs_np[indices, output_dim]
+            noise_stddevs_selected = flatten_noise_stddevs(noise_stddevs_selected)
+
+            interpolator = NearestNDInterpolator(
+                inputs_selected, noise_stddevs_selected
+            )
+            new_noise_stddevs = interpolator(new_inputs_selected)
+            new_noise_stddevs = unflatten_noise_stddevs(new_noise_stddevs)
+            new_noise_stddevs_test_cases += [
+                from_numpy_to_torch(new_noise_stddevs, device)
+            ]
+
+        new_noise_stddevs_outputs += [torch.concat(new_noise_stddevs_test_cases, dim=0)]
+
+    return torch.concat(new_noise_stddevs_outputs, dim=1)
 
 
 def add_noise_to_data(

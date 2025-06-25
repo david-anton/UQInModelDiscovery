@@ -1,6 +1,6 @@
 import torch
 
-from bayesianmdisc.customtypes import Tensor, NPArray, Device
+from bayesianmdisc.customtypes import Device, NPArray, Tensor
 
 
 def flatten_outputs(outputs: Tensor) -> Tensor:

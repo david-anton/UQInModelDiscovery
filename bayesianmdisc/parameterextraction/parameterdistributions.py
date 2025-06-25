@@ -19,8 +19,8 @@ from bayesianmdisc.normalizingflows import NormalizingFlowDistribution
 from bayesianmdisc.normalizingflows.base import BaseDistributionProtocol
 from bayesianmdisc.normalizingflows.flows import (
     NormalizingFlow,
-    create_masked_autoregressive_flow,
     create_exponential_constrained_flow,
+    create_masked_autoregressive_flow,
 )
 from bayesianmdisc.normalizingflows.utility import freeze_model
 
@@ -477,8 +477,8 @@ class NormalizingFlowParameterDistribution(nn.Module):
         self._dim = model.num_parameters
         self._device = device
         self._is_base_trainable = False
-        self._num_layers = 32  # 16
-        self._relative_width_layers = 8  # 4
+        self._num_layers = 32
+        self._relative_width_layers = 8
         self._learning_rate = 5e-4
         self._normalizing_flow = self._init_normalizing_flow()
 

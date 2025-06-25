@@ -1,5 +1,5 @@
 from itertools import groupby
-from typing import TypeAlias, cast
+from typing import TypeAlias, cast, Optional
 
 import gpytorch
 import torch
@@ -155,6 +155,47 @@ class IndependentMultiOutputGP(gpytorch.models.GP):
 
     def get_gp_for_one_output_dimension(self, output_dim: int) -> GP:
         return self.gps.models[output_dim]
+
+    def infer_predictive_distribution(
+        self, x: Tensor, noise_stddevs: Optional[Tensor] = None
+    ) -> GPMultivariateNormal:
+
+        def validate_noise_stddevs(x: Tensor, noise_stddevs: Tensor) -> None:
+            num_inputs = len(x)
+            actual_size = noise_stddevs.shape
+            expected_size = torch.Size([num_inputs, self.num_gps])
+
+            if not actual_size == expected_size:
+                raise GPError(
+                    f"""The noise stdandard deviation has not the expected size
+                         (actual size: {actual_size}, expected size{expected_size}) """
+                )
+
+        gp_distribution_list = self.gps(*[x for _ in range(self.num_gps)])
+        likelihood_list = self.likelihood.likelihoods
+        if noise_stddevs is not None:
+            validate_noise_stddevs(x, noise_stddevs)
+            noise_variance_list = [
+                noise_stddevs[:, output_dim].reshape((-1,)) ** 2
+                for output_dim in range(self.num_gps)
+            ]
+            predictive_distributions = [
+                likelihood(gp_distribution, noise=noise_variance)
+                for gp_distribution, likelihood, noise_variance in zip(
+                    gp_distribution_list, likelihood_list, noise_variance_list
+                )
+            ]
+        else:
+            predictive_distributions = [
+                likelihood(gp_distribution)
+                for gp_distribution, likelihood in zip(
+                    gp_distribution_list, likelihood_list
+                )
+            ]
+
+        return _combine_independent_multivariate_normals(
+            predictive_distributions, self._device
+        )
 
     def _prepare_likelihood_list(
         self, likelihoods: GPLikelihoodsTuple
