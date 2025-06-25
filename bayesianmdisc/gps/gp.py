@@ -130,7 +130,7 @@ class GP(gpytorch.models.ExactGP):
                          (actual size: {actual_size}, expected size{expected_size}) """
                 )
 
-        gp_distribution = self.forward(x)
+        gp_distribution = self.__call__(x)
         likelihood = self.likelihood
         if noise_stddevs is not None:
             validate_noise_stddevs(x, noise_stddevs)

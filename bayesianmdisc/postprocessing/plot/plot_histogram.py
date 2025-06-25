@@ -213,20 +213,20 @@ def _plot_univariate_distribution_histogram(
         label="samples",
     )
 
-    # KDE
-    min_bin_edge = np.amin(bin_edges)
-    max_bin_edge = np.amax(bin_edges)
-    x = np.linspace(start=min_bin_edge, stop=max_bin_edge, num=1024, endpoint=True)
-    kde = scipy.stats.gaussian_kde(dataset=samples, bw_method="scott")
-    kde_bandwith = kde.factor
-    y = kde.pdf(x)
-    axes.plot(
-        x,
-        y,
-        color=config.kde_color,
-        linestyle=config.kde_linestyle,
-        label=f"KDE (bw={round(kde_bandwith,2)})",
-    )
+    # # KDE
+    # min_bin_edge = np.amin(bin_edges)
+    # max_bin_edge = np.amax(bin_edges)
+    # x = np.linspace(start=min_bin_edge, stop=max_bin_edge, num=1024, endpoint=True)
+    # kde = scipy.stats.gaussian_kde(dataset=samples, bw_method="scott")
+    # kde_bandwith = kde.factor
+    # y = kde.pdf(x)
+    # axes.plot(
+    #     x,
+    #     y,
+    #     color=config.kde_color,
+    #     linestyle=config.kde_linestyle,
+    #     label=f"KDE (bw={round(kde_bandwith,2)})",
+    # )
 
     # Ticks
     x_ticks = [min_quantile, mean, max_quantile]
