@@ -158,7 +158,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_4_256_lambda_10_iters_5_kernel_rbf_spectralnorm_onlypureshear"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_4_256_lambda_10_iters_10_kernel_rbf_onlypureshear"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -548,7 +548,7 @@ if retrain_models:
 
         def extract_parameter_distribution() -> DistributionProtocol:
             num_func_samples = 32
-            num_iters_lipschitz = 5  # 10
+            num_iters_lipschitz = 10
 
             if data_set_label == data_set_label_treloar:
                 num_points_per_test_case = 32
