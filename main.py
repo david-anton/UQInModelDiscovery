@@ -76,7 +76,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_synthetic_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -97,8 +97,8 @@ if data_set_label == data_set_label_treloar:
     model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)
 
     relative_noise_stddevs = 1e-1  # 5e-2
-    min_absolute_noise_stddev = 5e-2  # 1e-2
-    list_num_wasserstein_iterations = [40_000, 20_000]
+    min_absolute_noise_stddev = 1e-3
+    list_num_wasserstein_iterations = [20_000, 10_000]
     total_sobol_index_thresshold = 1e-6
 elif data_set_label == data_set_label_linka:
     input_directory = data_set_label
@@ -158,7 +158,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_2_2048_lambda_100_kernel_matern_spectralnorm"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_4_256_lambda_10_iters_5_kernel_rbf_spectralnorm"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -445,23 +445,23 @@ if retrain_models:
 
             def create_single_output_gp() -> GP:
                 gp_mean = "zero"
-                gaussian_process = create_scaled_matern_gaussian_process(
-                    mean=gp_mean,
-                    smoothness_parameter=2.5,
-                    input_dim=input_dim,
-                    min_inputs=min_inputs,
-                    max_inputs=max_inputs,
-                    jitter=jitter,
-                    device=device,
-                )
-                # gaussian_process = create_scaled_rbf_gaussian_process(
+                # gaussian_process = create_scaled_matern_gaussian_process(
                 #     mean=gp_mean,
+                #     smoothness_parameter=2.5,
                 #     input_dim=input_dim,
                 #     min_inputs=min_inputs,
                 #     max_inputs=max_inputs,
                 #     jitter=jitter,
                 #     device=device,
                 # )
+                gaussian_process = create_scaled_rbf_gaussian_process(
+                    mean=gp_mean,
+                    input_dim=input_dim,
+                    min_inputs=min_inputs,
+                    max_inputs=max_inputs,
+                    jitter=jitter,
+                    device=device,
+                )
                 initial_parameters_output_scale = [1.0]
                 initial_parameters_length_scale = [0.1 for _ in range(input_dim)]
                 initial_parameters_kernel = (
@@ -548,13 +548,13 @@ if retrain_models:
 
         def extract_parameter_distribution() -> DistributionProtocol:
             num_func_samples = 32
-            num_iters_lipschitz = 10
+            num_iters_lipschitz = 5  # 10
 
             if data_set_label == data_set_label_treloar:
                 num_points_per_test_case = 32
                 lipschitz_penalty_coefficient = 10.0
-                num_layers_lipschitz_nn = 2
-                layer_size_lipschitz_nn = 512
+                num_layers_lipschitz_nn = 4
+                layer_size_lipschitz_nn = 256
                 data_set_treloar = cast(TreloarDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_treloar.generate_uniform_inputs(num_points_per_test_case)
