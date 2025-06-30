@@ -1,10 +1,11 @@
-from typing import TypeAlias, Protocol
+from typing import Protocol, TypeAlias
 
 import torch
 from torch import vmap
 from torch.func import grad
 
 from bayesianmdisc.customtypes import Device, Tensor
+from bayesianmdisc.errors import ModelError
 from bayesianmdisc.models.base import (
     DeformationGradient,
     DeformationInputs,
@@ -57,7 +58,6 @@ from bayesianmdisc.testcases import (
     test_case_identifier_pure_shear,
     test_case_identifier_uniaxial_tension,
 )
-from bayesianmdisc.errors import ModelError
 
 StretchesTuple: TypeAlias = tuple[Stretch, Stretch, Stretch]
 OgdenExponents: TypeAlias = list[float]

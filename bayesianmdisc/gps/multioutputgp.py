@@ -1,5 +1,5 @@
 from itertools import groupby
-from typing import TypeAlias, cast, Optional
+from typing import Optional, TypeAlias, cast
 
 import gpytorch
 import torch

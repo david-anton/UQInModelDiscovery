@@ -42,12 +42,12 @@ from bayesianmdisc.gps import (
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import (
     IsotropicModel,
-    create_isotropic_model,
     ModelProtocol,
     OrthotropicCANN,
     OutputSelectorLinka,
     OutputSelectorProtocol,
     OutputSelectorTreloar,
+    create_isotropic_model,
     load_model_state,
     save_model_state,
     select_model_through_sobol_sensitivity_analysis,
