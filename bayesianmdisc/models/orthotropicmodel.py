@@ -34,8 +34,8 @@ from bayesianmdisc.models.base import (
     mask_and_populate_parameters,
     mask_parameters,
     update_parameter_population_matrix,
-    validate_deformation_input_dimension,
-    validate_input_numbers,
+    validate_deformation_input,
+    validate_input_number,
     validate_model_state,
     validate_parameters,
     validate_test_cases,
@@ -110,25 +110,28 @@ class OrthotropicCANN:
             self._initial_parameter_names_isotropic
             + self._initial_parameter_names_anisotropic
         )
-        self.output_dim = 8
-        self.num_parameters = self._initial_num_parameters
-        self.parameter_names = self._initial_parameter_names
-        self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
+        self._output_dim = 8
+        self._num_parameters = self._initial_num_parameters
+        self._parameter_names = self._initial_parameter_names
+        self._parameter_mask = init_parameter_mask(self._num_parameters, self._device)
         self._parameter_population_matrix = init_parameter_population_matrix(
-            self.num_parameters, self._device
+            self._num_parameters, self._device
         )
         self.parameter_couplings = self._init_parameter_couplings()
 
-    def __call__(
-        self,
-        inputs: DeformationInputs,
-        test_cases: TestCases,
-        parameters: Parameters,
-        validate_args=True,
-    ) -> StressOutputs:
-        return self.forward(inputs, test_cases, parameters, validate_args)
+    @property
+    def output_dim(self) -> int:
+        return self._output_dim
 
-    def forward(
+    @property
+    def num_parameters(self) -> int:
+        return self._num_parameters
+
+    @property
+    def parameter_names(self) -> ParameterNames:
+        return self._parameter_names
+
+    def __call__(
         self,
         inputs: DeformationInputs,
         test_cases: TestCases,
@@ -166,13 +169,15 @@ class OrthotropicCANN:
         mask_parameters(expanded_parameter_indices, self._parameter_mask, True)
 
     def reset_parameter_deactivations(self) -> None:
-        self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
+        self._parameter_mask = init_parameter_mask(self._num_parameters, self._device)
 
     def get_active_parameter_indices(self) -> ParameterIndices:
         return filter_active_parameter_indices(self._parameter_mask)
 
     def get_active_parameter_names(self) -> ParameterNames:
-        return filter_active_parameter_names(self._parameter_mask, self.parameter_names)
+        return filter_active_parameter_names(
+            self._parameter_mask, self._parameter_names
+        )
 
     def get_number_of_active_parameters(self) -> int:
         return count_active_parameters(self._parameter_mask)
@@ -181,14 +186,14 @@ class OrthotropicCANN:
         old_parameter_mask = self._parameter_mask
 
         def reduce_num_parameters() -> None:
-            self.num_parameters = self.get_number_of_active_parameters()
+            self._num_parameters = self.get_number_of_active_parameters()
 
         def reduce_parameter_names() -> None:
-            self.parameter_names = self.get_active_parameter_names()
+            self._parameter_names = self.get_active_parameter_names()
 
         def reduce_parameter_mask() -> None:
             self._parameter_mask = init_parameter_mask(
-                self.num_parameters, self._device
+                self._num_parameters, self._device
             )
 
         def reduce_parameter_population_matrix() -> None:
@@ -204,7 +209,7 @@ class OrthotropicCANN:
     def reduce_model_to_parameter_names(self, parameter_names: ParameterNames) -> None:
         active_parameter_indices = map_parameter_names_to_indices(
             parameter_names_of_interest=parameter_names,
-            model_parameter_names=self.parameter_names,
+            model_parameter_names=self._parameter_names,
         )
         self._deactivate_all_parameters()
         self.activate_parameters(active_parameter_indices)
@@ -221,16 +226,16 @@ class OrthotropicCANN:
         initial_parameter_mask = determine_initial_parameter_mask(population_matrix)
 
         def init_reuced_models_num_parameters() -> None:
-            self.num_parameters = population_matrix.shape[1]
+            self._num_parameters = population_matrix.shape[1]
 
         def init_reduced_models_parameter_names() -> None:
-            self.parameter_names = filter_active_parameter_names(
+            self._parameter_names = filter_active_parameter_names(
                 initial_parameter_mask, self._initial_parameter_names
             )
 
         def init_reduced_models_parameter_mask() -> None:
             self._parameter_mask = init_parameter_mask(
-                self.num_parameters, self._device
+                self._num_parameters, self._device
             )
 
         def init_reduced_models_population_matrix() -> None:
@@ -434,7 +439,7 @@ class OrthotropicCANN:
 
         for parameter_index in parameter_indices:
             is_parameter_coupled = False
-            parameter_name = self.parameter_names[parameter_index]
+            parameter_name = self._parameter_names[parameter_index]
 
             num_parameter_couplings = len(self.parameter_couplings)
             parameter_coupling_index = 0
@@ -446,8 +451,8 @@ class OrthotropicCANN:
                 if parameter_name in coupling_tuple:
                     parameter_name_0 = coupling_tuple[0]
                     parameter_name_1 = coupling_tuple[1]
-                    parameter_index_0 = self.parameter_names.index(parameter_name_0)
-                    parameter_index_1 = self.parameter_names.index(parameter_name_1)
+                    parameter_index_0 = self._parameter_names.index(parameter_name_0)
+                    parameter_index_1 = self._parameter_names.index(parameter_name_1)
                     expanded_parameter_indices += [parameter_index_0, parameter_index_1]
                     is_parameter_coupled = True
                 parameter_coupling_index += 1
@@ -458,16 +463,16 @@ class OrthotropicCANN:
         return expanded_parameter_indices
 
     def _deactivate_all_parameters(self) -> None:
-        parameter_indices = list(range(self.num_parameters))
+        parameter_indices = list(range(self._num_parameters))
         self.deactivate_parameters(parameter_indices)
 
     def _validate_inputs(
         self, inputs: DeformationInputs, test_cases: TestCases, parameters: Parameters
     ) -> None:
-        validate_input_numbers(inputs, test_cases)
-        validate_deformation_input_dimension(inputs, self._allowed_input_dimensions)
+        validate_input_number(inputs, test_cases)
+        validate_deformation_input(inputs, self._allowed_input_dimensions)
         validate_test_cases(test_cases, self._allowed_test_cases)
-        validate_parameters(parameters, self.num_parameters)
+        validate_parameters(parameters, self._num_parameters)
 
     def _preprocess_parameters(self, parameters: Parameters) -> Parameters:
         return mask_and_populate_parameters(
@@ -659,7 +664,7 @@ class OutputSelectorLinka:
     ) -> None:
         self._test_cases = test_cases
         self._num_outputs = len(self._test_cases)
-        self._single_full_output_dim = model.output_dim
+        self._single_full_output_dim = model._output_dim
         self._device = device
         self._expected_full_output_size = determine_full_output_size(
             self._num_outputs, self._single_full_output_dim

@@ -36,20 +36,17 @@ StressOutputs: TypeAlias = Tensor
 
 
 class ModelProtocol(Protocol):
-    output_dim: int
-    num_parameters: int
-    parameter_names: ParameterNames
+
+    @property
+    def output_dim(self) -> int: ...
+
+    @property
+    def num_parameters(self) -> int: ...
+
+    @property
+    def parameter_names(self) -> ParameterNames: ...
 
     def __call__(
-        self,
-        inputs: DeformationInputs,
-        test_cases: TestCases,
-        parameters: Parameters,
-        validate_args: bool = True,
-    ) -> StressOutputs:
-        pass
-
-    def forward(
         self,
         inputs: DeformationInputs,
         test_cases: TestCases,
@@ -83,7 +80,7 @@ class ModelProtocol(Protocol):
     ) -> None: ...
 
 
-def validate_input_numbers(inputs: DeformationInputs, test_cases: TestCases) -> None:
+def validate_input_number(inputs: DeformationInputs, test_cases: TestCases) -> None:
     num_inputs = len(inputs)
     num_test_cases = len(test_cases)
     if num_inputs != num_test_cases:
@@ -93,7 +90,7 @@ def validate_input_numbers(inputs: DeformationInputs, test_cases: TestCases) -> 
         )
 
 
-def validate_deformation_input_dimension(
+def validate_deformation_input(
     inputs: DeformationInputs, allowed_dimensions: list[int]
 ) -> None:
     input_dimension = inputs.shape[1]

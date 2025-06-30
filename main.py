@@ -41,7 +41,8 @@ from bayesianmdisc.gps import (
 )
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import (
-    IsotropicModelLibrary,
+    IsotropicModel,
+    create_isotropic_model,
     ModelProtocol,
     OrthotropicCANN,
     OutputSelectorLinka,
@@ -94,7 +95,9 @@ if data_set_label == data_set_label_treloar:
         input_directory, project_directory, device
     )
 
-    model: ModelProtocol = IsotropicModelLibrary(output_dim=1, device=device)
+    model: ModelProtocol = create_isotropic_model(
+        strain_energy_function_type="library", output_dim=1, device=device
+    )
 
     relative_noise_stddevs = 1e-1  # 5e-2
     min_absolute_noise_stddev = 1e-3
@@ -219,7 +222,7 @@ def plot_model_stresses(
 
     def plot_treloar() -> None:
         plot_model_stresses_treloar(
-            model=cast(IsotropicModelLibrary, model),
+            model=cast(IsotropicModel, model),
             parameter_samples=model_parameter_samples,
             inputs=from_torch_to_numpy(inputs),
             outputs=from_torch_to_numpy(outputs),
@@ -235,7 +238,7 @@ def plot_model_stresses(
             output_subdirectory_kawabata = os.path.join(output_subdirectory, "kawabata")
 
             inputs, test_cases, outputs = data_set.read_data()
-            isotropic_model = cast(IsotropicModelLibrary, model)
+            isotropic_model = cast(IsotropicModel, model)
             isotropic_model.set_output_dimension(2)
 
             plot_model_stresses_kawabata(
@@ -255,7 +258,7 @@ def plot_model_stresses(
 
     def plot_kawabata() -> None:
         plot_model_stresses_kawabata(
-            model=cast(IsotropicModelLibrary, model),
+            model=cast(IsotropicModel, model),
             parameter_samples=model_parameter_samples,
             inputs=from_torch_to_numpy(inputs),
             outputs=from_torch_to_numpy(outputs),
@@ -314,7 +317,7 @@ def plot_relevenat_sobol_indices_results(
 
 
 def perform_baysian_inference_on_kawabata_data(
-    model: IsotropicModelLibrary,
+    model: IsotropicModel,
     parameter_distribution: DistributionProtocol,
     output_directory_step: str,
 ) -> None:
@@ -398,7 +401,7 @@ def perform_baysian_inference_on_kawabata_data(
         project_directory=project_directory,
     )
     plot_model_stresses_kawabata(
-        model=cast(IsotropicModelLibrary, model),
+        model=cast(IsotropicModel, model),
         parameter_samples=parameter_samples,
         inputs=from_torch_to_numpy(inputs),
         outputs=from_torch_to_numpy(outputs),
@@ -560,7 +563,7 @@ if retrain_models:
                     data_set_treloar.generate_uniform_inputs(num_points_per_test_case)
                 )
                 output_selector: OutputSelectorProtocol = OutputSelectorTreloar(
-                    test_cases_extraction, cast(IsotropicModelLibrary, model), device
+                    test_cases_extraction, cast(IsotropicModel, model), device
                 )
             elif (
                 data_set_label == data_set_label_linka
@@ -679,7 +682,7 @@ if retrain_models:
             model.reset_parameter_deactivations()
             if data_set_label == data_set_label_treloar:
                 perform_baysian_inference_on_kawabata_data(
-                    model=cast(IsotropicModelLibrary, model),
+                    model=cast(IsotropicModel, model),
                     parameter_distribution=parameter_distribution,
                     output_directory_step=output_directory_step,
                 )
@@ -770,7 +773,7 @@ else:
             model.reset_parameter_deactivations()
             if data_set_label == data_set_label_treloar:
                 perform_baysian_inference_on_kawabata_data(
-                    model=cast(IsotropicModelLibrary, model),
+                    model=cast(IsotropicModel, model),
                     parameter_distribution=parameter_distribution,
                     output_directory_step=output_directory_step,
                 )

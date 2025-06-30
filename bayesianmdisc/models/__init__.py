@@ -1,6 +1,10 @@
 from .base import ModelProtocol
 from .base_outputselection import OutputSelectorProtocol
-from .isotropicmodel import IsotropicModelLibrary, OutputSelectorTreloar
+from .isotropicmodel import (
+    IsotropicModel,
+    OutputSelectorTreloar,
+    create_isotropic_model,
+)
 from .modelselection import (
     select_model_through_backward_elimination,
     select_model_through_sobol_sensitivity_analysis,
@@ -11,7 +15,7 @@ from .utility import load_model_state, save_model_state
 __all__ = [
     "ModelProtocol",
     "OrthotropicCANN",
-    "IsotropicModelLibrary",
+    "IsotropicModel",
     "select_model_through_backward_elimination",
     "select_model_through_sobol_sensitivity_analysis",
     "save_model_state",
@@ -19,4 +23,5 @@ __all__ = [
     "OutputSelectorProtocol",
     "OutputSelectorTreloar",
     "OutputSelectorLinka",
+    "create_isotropic_model",
 ]

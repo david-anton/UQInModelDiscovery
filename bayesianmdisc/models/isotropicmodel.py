@@ -1,6 +1,5 @@
-from typing import TypeAlias
+from typing import TypeAlias, Protocol
 
-import numpy as np
 import torch
 from torch import vmap
 from torch.func import grad
@@ -10,8 +9,6 @@ from bayesianmdisc.models.base import (
     DeformationGradient,
     DeformationInputs,
     Invariants,
-    LSDesignMatrix,
-    LSTargets,
     OutputSelectionMask,
     ParameterIndices,
     ParameterNames,
@@ -34,8 +31,8 @@ from bayesianmdisc.models.base import (
     mask_and_populate_parameters,
     mask_parameters,
     update_parameter_population_matrix,
-    validate_deformation_input_dimension,
-    validate_input_numbers,
+    validate_deformation_input,
+    validate_input_number,
     validate_model_state,
     validate_parameters,
     validate_stress_output_dimension,
@@ -60,15 +57,51 @@ from bayesianmdisc.testcases import (
     test_case_identifier_pure_shear,
     test_case_identifier_uniaxial_tension,
 )
+from bayesianmdisc.errors import ModelError
 
 StretchesTuple: TypeAlias = tuple[Stretch, Stretch, Stretch]
 OgdenExponents: TypeAlias = list[float]
 MRExponents: TypeAlias = list[list[int]]
 
 
-class IsotropicModelLibrary:
+class SEF(Protocol):
+    num_parameters: int
+    parameter_names: ParameterNames
 
-    def __init__(self, output_dim: int, device: Device):
+    def __call__(
+        self, deformation_gradient: DeformationGradient, parameters: Parameters
+    ) -> StrainEnergy:
+        pass
+
+    def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None: ...
+
+    def activate_parameters(self, parameter_indices: ParameterIndices) -> None: ...
+
+    def reset_parameter_deactivations(self) -> None: ...
+
+    def get_active_parameter_indices(self) -> ParameterIndices: ...
+
+    def get_active_parameter_names(self) -> ParameterNames: ...
+
+    def get_number_of_active_parameters(self) -> int: ...
+
+    def reduce_to_activated_parameters(self) -> None: ...
+
+    def reduce_model_to_parameter_names(
+        self, parameter_names: ParameterNames
+    ) -> None: ...
+
+    def deactivate_all_parameters(self) -> None: ...
+
+    def get_state(self) -> ParameterPopulationMatrix: ...
+
+    def init_state(
+        self, parameter_population_matrix: ParameterPopulationMatrix
+    ) -> None: ...
+
+
+class LibrarySEF:
+    def __init__(self, device: Device):
         self._device = device
         self._degree_mr_terms = 3
         self._mr_exponents = self._determine_mr_exponents()
@@ -81,14 +114,6 @@ class IsotropicModelLibrary:
         self._num_ogden_terms = self._determine_number_of_ogden_terms()
         self._ogden_exponents = self._determine_ogden_exponents()
         self._num_ln_feature_terms = 1
-        self._test_case_identifier_ut = test_case_identifier_uniaxial_tension
-        self._test_case_identifier_ebt = test_case_identifier_equibiaxial_tension
-        self._test_case_identifier_bt = test_case_identifier_biaxial_tension
-        self._test_case_identifier_ps = test_case_identifier_pure_shear
-        self._allowed_test_cases = self._determine_allowed_test_cases()
-        self._allowed_input_dimensions = [1, 2, 3]
-        self._allowed_output_dimensions = [1, 2]
-        self._zero_principal_stress_index = 2
         (
             self._num_mr_parameters,
             self._num_ogden_parameters,
@@ -100,8 +125,6 @@ class IsotropicModelLibrary:
             + self._num_ln_feature_parameters
         )
         self._initial_parameter_names = self._init_parameter_names()
-        validate_stress_output_dimension(output_dim, self._allowed_output_dimensions)
-        self.output_dim = output_dim
         self.num_parameters = self._initial_num_parameters
         self.parameter_names = self._initial_parameter_names
         self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
@@ -110,41 +133,10 @@ class IsotropicModelLibrary:
         )
 
     def __call__(
-        self,
-        inputs: DeformationInputs,
-        test_cases: TestCases,
-        parameters: Parameters,
-        validate_args=True,
-    ) -> StressOutputs:
-        return self.forward(inputs, test_cases, parameters, validate_args)
-
-    def forward(
-        self,
-        inputs: DeformationInputs,
-        test_cases: TestCases,
-        parameters: Parameters,
-        validate_args=True,
-    ) -> StressOutputs:
-        """The deformation input is expected to be either:
-        (1) a tensor containing the stretches in all three dimensions (of shape [n, 3]) or
-        (2) a tensor containing the stretches in the first and second dimension (of shape [n, 2]) or
-        (3) a tensor containing only the stretch in the first dimension
-            which correpsonds to the stretch factor (of shape [n, 1]).
-        In case (2), the stretch in the third dimension follows directly from the assumption of
-        incompressibility, regardless of the test case.
-        In case (3), the stretches in the second and third dimensions are calculated under the
-        assumption of perfekt incompressibility as a function of the test case."""
-
-        if validate_args:
-            self._validate_inputs(inputs, test_cases, parameters)
-
+        self, deformation_gradient: DeformationGradient, parameters: Parameters
+    ) -> StrainEnergy:
         parameters = self._preprocess_parameters(parameters)
-        stretches = self._assemble_stretches_if_necessary(inputs, test_cases)
-
-        def vmap_func(stretches_: Stretches) -> PiolaStresses:
-            return self._calculate_stress(stretches_, parameters)
-
-        return vmap(vmap_func)(stretches)
+        return self._calculate_strain_energy(deformation_gradient, parameters)
 
     def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None:
         mask_parameters(parameter_indices, self._parameter_mask, False)
@@ -193,14 +185,18 @@ class IsotropicModelLibrary:
             parameter_names_of_interest=parameter_names,
             model_parameter_names=self.parameter_names,
         )
-        self._deactivate_all_parameters()
+        self.deactivate_all_parameters()
         self.activate_parameters(active_parameter_indices)
         self.reduce_to_activated_parameters()
 
-    def get_model_state(self) -> ParameterPopulationMatrix:
+    def deactivate_all_parameters(self) -> None:
+        parameter_indices = list(range(self.num_parameters))
+        self.deactivate_parameters(parameter_indices)
+
+    def get_state(self) -> ParameterPopulationMatrix:
         return self._parameter_population_matrix
 
-    def init_model_state(
+    def init_state(
         self, parameter_population_matrix: ParameterPopulationMatrix
     ) -> None:
         population_matrix = parameter_population_matrix
@@ -228,17 +224,12 @@ class IsotropicModelLibrary:
         init_reduced_models_parameter_mask()
         init_reduced_models_population_matrix()
 
-    def set_output_dimension(self, output_dim: int) -> None:
-        validate_stress_output_dimension(output_dim, self._allowed_output_dimensions)
-        self.output_dim = output_dim
-
     def _determine_mr_exponents(self) -> MRExponents:
         exponents = []
         for n in range(1, self._degree_mr_terms + 1):
             exponents_cI_1 = torch.linspace(
                 start=0, end=n, steps=n + 1, dtype=torch.int64
-            )
-            exponents_cI_1 = exponents_cI_1.reshape((-1, 1))
+            ).reshape((-1, 1))
             exponents_cI_2 = torch.flip(exponents_cI_1, dims=(0,))
             exponents += [torch.concat((exponents_cI_1, exponents_cI_2), dim=1)]
         return torch.concat(exponents, dim=0).tolist()
@@ -262,17 +253,6 @@ class IsotropicModelLibrary:
             steps=self._num_regular_positive_ogden_terms + 1,
         )[1:].tolist()
         return negative_exponents + positive_exponents + self._additional_ogden_terms
-
-    def _determine_allowed_test_cases(self) -> AllowedTestCases:
-        return torch.tensor(
-            [
-                self._test_case_identifier_ut,
-                self._test_case_identifier_ebt,
-                self._test_case_identifier_bt,
-                self._test_case_identifier_ps,
-            ],
-            device=self._device,
-        )
 
     def _determine_number_of_parameters(
         self,
@@ -325,62 +305,10 @@ class IsotropicModelLibrary:
         ln_feature_parameter_name = compose_ln_feature_parameter_name()
         return mr_parameter_names + ogden_parameter_names + ln_feature_parameter_name
 
-    def _validate_inputs(
-        self, inputs: DeformationInputs, test_cases: TestCases, parameters: Parameters
-    ) -> None:
-        validate_input_numbers(inputs, test_cases)
-        validate_deformation_input_dimension(inputs, self._allowed_input_dimensions)
-        validate_test_cases(test_cases, self._allowed_test_cases)
-        validate_parameters(parameters, self.num_parameters)
-
     def _preprocess_parameters(self, parameters: Parameters) -> Parameters:
         return mask_and_populate_parameters(
             parameters, self._parameter_mask, self._parameter_population_matrix
         )
-
-    def _assemble_stretches_if_necessary(
-        self, stretches: Stretches, test_cases: TestCases
-    ):
-        stretch_dim = stretches.shape[1]
-        if stretch_dim == 1:
-            return assemble_stretches_from_factors(stretches, test_cases, self._device)
-        if stretch_dim == 2:
-            return assemble_stretches_from_incompressibility_assumption(
-                stretches, self._device
-            )
-        else:
-            return stretches
-
-    def _calculate_stress(
-        self, stretches: Stretches, parameters: Parameters
-    ) -> PiolaStress:
-        F = self._assemble_deformation_gradient(stretches)
-        F_inverse_transpose = F.inverse().transpose(0, 1)
-        dW_dF = grad(self._calculate_strain_energy, argnums=0)(F, parameters)
-        p = calculate_pressure_from_incompressibility_constraint(
-            F, dW_dF, self._zero_principal_stress_index
-        )
-
-        P = dW_dF - p * F_inverse_transpose
-
-        P11 = P[0, 0]
-        P22 = P[1, 1]
-        if self.output_dim == 1:
-            return unsqueeze_if_necessary(P11)
-        else:
-            return torch.concat(
-                (unsqueeze_if_necessary(P11), unsqueeze_if_necessary(P22))
-            )
-
-    def _assemble_deformation_gradient(
-        self, stretches: Stretches
-    ) -> DeformationGradient:
-        zero = torch.tensor([0.0], device=self._device)
-        F_11, F_22, F_33 = self._split_stretches(stretches)
-        row_1 = torch.concat((self._unsqueeze_zero_dimension(F_11), zero, zero))
-        row_2 = torch.concat((zero, self._unsqueeze_zero_dimension(F_22), zero))
-        row_3 = torch.concat((zero, zero, self._unsqueeze_zero_dimension(F_33)))
-        return torch.stack((row_1, row_2, row_3), dim=0)
 
     def _calculate_strain_energy(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
@@ -416,13 +344,11 @@ class IsotropicModelLibrary:
     def _calculate_mr_strain_energy_terms(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
     ) -> StrainEnergy:
-        cI_1, cI_2 = self._calculate_corrected_invariants(deformation_gradient)
+        cI_1, cI_2 = calculate_corrected_invariants(deformation_gradient, self._device)
 
         terms = torch.concat(
             [
-                self._unsqueeze_zero_dimension(
-                    cI_1 ** exponents[0] * cI_2 ** exponents[1]
-                )
+                unsqueeze_zero_dimension(cI_1 ** exponents[0] * cI_2 ** exponents[1])
                 for exponents in self._mr_exponents
             ]
         )
@@ -434,7 +360,7 @@ class IsotropicModelLibrary:
     ) -> StrainEnergy:
         one = torch.tensor(1.0, device=self._device)
         three = torch.tensor(3.0, device=self._device)
-        stretches = self._extract_stretches(deformation_gradient)
+        stretches = extract_stretches(deformation_gradient)
 
         terms = torch.concat(
             [
@@ -449,35 +375,200 @@ class IsotropicModelLibrary:
     def _calculate_ln_feature_strain_energy_terms(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
     ) -> StrainEnergy:
-        _, I_2 = self._calculate_invariants(deformation_gradient)
+        _, I_2 = calculate_invariants(deformation_gradient, self._device)
         three = torch.tensor(3.0, device=self._device)
         ln_feature_parameter = parameters[0]
         return ln_feature_parameter * torch.log(I_2 / three)
 
-    def _calculate_corrected_invariants(
-        self, deformation_gradient: DeformationGradient
-    ) -> Invariants:
-        # Invariants
-        I_1, I_2 = self._calculate_invariants(deformation_gradient)
-        # Constants
-        three = torch.tensor(3.0, device=self._device)
-        # Corrected invariants
-        I_1_cor = I_1 - three
-        I_2_cor = I_2 - three
-        return I_1_cor, I_2_cor
 
-    def _calculate_invariants(
-        self, deformation_gradient: DeformationGradient
-    ) -> Invariants:
-        # Deformation tensors
-        F = deformation_gradient
-        C = torch.matmul(F.transpose(0, 1), F)  # right Cauchy-Green deformation tensor
-        # Constants
-        half = torch.tensor(1 / 2, device=self._device)
-        # Isotropic invariants
-        I_1 = torch.trace(C)
-        I_2 = half * (I_1**2 - torch.tensordot(C, C))
-        return I_1, I_2
+def calculate_corrected_invariants(
+    deformation_gradient: DeformationGradient, device: Device
+) -> Invariants:
+    # Invariants
+    I_1, I_2 = calculate_invariants(deformation_gradient, device)
+    # Constants
+    three = torch.tensor(3.0, device=device)
+    # Corrected invariants
+    I_1_cor = I_1 - three
+    I_2_cor = I_2 - three
+    return I_1_cor, I_2_cor
+
+
+def calculate_invariants(
+    deformation_gradient: DeformationGradient, device: Device
+) -> Invariants:
+    # Deformation tensors
+    F = deformation_gradient
+    C = torch.matmul(F.transpose(0, 1), F)  # right Cauchy-Green deformation tensor
+    # Constants
+    half = torch.tensor(1 / 2, device=device)
+    # Isotropic invariants
+    I_1 = torch.trace(C)
+    I_2 = half * (I_1**2 - torch.tensordot(C, C))
+    return I_1, I_2
+
+
+def extract_stretches(deformation_gradient: DeformationGradient) -> Stretches:
+    return torch.diag(deformation_gradient)
+
+
+def unsqueeze_zero_dimension(tensor: Tensor) -> Tensor:
+    return torch.unsqueeze(tensor, dim=0)
+
+
+class IsotropicModel:
+
+    def __init__(self, strain_energy_function: SEF, output_dim: int, device: Device):
+        self._strain_energy_function = strain_energy_function
+        self._device = device
+        self._test_case_identifier_ut = test_case_identifier_uniaxial_tension
+        self._test_case_identifier_ebt = test_case_identifier_equibiaxial_tension
+        self._test_case_identifier_bt = test_case_identifier_biaxial_tension
+        self._test_case_identifier_ps = test_case_identifier_pure_shear
+        self._allowed_test_cases = self._determine_allowed_test_cases()
+        self._allowed_input_dimensions = [1, 2, 3]
+        self._allowed_output_dimensions = [1, 2]
+        self._zero_principal_stress_index = 2
+        validate_stress_output_dimension(output_dim, self._allowed_output_dimensions)
+        self._output_dim = output_dim
+
+    @property
+    def output_dim(self) -> int:
+        return self._output_dim
+
+    @property
+    def num_parameters(self) -> int:
+        return self._strain_energy_function.num_parameters
+
+    @property
+    def parameter_names(self) -> ParameterNames:
+        return self._strain_energy_function.parameter_names
+
+    def __call__(
+        self,
+        inputs: DeformationInputs,
+        test_cases: TestCases,
+        parameters: Parameters,
+        validate_args=True,
+    ) -> StressOutputs:
+        """The deformation input is expected to be either:
+        (1) a tensor containing the stretches in all three dimensions (of shape [n, 3]) or
+        (2) a tensor containing the stretches in the first and second dimension (of shape [n, 2]) or
+        (3) a tensor containing only the stretch in the first dimension
+            which correpsonds to the stretch factor (of shape [n, 1]).
+        In case (2), the stretch in the third dimension follows directly from the assumption of
+        incompressibility, regardless of the test case.
+        In case (3), the stretches in the second and third dimensions are calculated under the
+        assumption of perfekt incompressibility as a function of the test case."""
+
+        if validate_args:
+            self._validate_inputs(inputs, test_cases, parameters)
+
+        stretches = self._assemble_stretches_if_necessary(inputs, test_cases)
+
+        def vmap_func(stretches_: Stretches) -> PiolaStresses:
+            return self._calculate_stress(stretches_, parameters)
+
+        return vmap(vmap_func)(stretches)
+
+    def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None:
+        self._strain_energy_function.deactivate_parameters(parameter_indices)
+
+    def activate_parameters(self, parameter_indices: ParameterIndices) -> None:
+        self._strain_energy_function.activate_parameters(parameter_indices)
+
+    def reset_parameter_deactivations(self) -> None:
+        self._strain_energy_function.reset_parameter_deactivations()
+
+    def get_active_parameter_indices(self) -> ParameterIndices:
+        return self._strain_energy_function.get_active_parameter_indices()
+
+    def get_active_parameter_names(self) -> ParameterNames:
+        return self._strain_energy_function.get_active_parameter_names()
+
+    def get_number_of_active_parameters(self) -> int:
+        return self._strain_energy_function.get_number_of_active_parameters()
+
+    def reduce_to_activated_parameters(self) -> None:
+        self._strain_energy_function.reduce_to_activated_parameters()
+
+    def reduce_model_to_parameter_names(self, parameter_names: ParameterNames) -> None:
+        self._strain_energy_function.reduce_model_to_parameter_names(parameter_names)
+
+    def get_model_state(self) -> ParameterPopulationMatrix:
+        return self._strain_energy_function.get_state()
+
+    def init_model_state(
+        self, parameter_population_matrix: ParameterPopulationMatrix
+    ) -> None:
+        self._strain_energy_function.init_state(parameter_population_matrix)
+
+    def set_output_dimension(self, output_dim: int) -> None:
+        validate_stress_output_dimension(output_dim, self._allowed_output_dimensions)
+        self._output_dim = output_dim
+
+    def _determine_allowed_test_cases(self) -> AllowedTestCases:
+        return torch.tensor(
+            [
+                self._test_case_identifier_ut,
+                self._test_case_identifier_ebt,
+                self._test_case_identifier_bt,
+                self._test_case_identifier_ps,
+            ],
+            device=self._device,
+        )
+
+    def _validate_inputs(
+        self, inputs: DeformationInputs, test_cases: TestCases, parameters: Parameters
+    ) -> None:
+        validate_input_number(inputs, test_cases)
+        validate_deformation_input(inputs, self._allowed_input_dimensions)
+        validate_test_cases(test_cases, self._allowed_test_cases)
+        validate_parameters(parameters, self.num_parameters)
+
+    def _assemble_stretches_if_necessary(
+        self, stretches: Stretches, test_cases: TestCases
+    ):
+        stretch_dim = stretches.shape[1]
+        if stretch_dim == 1:
+            return assemble_stretches_from_factors(stretches, test_cases, self._device)
+        if stretch_dim == 2:
+            return assemble_stretches_from_incompressibility_assumption(
+                stretches, self._device
+            )
+        else:
+            return stretches
+
+    def _calculate_stress(
+        self, stretches: Stretches, parameters: Parameters
+    ) -> PiolaStress:
+        F = self._assemble_deformation_gradient(stretches)
+        F_inverse_transpose = F.inverse().transpose(0, 1)
+        dW_dF = grad(self._strain_energy_function, argnums=0)(F, parameters)
+        p = calculate_pressure_from_incompressibility_constraint(
+            F, dW_dF, self._zero_principal_stress_index
+        )
+
+        P = dW_dF - p * F_inverse_transpose
+
+        P11 = P[0, 0]
+        P22 = P[1, 1]
+        if self._output_dim == 1:
+            return unsqueeze_if_necessary(P11)
+        else:
+            return torch.concat(
+                (unsqueeze_if_necessary(P11), unsqueeze_if_necessary(P22))
+            )
+
+    def _assemble_deformation_gradient(
+        self, stretches: Stretches
+    ) -> DeformationGradient:
+        zero = torch.tensor([0.0], device=self._device)
+        F_11, F_22, F_33 = self._split_stretches(stretches)
+        row_1 = torch.concat((unsqueeze_zero_dimension(F_11), zero, zero))
+        row_2 = torch.concat((zero, unsqueeze_zero_dimension(F_22), zero))
+        row_3 = torch.concat((zero, zero, unsqueeze_zero_dimension(F_33)))
+        return torch.stack((row_1, row_2, row_3), dim=0)
 
     def _split_stretches(self, stretches: Stretches) -> StretchesTuple:
         F_11 = stretches[0]
@@ -485,27 +576,43 @@ class IsotropicModelLibrary:
         F_33 = stretches[2]
         return F_11, F_22, F_33
 
-    def _extract_stretches(
-        self, deformation_gradient: DeformationGradient
-    ) -> Stretches:
-        return torch.diag(deformation_gradient)
-
-    def _unsqueeze_zero_dimension(self, tensor: Tensor) -> Tensor:
-        return torch.unsqueeze(tensor, dim=0)
-
     def _deactivate_all_parameters(self) -> None:
-        parameter_indices = list(range(self.num_parameters))
-        self.deactivate_parameters(parameter_indices)
+        self._strain_energy_function.deactivate_all_parameters()
+
+
+def create_strain_energy_function(
+    strain_energy_function_type: str, device: Device
+) -> SEF:
+    if strain_energy_function_type == "library":
+        return LibrarySEF(device)
+    else:
+        raise ModelError(
+            f"""There is no implementation for the requested 
+            strain energy function type: {strain_energy_function_type}"""
+        )
+
+
+def create_isotropic_model(
+    strain_energy_function_type: str, output_dim: int, device: Device
+) -> IsotropicModel:
+    strain_energy_function = create_strain_energy_function(
+        strain_energy_function_type, device
+    )
+    return IsotropicModel(
+        strain_energy_function=strain_energy_function,
+        output_dim=output_dim,
+        device=device,
+    )
 
 
 class OutputSelectorTreloar:
 
     def __init__(
-        self, test_cases: TestCases, model: IsotropicModelLibrary, device: Device
+        self, test_cases: TestCases, model: IsotropicModel, device: Device
     ) -> None:
         self._test_cases = test_cases
         self._num_outputs = len(self._test_cases)
-        self._single_full_output_dim = model.output_dim
+        self._single_full_output_dim = model._output_dim
         self._device = device
         self._expected_full_output_size = determine_full_output_size(
             self._num_outputs, self._single_full_output_dim

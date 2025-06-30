@@ -1,6 +1,6 @@
 import torch
 
-from bayesianmdisc.models.isotropicmodel import IsotropicModelLibrary
+from bayesianmdisc.models.isotropicmodel import create_isotropic_model
 
 output_dim = 1
 device = torch.device("cpu")
@@ -48,7 +48,9 @@ def get_expected_parameter_names() -> tuple[str, ...]:
 
 
 def test_get_parameter_names() -> None:
-    sut = IsotropicModelLibrary(output_dim, device)
+    sut = create_isotropic_model(
+        strain_energy_function_type="library", output_dim=output_dim, device=device
+    )
 
     actual = sut.parameter_names
 

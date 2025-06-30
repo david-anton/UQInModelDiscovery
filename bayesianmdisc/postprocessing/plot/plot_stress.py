@@ -18,7 +18,7 @@ from bayesianmdisc.gps.base import GPMultivariateNormal
 from bayesianmdisc.gps.gp import GP
 from bayesianmdisc.gps.multioutputgp import IndependentMultiOutputGP
 from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.models import IsotropicModelLibrary, ModelProtocol, OrthotropicCANN
+from bayesianmdisc.models import IsotropicModel, ModelProtocol, OrthotropicCANN
 from bayesianmdisc.models.base_mechanics import assemble_stretches_from_factors
 from bayesianmdisc.postprocessing.plot.utility import (
     split_kawabata_inputs_and_outputs,
@@ -108,7 +108,7 @@ class ModelStressPlotterConfigTreloar:
 
 
 def plot_model_stresses_treloar(
-    model: IsotropicModelLibrary,
+    model: IsotropicModel,
     parameter_samples: NPArray,
     inputs: NPArray,
     outputs: NPArray,
@@ -450,7 +450,7 @@ class ModelStressPlotterConfigKawabata:
 
 
 def plot_model_stresses_kawabata(
-    model: IsotropicModelLibrary,
+    model: IsotropicModel,
     parameter_samples: NPArray,
     inputs: NPArray,
     outputs: NPArray,
