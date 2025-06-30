@@ -1,6 +1,6 @@
 import torch
 
-from bayesianmdisc.models.isotropicmodellibrary import IsotropicModelLibrary
+from bayesianmdisc.models.isotropicmodel import IsotropicModelLibrary
 
 output_dim = 1
 device = torch.device("cpu")

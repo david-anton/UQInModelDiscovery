@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from bayesianmdisc.models.orthotropiccann import (
+from bayesianmdisc.models.orthotropicmodel import (
     OrthotropicCANN,
     ParameterCouplingTuples,
     ParameterNames,
