@@ -10,6 +10,7 @@ from bayesianmdisc.models.base import (
     DeformationGradient,
     DeformationInputs,
     Invariants,
+    Invariant,
     OutputSelectionMask,
     ParameterIndices,
     ParameterNames,
@@ -62,6 +63,7 @@ from bayesianmdisc.testcases import (
 StretchesTuple: TypeAlias = tuple[Stretch, Stretch, Stretch]
 OgdenExponents: TypeAlias = list[float]
 MRExponents: TypeAlias = list[list[int]]
+ParameterCouplingTuples: TypeAlias = list[tuple[str, str]]
 
 
 class SEF(Protocol):
@@ -381,6 +383,250 @@ class LibrarySEF:
         return ln_feature_parameter * torch.log(I_2 / three)
 
 
+class CANNSEF:
+    def __init__(self, device: Device):
+        self._device = device
+        self._num_invariants = 2
+        self._num_power_terms = 2
+        self._num_activation_functions = 2
+        self._initial_num_parameters_per_invariant = (
+            self._init_number_of_parameters_per_invariant()
+        )
+        self._initial_num_parameters = self._init_number_of_parameters()
+        self._initial_parameter_names = self._init_parameter_names()
+        self.num_parameters = self._initial_num_parameters
+        self.parameter_names = self._initial_parameter_names
+        self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
+        self._parameter_population_matrix = init_parameter_population_matrix(
+            self.num_parameters, self._device
+        )
+        self.parameter_couplings = self._init_parameter_couplings()
+
+    def __call__(
+        self, deformation_gradient: DeformationGradient, parameters: Parameters
+    ) -> StrainEnergy:
+        parameters = self._preprocess_parameters(parameters)
+        return self._calculate_strain_energy(deformation_gradient, parameters)
+
+    def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None:
+        expanded_parameter_indices = self._expand_parameter_indices_by_coupled_indices(
+            parameter_indices
+        )
+        mask_parameters(expanded_parameter_indices, self._parameter_mask, False)
+
+    def activate_parameters(self, parameter_indices: ParameterIndices) -> None:
+        expanded_parameter_indices = self._expand_parameter_indices_by_coupled_indices(
+            parameter_indices
+        )
+        mask_parameters(expanded_parameter_indices, self._parameter_mask, True)
+
+    def reset_parameter_deactivations(self) -> None:
+        self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
+
+    def get_active_parameter_indices(self) -> ParameterIndices:
+        return filter_active_parameter_indices(self._parameter_mask)
+
+    def get_active_parameter_names(self) -> ParameterNames:
+        return filter_active_parameter_names(self._parameter_mask, self.parameter_names)
+
+    def get_number_of_active_parameters(self) -> int:
+        return count_active_parameters(self._parameter_mask)
+
+    def reduce_to_activated_parameters(self) -> None:
+        old_parameter_mask = self._parameter_mask
+
+        def reduce_num_parameters() -> None:
+            self.num_parameters = self.get_number_of_active_parameters()
+
+        def reduce_parameter_names() -> None:
+            self.parameter_names = self.get_active_parameter_names()
+
+        def reduce_parameter_mask() -> None:
+            self._parameter_mask = init_parameter_mask(
+                self.num_parameters, self._device
+            )
+
+        def reduce_parameter_population_matrix() -> None:
+            self._parameter_population_matrix = update_parameter_population_matrix(
+                self._parameter_population_matrix, old_parameter_mask
+            )
+
+        reduce_num_parameters()
+        reduce_parameter_names()
+        reduce_parameter_mask()
+        reduce_parameter_population_matrix()
+
+    def reduce_model_to_parameter_names(self, parameter_names: ParameterNames) -> None:
+        active_parameter_indices = map_parameter_names_to_indices(
+            parameter_names_of_interest=parameter_names,
+            model_parameter_names=self.parameter_names,
+        )
+        self._deactivate_all_parameters()
+        self.activate_parameters(active_parameter_indices)
+        self.reduce_to_activated_parameters()
+
+    def deactivate_all_parameters(self) -> None:
+        parameter_indices = list(range(self.num_parameters))
+        self.deactivate_parameters(parameter_indices)
+
+    def get_state(self) -> ParameterPopulationMatrix:
+        return self._parameter_population_matrix
+
+    def init_state(
+        self, parameter_population_matrix: ParameterPopulationMatrix
+    ) -> None:
+        population_matrix = parameter_population_matrix
+        validate_model_state(population_matrix, self._initial_num_parameters)
+        initial_parameter_mask = determine_initial_parameter_mask(population_matrix)
+
+        def init_reuced_models_num_parameters() -> None:
+            self.num_parameters = population_matrix.shape[1]
+
+        def init_reduced_models_parameter_names() -> None:
+            self.parameter_names = filter_active_parameter_names(
+                initial_parameter_mask, self._initial_parameter_names
+            )
+
+        def init_reduced_models_parameter_mask() -> None:
+            self._parameter_mask = init_parameter_mask(
+                self.num_parameters, self._device
+            )
+
+        def init_reduced_models_population_matrix() -> None:
+            self._parameter_population_matrix = population_matrix
+
+        init_reuced_models_num_parameters()
+        init_reduced_models_parameter_names()
+        init_reduced_models_parameter_mask()
+        init_reduced_models_population_matrix()
+
+    def _init_number_of_parameters_per_invariant(self) -> int:
+        num_activations = self._num_activation_functions
+        num_nonidentity_activtions = num_activations - 1
+        num_params_first_layer = self._num_power_terms * num_nonidentity_activtions
+        num_params_second_layer = self._num_power_terms * num_activations
+        return num_params_first_layer + num_params_second_layer
+
+    def _init_number_of_parameters(self) -> int:
+        return self._num_invariants * self._initial_num_parameters_per_invariant
+
+    def _init_parameter_names(self) -> ParameterNames:
+        invariant_names = ["I_1", "I_2"]
+        power_term_names = ["p1", "p2"]
+        activation_names = ["I", "exp"]
+
+        first_layer_index = 1
+        second_layer_index = 1
+
+        parameter_names = []
+        for invariant in invariant_names:
+            # first layer
+            for power in power_term_names:
+                for activation in activation_names[1:]:
+                    parameter_names += [
+                        f"W_1_{2 *first_layer_index} (l1, {invariant}, {power}, {activation})"
+                    ]
+                    first_layer_index += 1
+
+            # second layer
+            for power in power_term_names:
+                for activation in activation_names:
+                    parameter_names += [
+                        f"W_2_{second_layer_index} (l2, {invariant}, {power}, {activation})"
+                    ]
+                    second_layer_index += 1
+
+        return tuple(parameter_names)
+
+    def _init_parameter_couplings(self) -> ParameterCouplingTuples:
+        parameter_names = self.parameter_names
+        pointer_index = 0
+        parameter_coupling_tuples: ParameterCouplingTuples = []
+        step_size = self._initial_num_parameters_per_invariant
+        for _ in range(self._num_invariants):
+            linear_param_1 = parameter_names[pointer_index + 3]
+            linear_param_2 = parameter_names[pointer_index + 5]
+            nonlinear_param_1 = parameter_names[pointer_index + 0]
+            nonlinear_param_2 = parameter_names[pointer_index + 1]
+            parameter_coupling_tuples += [(linear_param_1, nonlinear_param_1)]
+            parameter_coupling_tuples += [(linear_param_2, nonlinear_param_2)]
+            pointer_index += step_size
+        return parameter_coupling_tuples
+
+    def _expand_parameter_indices_by_coupled_indices(
+        self, parameter_indices: ParameterIndices
+    ) -> ParameterIndices:
+        expanded_parameter_indices: ParameterIndices = []
+
+        for parameter_index in parameter_indices:
+            is_parameter_coupled = False
+            parameter_name = self.parameter_names[parameter_index]
+
+            num_parameter_couplings = len(self.parameter_couplings)
+            parameter_coupling_index = 0
+            while (
+                is_parameter_coupled == False
+                and parameter_coupling_index < num_parameter_couplings
+            ):
+                coupling_tuple = self.parameter_couplings[parameter_coupling_index]
+                if parameter_name in coupling_tuple:
+                    parameter_name_0 = coupling_tuple[0]
+                    parameter_name_1 = coupling_tuple[1]
+                    parameter_index_0 = self.parameter_names.index(parameter_name_0)
+                    parameter_index_1 = self.parameter_names.index(parameter_name_1)
+                    expanded_parameter_indices += [parameter_index_0, parameter_index_1]
+                    is_parameter_coupled = True
+                parameter_coupling_index += 1
+
+            if not is_parameter_coupled:
+                expanded_parameter_indices += [parameter_index]
+
+        return expanded_parameter_indices
+
+    def _preprocess_parameters(self, parameters: Parameters) -> Parameters:
+        return mask_and_populate_parameters(
+            parameters, self._parameter_mask, self._parameter_population_matrix
+        )
+
+    def _calculate_strain_energy(
+        self, deformation_gradient: DeformationGradient, parameters: Parameters
+    ) -> StrainEnergy:
+
+        def calculate_strain_energy_term_for_one_invariant(
+            invariant: Invariant, parameters: Parameters
+        ) -> StrainEnergy:
+            one = torch.tensor(1.0, device=self._device)
+            param_0 = parameters[0]
+            param_1 = parameters[1]
+            param_2 = parameters[2]
+            param_3 = parameters[3]
+            param_4 = parameters[4]
+            param_5 = parameters[5]
+            sub_term_1 = param_2 * invariant
+            sub_term_2 = param_3 * (torch.exp(param_0 * invariant) - one)
+            sub_term_3 = param_4 * invariant**2
+            sub_term_4 = param_5 * (torch.exp(param_1 * invariant**2) - one)
+            return sub_term_1 + sub_term_2 + sub_term_3 + sub_term_4
+
+        invariants = calculate_corrected_invariants(deformation_gradient, self._device)
+        params_invariants = self._split_parameters(parameters)
+
+        strain_energy_terms: list[StrainEnergy] = []
+        for invariant, params_invariant in zip(invariants, params_invariants):
+            strain_energy_terms += [
+                unsqueeze_zero_dimension(
+                    calculate_strain_energy_term_for_one_invariant(
+                        invariant, params_invariant
+                    )
+                )
+            ]
+
+        return torch.sum(torch.concat(strain_energy_terms))
+
+    def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
+        return torch.chunk(parameters, self._num_invariants)
+
+
 def calculate_corrected_invariants(
     deformation_gradient: DeformationGradient, device: Device
 ) -> Invariants:
@@ -585,6 +831,8 @@ def create_strain_energy_function(
 ) -> SEF:
     if strain_energy_function_type == "library":
         return LibrarySEF(device)
+    elif strain_energy_function_type == "cann":
+        return CANNSEF(device)
     else:
         raise ModelError(
             f"""There is no implementation for the requested 
