@@ -129,7 +129,7 @@ elif data_set_label == data_set_label_linka:
 elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
     file_name = "CANNsHEARTdata_synthetic.xlsx"
-    num_points_per_test_case = 128  # 32
+    num_points_per_test_case = 64  # 32
     use_only_squared_anisotropic_invariants = True
 
     model_data_generation = OrthotropicCANN(
@@ -167,7 +167,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_4_512_lambda_100_iters_10_kernel_matern_cann_scaled_1e-4"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_4_512_lambda_100_iters_10_kernel_matern_cann_scaled_1"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"

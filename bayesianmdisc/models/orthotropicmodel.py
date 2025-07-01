@@ -116,7 +116,7 @@ class OrthotropicCANN:
         self._num_parameters = self._initial_num_parameters
         self._parameter_names = self._initial_parameter_names
         self._scale_linear_parameters = 1.0
-        self._scale_parameters_in_exponent = 1e-4
+        self._scale_parameters_in_exponent = 1.0  # 1e-4
         self._parameter_scales = self._init_parameter_scales()
         self._parameter_mask = init_parameter_mask(self._num_parameters, self._device)
         self._parameter_population_matrix = init_parameter_population_matrix(
