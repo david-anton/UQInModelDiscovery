@@ -95,14 +95,20 @@ if data_set_label == data_set_label_treloar:
         input_directory, project_directory, device
     )
 
+    strain_energy_function_type = "cann"
     model: ModelProtocol = create_isotropic_model(
-        strain_energy_function_type="cann", output_dim=1, device=device
+        strain_energy_function_type=strain_energy_function_type,
+        output_dim=1,
+        device=device,
     )
 
     relative_noise_stddevs = 1e-1
     min_absolute_noise_stddev = 1e-3
-    list_num_wasserstein_iterations = [10_000, 10_000]
-    total_sobol_index_thresshold = 1e-6
+    list_num_wasserstein_iterations = [20_000, 10_000]
+    if strain_energy_function_type == "library":
+        total_sobol_index_thresshold = 1e-4
+    elif strain_energy_function_type == "cann":
+        total_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_linka:
     input_directory = data_set_label
     data_set = LinkaHeartDataSet(
