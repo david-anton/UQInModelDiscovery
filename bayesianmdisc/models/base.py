@@ -27,7 +27,8 @@ ParameterNames: TypeAlias = tuple[str, ...]
 ParameterMask: TypeAlias = Tensor
 ParameterIndex: TypeAlias = int
 ParameterIndices: TypeAlias = list[ParameterIndex]
-ParameterPopulationMatrix = Tensor
+ParameterPopulationMatrix: TypeAlias = Tensor
+ParameterScales: TypeAlias = Tensor
 LSDesignMatrix: TypeAlias = NPArray
 LSTargets: TypeAlias = NPArray
 OutputSelectionMask: TypeAlias = Tensor
@@ -45,6 +46,9 @@ class ModelProtocol(Protocol):
 
     @property
     def parameter_names(self) -> ParameterNames: ...
+
+    @property
+    def parameter_scales(self) -> ParameterScales: ...
 
     def __call__(
         self,

@@ -20,6 +20,7 @@ from bayesianmdisc.models.base import (
     ParameterNames,
     ParameterPopulationMatrix,
     Parameters,
+    ParameterScales,
     SplittedInvariants,
     SplittedParameters,
     StrainEnergy,
@@ -113,6 +114,9 @@ class OrthotropicCANN:
         self._output_dim = 8
         self._num_parameters = self._initial_num_parameters
         self._parameter_names = self._initial_parameter_names
+        self._scale_linear_parameters = 1.0
+        self._scale_parameters_in_exponent = 0.01
+        self._parameter_scales = self._init_parameter_scales()
         self._parameter_mask = init_parameter_mask(self._num_parameters, self._device)
         self._parameter_population_matrix = init_parameter_population_matrix(
             self._num_parameters, self._device
@@ -130,6 +134,10 @@ class OrthotropicCANN:
     @property
     def parameter_names(self) -> ParameterNames:
         return self._parameter_names
+
+    @property
+    def parameter_scales(self) -> ParameterScales:
+        return self._parameter_scales
 
     def __call__(
         self,
@@ -375,6 +383,59 @@ class OrthotropicCANN:
         )
         return parameter_names_isotropic, parameter_names_anisotropic
 
+    def _init_parameter_scales(self) -> ParameterScales:
+
+        def init_parameter_scales_for_all_invariant_terms(
+            num_invariants: int,
+        ) -> ParameterScales:
+            parameter_scales: list[ParameterScales] = []
+            for _ in range(num_invariants):
+                parameter_scales += [
+                    torch.tensor(
+                        [
+                            self._scale_parameters_in_exponent,
+                            self._scale_parameters_in_exponent,
+                            self._scale_linear_parameters,
+                            self._scale_linear_parameters,
+                            self._scale_linear_parameters,
+                            self._scale_linear_parameters,
+                        ]
+                    )
+                ]
+            return torch.concat(parameter_scales).to(self._device)
+
+        def init_parameter_scales_for_squared_invariant_terms_only(
+            num_invariants: int,
+        ) -> ParameterScales:
+            parameter_scales: list[ParameterScales] = []
+            for _ in range(num_invariants):
+                parameter_scales += [
+                    torch.tensor(
+                        [
+                            self._scale_parameters_in_exponent,
+                            self._scale_linear_parameters,
+                            self._scale_linear_parameters,
+                        ]
+                    )
+                ]
+            return torch.concat(parameter_scales).to(self._device)
+
+        parameter_scales_isotropic = init_parameter_scales_for_all_invariant_terms(
+            self._num_invariants_isotropic,
+        )
+        if self._use_reduced_model:
+            init_parameter_scales_func_anisotropic = (
+                init_parameter_scales_for_squared_invariant_terms_only
+            )
+        else:
+            init_parameter_scales_func_anisotropic = (
+                init_parameter_scales_for_all_invariant_terms
+            )
+        parameter_scales_anisotropic = init_parameter_scales_func_anisotropic(
+            self._num_invariants_anisotropic,
+        )
+        return torch.concat((parameter_scales_isotropic, parameter_scales_anisotropic))
+
     def _init_parameter_couplings(self) -> ParameterCouplingTuples:
 
         def init_parameter_couplings_for_all_invariant_terms(
@@ -475,9 +536,10 @@ class OrthotropicCANN:
         validate_parameters(parameters, self._num_parameters)
 
     def _preprocess_parameters(self, parameters: Parameters) -> Parameters:
-        return mask_and_populate_parameters(
+        full_parameters = mask_and_populate_parameters(
             parameters, self._parameter_mask, self._parameter_population_matrix
         )
+        return self._parameter_scales * full_parameters
 
     def _calculate_stresses(
         self,

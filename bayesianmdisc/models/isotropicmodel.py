@@ -23,6 +23,7 @@ from bayesianmdisc.models.base import (
     StressOutputs,
     Stretch,
     Stretches,
+    ParameterScales,
     count_active_parameters,
     determine_initial_parameter_mask,
     filter_active_parameter_indices,
@@ -69,6 +70,7 @@ ParameterCouplingTuples: TypeAlias = list[tuple[str, str]]
 class SEF(Protocol):
     num_parameters: int
     parameter_names: ParameterNames
+    parameter_scales: ParameterScales
 
     def __call__(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
@@ -127,8 +129,10 @@ class LibrarySEF:
             + self._num_ln_feature_parameters
         )
         self._initial_parameter_names = self._init_parameter_names()
+        self._scale_all_parameters = 1.0
         self.num_parameters = self._initial_num_parameters
         self.parameter_names = self._initial_parameter_names
+        self.parameter_scales = self._init_parameter_scales()
         self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
         self._parameter_population_matrix = init_parameter_population_matrix(
             self.num_parameters, self._device
@@ -187,13 +191,9 @@ class LibrarySEF:
             parameter_names_of_interest=parameter_names,
             model_parameter_names=self.parameter_names,
         )
-        self.deactivate_all_parameters()
+        self._deactivate_all_parameters()
         self.activate_parameters(active_parameter_indices)
         self.reduce_to_activated_parameters()
-
-    def deactivate_all_parameters(self) -> None:
-        parameter_indices = list(range(self.num_parameters))
-        self.deactivate_parameters(parameter_indices)
 
     def get_state(self) -> ParameterPopulationMatrix:
         return self._parameter_population_matrix
@@ -307,10 +307,16 @@ class LibrarySEF:
         ln_feature_parameter_name = compose_ln_feature_parameter_name()
         return mr_parameter_names + ogden_parameter_names + ln_feature_parameter_name
 
+    def _init_parameter_scales(self) -> ParameterScales:
+        return torch.full(
+            (self.num_parameters,), self._scale_all_parameters, device=self._device
+        )
+
     def _preprocess_parameters(self, parameters: Parameters) -> Parameters:
-        return mask_and_populate_parameters(
+        full_parameters = mask_and_populate_parameters(
             parameters, self._parameter_mask, self._parameter_population_matrix
         )
+        return self.parameter_scales * full_parameters
 
     def _calculate_strain_energy(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
@@ -382,6 +388,10 @@ class LibrarySEF:
         ln_feature_parameter = parameters[0]
         return ln_feature_parameter * torch.log(I_2 / three)
 
+    def _deactivate_all_parameters(self) -> None:
+        parameter_indices = list(range(self.num_parameters))
+        self.deactivate_parameters(parameter_indices)
+
 
 class CANNSEF:
     def __init__(self, device: Device):
@@ -394,13 +404,16 @@ class CANNSEF:
         )
         self._initial_num_parameters = self._init_number_of_parameters()
         self._initial_parameter_names = self._init_parameter_names()
+        self._scale_linear_parameters = 1.0
+        self._scale_parameters_in_exponent = 0.0001
         self.num_parameters = self._initial_num_parameters
         self.parameter_names = self._initial_parameter_names
+        self.parameter_scales = self._init_parameter_scales()
+        self.parameter_couplings = self._init_parameter_couplings()
         self._parameter_mask = init_parameter_mask(self.num_parameters, self._device)
         self._parameter_population_matrix = init_parameter_population_matrix(
             self.num_parameters, self._device
         )
-        self.parameter_couplings = self._init_parameter_couplings()
 
     def __call__(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
@@ -464,10 +477,6 @@ class CANNSEF:
         self._deactivate_all_parameters()
         self.activate_parameters(active_parameter_indices)
         self.reduce_to_activated_parameters()
-
-    def deactivate_all_parameters(self) -> None:
-        parameter_indices = list(range(self.num_parameters))
-        self.deactivate_parameters(parameter_indices)
 
     def get_state(self) -> ParameterPopulationMatrix:
         return self._parameter_population_matrix
@@ -538,6 +547,23 @@ class CANNSEF:
 
         return tuple(parameter_names)
 
+    def _init_parameter_scales(self) -> ParameterScales:
+        parameter_scales: list[ParameterScales] = []
+        for _ in range(self._num_invariants):
+            parameter_scales += [
+                torch.tensor(
+                    [
+                        self._scale_parameters_in_exponent,
+                        self._scale_parameters_in_exponent,
+                        self._scale_linear_parameters,
+                        self._scale_linear_parameters,
+                        self._scale_linear_parameters,
+                        self._scale_linear_parameters,
+                    ]
+                )
+            ]
+        return torch.concat(parameter_scales).to(self._device)
+
     def _init_parameter_couplings(self) -> ParameterCouplingTuples:
         parameter_names = self.parameter_names
         pointer_index = 0
@@ -584,9 +610,10 @@ class CANNSEF:
         return expanded_parameter_indices
 
     def _preprocess_parameters(self, parameters: Parameters) -> Parameters:
-        return mask_and_populate_parameters(
+        full_parameters = mask_and_populate_parameters(
             parameters, self._parameter_mask, self._parameter_population_matrix
         )
+        return self.parameter_scales * full_parameters
 
     def _calculate_strain_energy(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
@@ -625,6 +652,10 @@ class CANNSEF:
 
     def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
         return torch.chunk(parameters, self._num_invariants)
+
+    def _deactivate_all_parameters(self) -> None:
+        parameter_indices = list(range(self.num_parameters))
+        self.deactivate_parameters(parameter_indices)
 
 
 def calculate_corrected_invariants(
@@ -689,6 +720,10 @@ class IsotropicModel:
     @property
     def parameter_names(self) -> ParameterNames:
         return self._strain_energy_function.parameter_names
+
+    @property
+    def parameter_scales(self) -> ParameterScales:
+        return self._strain_energy_function.parameter_scales
 
     def __call__(
         self,
