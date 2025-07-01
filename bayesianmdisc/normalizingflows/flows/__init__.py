@@ -6,12 +6,12 @@ from .maskedautoregressiveflow import (
 )
 from .normalizingflows import NormalizingFlow, NormalizingFlowProtocol
 from .realnvpflow import RealNVPFlow, create_real_nvp_flow
+from .scalingflow import ScalingFlow, create_scaling_flow
 from .softplusconstrainedflow import (
     SoftplusConstrainedFlow,
     create_softplus_constrained_flow,
 )
 from .tanhconstrainedflow import TanhConstrainedFlow, create_tanh_constrained_flow
-from .scalingflow import ScalingFlow, create_scaling_flow
 
 __all__ = [
     "CompositeFlow",

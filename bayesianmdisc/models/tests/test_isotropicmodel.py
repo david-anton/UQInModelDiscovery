@@ -2,9 +2,9 @@ import pytest
 import torch
 
 from bayesianmdisc.models.isotropicmodel import (
-    create_isotropic_model,
     CANNSEF,
     ParameterNames,
+    create_isotropic_model,
 )
 
 output_dim = 1
