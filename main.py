@@ -77,7 +77,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_treloar
+data_set_label = data_set_label_synthetic_linka
 retrain_models = True
 
 # Settings
@@ -116,9 +116,9 @@ elif data_set_label == data_set_label_linka:
     use_only_squared_anisotropic_invariants = True
     model = OrthotropicCANN(device, use_only_squared_anisotropic_invariants)
 
-    relative_noise_stddevs = 1e-1  # 5e-2
-    min_absolute_noise_stddev = 5e-2  # 1e-2
-    list_num_wasserstein_iterations = [20_000, 20_000]  # [10_000, 10_000]
+    relative_noise_stddevs = 1e-1
+    min_absolute_noise_stddev = 1e-2
+    list_num_wasserstein_iterations = [10_000, 10_000]
     total_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
@@ -152,7 +152,7 @@ elif data_set_label == data_set_label_synthetic_linka:
 
     model = OrthotropicCANN(device, use_only_squared_anisotropic_invariants)
 
-    relative_noise_stddevs = 2e-1  # 5e-2
+    relative_noise_stddevs = 1e-1
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [10_000, 10_000]
     total_sobol_index_thresshold = 1e-2
@@ -161,7 +161,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_4_256_lambda_10_iters_10_kernel_matern_cann_scaled_1e-4"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_4_512_lambda_100_iters_10_kernel_matern_cann_scaled_1e-2"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
