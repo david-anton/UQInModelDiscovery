@@ -22,6 +22,7 @@ from bayesianmdisc.normalizingflows.flows import (
     NormalizingFlowProtocol,
     create_exponential_constrained_flow,
     create_masked_autoregressive_flow,
+    create_scaling_flow,
 )
 from bayesianmdisc.normalizingflows.target import TargetDistributionWrapper
 from bayesianmdisc.normalizingflows.utility import freeze_model
@@ -70,6 +71,7 @@ def _create_normalizing_flow(
     relative_width_flow_layers: int,
     num_parameters: int,
     num_flows: int,
+    parameter_scales: Tensor,
     base_distribution: NFBaseDistribution,
     device: Device,
 ) -> NormalizingFlow:
@@ -85,6 +87,7 @@ def _create_normalizing_flow(
             num_parameters, constrained_output_indices, device
         )
     ]
+    flows += [create_scaling_flow(scales=parameter_scales, device=device)]
     return NormalizingFlow(num_parameters, flows, base_distribution, device).to(device)
 
 
@@ -194,6 +197,7 @@ def _fit_normalizing_flow(
         relative_width_flow_layers=relative_width_flow_layers,
         num_parameters=num_parameters,
         num_flows=num_flows,
+        parameter_scales=likelihood.model.parameter_scales,
         base_distribution=base_distribution,
         device=device,
     )
@@ -229,6 +233,7 @@ def fit_normalizing_flow(
 @dataclass
 class LoadNormalizingFlowConfig:
     num_parameters: int
+    parameter_scales: Tensor
     num_flows: int
     relative_width_flow_layers: int
     output_subdirectory: str
@@ -244,6 +249,7 @@ def load_normalizing_flow(
         relative_width_flow_layers=config.relative_width_flow_layers,
         num_parameters=config.num_parameters,
         num_flows=config.num_flows,
+        parameter_scales=config.parameter_scales,
         base_distribution=base_distribution,
         device=device,
     )

@@ -11,6 +11,7 @@ from .softplusconstrainedflow import (
     create_softplus_constrained_flow,
 )
 from .tanhconstrainedflow import TanhConstrainedFlow, create_tanh_constrained_flow
+from .scalingflow import ScalingFlow, create_scaling_flow
 
 __all__ = [
     "CompositeFlow",
@@ -26,4 +27,6 @@ __all__ = [
     "create_tanh_constrained_flow",
     "SoftplusConstrainedFlow",
     "create_softplus_constrained_flow",
+    "ScalingFlow",
+    "create_scaling_flow",
 ]

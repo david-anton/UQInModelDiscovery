@@ -313,10 +313,9 @@ class LibrarySEF:
         )
 
     def _preprocess_parameters(self, parameters: Parameters) -> Parameters:
-        full_parameters = mask_and_populate_parameters(
+        return mask_and_populate_parameters(
             parameters, self._parameter_mask, self._parameter_population_matrix
         )
-        return self.parameter_scales * full_parameters
 
     def _calculate_strain_energy(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
@@ -405,7 +404,7 @@ class CANNSEF:
         self._initial_num_parameters = self._init_number_of_parameters()
         self._initial_parameter_names = self._init_parameter_names()
         self._scale_linear_parameters = 1.0
-        self._scale_parameters_in_exponent = 0.0001
+        self._scale_parameters_in_exponent = 1e-5
         self.num_parameters = self._initial_num_parameters
         self.parameter_names = self._initial_parameter_names
         self.parameter_scales = self._init_parameter_scales()
@@ -610,10 +609,9 @@ class CANNSEF:
         return expanded_parameter_indices
 
     def _preprocess_parameters(self, parameters: Parameters) -> Parameters:
-        full_parameters = mask_and_populate_parameters(
+        return mask_and_populate_parameters(
             parameters, self._parameter_mask, self._parameter_population_matrix
         )
-        return self.parameter_scales * full_parameters
 
     def _calculate_strain_energy(
         self, deformation_gradient: DeformationGradient, parameters: Parameters

@@ -21,6 +21,7 @@ from bayesianmdisc.normalizingflows.flows import (
     NormalizingFlow,
     create_exponential_constrained_flow,
     create_masked_autoregressive_flow,
+    create_scaling_flow,
 )
 from bayesianmdisc.normalizingflows.utility import freeze_model
 
@@ -475,6 +476,7 @@ class NormalizingFlowParameterDistribution(nn.Module):
     def __init__(self, model: ModelProtocol, device: Device) -> None:
         super().__init__()
         self._dim = model.num_parameters
+        self._parameter_scales = model.parameter_scales
         self._device = device
         self._is_base_trainable = False
         self._num_layers = 32
@@ -532,6 +534,9 @@ class NormalizingFlowParameterDistribution(nn.Module):
                 indices_constrained_outputs=indices_constrained_outputs,
                 device=self._device,
             )
+        ]
+        flows += [
+            create_scaling_flow(scales=self._parameter_scales, device=self._device)
         ]
         return flows
 

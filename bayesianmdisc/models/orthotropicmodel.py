@@ -536,10 +536,9 @@ class OrthotropicCANN:
         validate_parameters(parameters, self._num_parameters)
 
     def _preprocess_parameters(self, parameters: Parameters) -> Parameters:
-        full_parameters = mask_and_populate_parameters(
+        return mask_and_populate_parameters(
             parameters, self._parameter_mask, self._parameter_population_matrix
         )
-        return self._parameter_scales * full_parameters
 
     def _calculate_stresses(
         self,
