@@ -32,6 +32,7 @@ from bayesianmdisc.models.base import (
     init_parameter_mask,
     init_parameter_population_matrix,
     map_parameter_names_to_indices,
+    filter_active_parameter_scales,
     mask_and_populate_parameters,
     mask_parameters,
     update_parameter_population_matrix,
@@ -115,7 +116,7 @@ class OrthotropicCANN:
         self._num_parameters = self._initial_num_parameters
         self._parameter_names = self._initial_parameter_names
         self._scale_linear_parameters = 1.0
-        self._scale_parameters_in_exponent = 1e-2
+        self._scale_parameters_in_exponent = 1e-3
         self._parameter_scales = self._init_parameter_scales()
         self._parameter_mask = init_parameter_mask(self._num_parameters, self._device)
         self._parameter_population_matrix = init_parameter_population_matrix(
@@ -199,6 +200,11 @@ class OrthotropicCANN:
         def reduce_parameter_names() -> None:
             self._parameter_names = self.get_active_parameter_names()
 
+        def reduce_parameter_scales() -> None:
+            self._parameter_scales = filter_active_parameter_scales(
+                self._parameter_mask, self._parameter_scales
+            )
+
         def reduce_parameter_mask() -> None:
             self._parameter_mask = init_parameter_mask(
                 self._num_parameters, self._device
@@ -211,6 +217,7 @@ class OrthotropicCANN:
 
         reduce_num_parameters()
         reduce_parameter_names()
+        reduce_parameter_scales()
         reduce_parameter_mask()
         reduce_parameter_population_matrix()
 

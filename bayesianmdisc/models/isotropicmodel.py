@@ -28,6 +28,7 @@ from bayesianmdisc.models.base import (
     determine_initial_parameter_mask,
     filter_active_parameter_indices,
     filter_active_parameter_names,
+    filter_active_parameter_scales,
     init_parameter_mask,
     init_parameter_population_matrix,
     map_parameter_names_to_indices,
@@ -171,6 +172,11 @@ class LibrarySEF:
         def reduce_parameter_names() -> None:
             self.parameter_names = self.get_active_parameter_names()
 
+        def reduce_parameter_scales() -> None:
+            self.parameter_scales = filter_active_parameter_scales(
+                self._parameter_mask, self.parameter_scales
+            )
+
         def reduce_parameter_mask() -> None:
             self._parameter_mask = init_parameter_mask(
                 self.num_parameters, self._device
@@ -183,6 +189,7 @@ class LibrarySEF:
 
         reduce_num_parameters()
         reduce_parameter_names()
+        reduce_parameter_scales()
         reduce_parameter_mask()
         reduce_parameter_population_matrix()
 
@@ -191,9 +198,13 @@ class LibrarySEF:
             parameter_names_of_interest=parameter_names,
             model_parameter_names=self.parameter_names,
         )
-        self._deactivate_all_parameters()
+        self.deactivate_all_parameters()
         self.activate_parameters(active_parameter_indices)
         self.reduce_to_activated_parameters()
+
+    def deactivate_all_parameters(self) -> None:
+        parameter_indices = list(range(self.num_parameters))
+        self.deactivate_parameters(parameter_indices)
 
     def get_state(self) -> ParameterPopulationMatrix:
         return self._parameter_population_matrix
@@ -387,10 +398,6 @@ class LibrarySEF:
         ln_feature_parameter = parameters[0]
         return ln_feature_parameter * torch.log(I_2 / three)
 
-    def _deactivate_all_parameters(self) -> None:
-        parameter_indices = list(range(self.num_parameters))
-        self.deactivate_parameters(parameter_indices)
-
 
 class CANNSEF:
     def __init__(self, device: Device):
@@ -453,6 +460,11 @@ class CANNSEF:
         def reduce_parameter_names() -> None:
             self.parameter_names = self.get_active_parameter_names()
 
+        def reduce_parameter_scales() -> None:
+            self.parameter_scales = filter_active_parameter_scales(
+                self._parameter_mask, self.parameter_scales
+            )
+
         def reduce_parameter_mask() -> None:
             self._parameter_mask = init_parameter_mask(
                 self.num_parameters, self._device
@@ -465,6 +477,7 @@ class CANNSEF:
 
         reduce_num_parameters()
         reduce_parameter_names()
+        reduce_parameter_scales()
         reduce_parameter_mask()
         reduce_parameter_population_matrix()
 
@@ -473,9 +486,13 @@ class CANNSEF:
             parameter_names_of_interest=parameter_names,
             model_parameter_names=self.parameter_names,
         )
-        self._deactivate_all_parameters()
+        self.deactivate_all_parameters()
         self.activate_parameters(active_parameter_indices)
         self.reduce_to_activated_parameters()
+
+    def deactivate_all_parameters(self) -> None:
+        parameter_indices = list(range(self.num_parameters))
+        self.deactivate_parameters(parameter_indices)
 
     def get_state(self) -> ParameterPopulationMatrix:
         return self._parameter_population_matrix
@@ -650,10 +667,6 @@ class CANNSEF:
 
     def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
         return torch.chunk(parameters, self._num_invariants)
-
-    def _deactivate_all_parameters(self) -> None:
-        parameter_indices = list(range(self.num_parameters))
-        self.deactivate_parameters(parameter_indices)
 
 
 def calculate_corrected_invariants(

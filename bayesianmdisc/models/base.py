@@ -215,6 +215,12 @@ def filter_active_parameter_names(
     return tuple(compress(parameter_names, parameter_mask_list))
 
 
+def filter_active_parameter_scales(
+    parameter_mask: ParameterMask, parameter_scales: ParameterScales
+) -> ParameterScales:
+    return parameter_scales[parameter_mask]
+
+
 def mask_and_populate_parameters(
     parameters: Parameters,
     parameter_mask: ParameterMask,
