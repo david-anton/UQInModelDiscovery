@@ -167,7 +167,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_4_512_lambda_100_iters_10_kernel_rbf_cann_scaled_1e-4"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_4_512_lambda_100_iters_10_kernel_rbf_0.6_cann_scaled_1e-4"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -501,11 +501,11 @@ if retrain_models:
             num_iterations = int(1e4)
             learning_rate = 2e-1
             if data_set_label == data_set_label_treloar:
-                factor_length_scales = 1.0  # 0.8
+                factor_length_scales = 0.6
             elif data_set_label == data_set_label_linka:
-                factor_length_scales = 1.0  # 0.8
+                factor_length_scales = 0.6
             elif data_set_label == data_set_label_synthetic_linka:
-                factor_length_scales = 1.0  # 0.8
+                factor_length_scales = 0.6
 
             def optimize_hyperparameters() -> None:
                 return optimize_gp_hyperparameters(
