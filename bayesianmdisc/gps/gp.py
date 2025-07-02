@@ -2,6 +2,7 @@ from typing import Optional, cast
 
 import gpytorch
 import torch
+from torch import vmap
 
 from bayesianmdisc.customtypes import Device, Tensor
 from bayesianmdisc.errors import GPError
@@ -10,6 +11,7 @@ from bayesianmdisc.gps.base import (
     GPMultivariateNormal,
     NamedParameters,
     TrainingDataTuple,
+    InputMask,
     validate_likelihood_noise_variance,
     validate_likelihoods,
     validate_training_data,
@@ -26,6 +28,7 @@ class GP(gpytorch.models.ExactGP):
         mean: ZeroMean | NonZeroMean,
         kernel: Kernel,
         input_normalizer: InputNormalizer,
+        input_mask: Optional[InputMask],
         device: Device,
         train_x: TrainingDataTuple = (None,),
         train_y: TrainingDataTuple = (None,),
@@ -39,24 +42,29 @@ class GP(gpytorch.models.ExactGP):
         self._kernel = kernel
         self._is_zero_mean = isinstance(self._mean, ZeroMean)
         self._input_normalizer = input_normalizer
+        self._input_mask = input_mask
         self.num_gps = 1
         self.num_hyperparameters = mean.num_hyperparameters + kernel.num_hyperparameters
         self._device = device
 
+    def __call__(self, x: Tensor) -> GPMultivariateNormal:
+        _x = self._mask_inputs(x)
+        return super().__call__(_x)
+
     def forward(self, x: Tensor) -> GPMultivariateNormal:
-        norm_x = self._input_normalizer(x)
-        mean = self._mean(norm_x)
-        covariance_matrix = self._kernel(norm_x, norm_x)
+        _x = self._preprocess_x(x)
+        mean = self._mean(_x)
+        covariance_matrix = self._kernel(_x, _x)
         return gpytorch.distributions.MultivariateNormal(mean, covariance_matrix)
 
     def forward_mean(self, x: Tensor) -> Tensor:
-        norm_x = self._input_normalizer(x)
-        return self._mean(norm_x)
+        _x = self._preprocess_x(x)
+        return self._mean(_x)
 
     def forward_kernel(self, x_1: Tensor, x_2: Tensor) -> Tensor:
-        norm_x_1 = self._input_normalizer(x_1)
-        norm_x_2 = self._input_normalizer(x_2)
-        lazy_covariance_matrix = self._kernel(norm_x_1, norm_x_2)
+        _x_1 = self._preprocess_x(x_1)
+        _x_2 = self._preprocess_x(x_2)
+        lazy_covariance_matrix = self._kernel(_x_1, _x_2)
         return lazy_covariance_matrix.to_dense()
 
     def forward_for_optimization(self, x: Tensor) -> GPMultivariateNormal:
@@ -144,24 +152,26 @@ class GP(gpytorch.models.ExactGP):
         self, train_x: TrainingDataTuple, train_y: TrainingDataTuple
     ) -> tuple[Optional[Tensor], Optional[Tensor]]:
         inputs, targets = train_x[0], train_y[0]
-        inputs, targets = self._copy_training_data_to_device(inputs, targets)
-        targets = self._adjust_trainig_data_output_shape(targets)
+        if self._check_if_training_data(inputs, targets):
+            inputs = self._copy_to_device(cast(Tensor, inputs))
+            targets = self._copy_to_device(cast(Tensor, targets))
+            inputs = self._mask_inputs(inputs)
+            targets = self._adjust_target_shape(targets)
         return inputs, targets
 
-    def _copy_training_data_to_device(
-        self, train_x: Optional[Tensor], train_y: Optional[Tensor]
-    ) -> tuple[Optional[Tensor], Optional[Tensor]]:
-        if train_x is not None and train_y is not None:
-            train_x.to(self._device)
-            train_y.to(self._device)
-        return train_x, train_y
+    def _check_if_training_data(
+        self, inputs: Optional[Tensor], targets: Optional[Tensor]
+    ) -> bool:
+        is_inputs = inputs is not None
+        is_targets = targets is not None
+        return is_inputs and is_targets
 
-    def _adjust_trainig_data_output_shape(
-        self, train_y: Optional[Tensor]
-    ) -> Optional[Tensor]:
-        if train_y is not None:
-            if train_y.dim() == 2:
-                train_y = torch.squeeze(train_y, dim=1)
+    def _copy_to_device(self, tensor: Tensor) -> Tensor:
+        return tensor.to(self._device)
+
+    def _adjust_target_shape(self, train_y: Tensor) -> Tensor:
+        if train_y.dim() == 2:
+            train_y = torch.squeeze(train_y, dim=1)
         return train_y
 
     def _append_inputs(self, inputs: Optional[Tensor]) -> Optional[Tensor]:
@@ -182,17 +192,34 @@ class GP(gpytorch.models.ExactGP):
 
     def _set_training_data(
         self,
-        normalized_processed_inputs: Optional[Tensor],
-        processed_targets: Optional[Tensor],
+        inputs: Optional[Tensor],
+        targets: Optional[Tensor],
         strict: bool,
     ) -> None:
-        if normalized_processed_inputs == None and processed_targets == None:
+        if inputs == None and targets == None:
             self.train_inputs = None
             self.train_targets = None
         else:
-            super().set_train_data(
-                normalized_processed_inputs, processed_targets, strict
-            )
+            super().set_train_data(inputs, targets, strict)
+
+    def _preprocess_x(self, inputs: Tensor) -> Tensor:
+        masked_inputs = self._mask_inputs(inputs)
+        return self._normalize_inputs(masked_inputs)
+
+    def _normalize_inputs(self, inputs: Tensor) -> Tensor:
+        return self._input_normalizer(inputs)
+
+    def _mask_inputs(self, inputs: Tensor) -> Tensor:
+        if self._input_mask is not None:
+            mask_dim = self._input_mask.shape[0]
+            input_dim = inputs.shape[1]
+            if input_dim == mask_dim:
+                vmap_func = lambda _inputs: _inputs[self._input_mask]
+                return vmap(vmap_func)(inputs)
+            else:
+                return inputs
+        else:
+            return inputs
 
 
 def create_scaled_rbf_gaussian_process(
@@ -200,6 +227,7 @@ def create_scaled_rbf_gaussian_process(
     input_dim: int,
     min_inputs: Tensor,
     max_inputs: Tensor,
+    input_mask: Optional[InputMask],
     device: Device,
     jitter: float = 0.0,
     train_x: TrainingDataTuple = (None,),
@@ -207,11 +235,14 @@ def create_scaled_rbf_gaussian_process(
 ) -> GP:
     mean_module = _create_mean(mean, input_dim, device)
     kernel_module = ScaledRBFKernel(input_dim, jitter, device).to(device)
-    input_normalizer = _create_input_normalizer(min_inputs, max_inputs, device)
+    input_normalizer = _create_input_normalizer(
+        min_inputs, max_inputs, input_mask, device
+    )
     return GP(
         mean=mean_module,
         kernel=kernel_module,
         input_normalizer=input_normalizer,
+        input_mask=input_mask,
         device=device,
         train_x=train_x,
         train_y=train_y,
@@ -224,6 +255,7 @@ def create_scaled_matern_gaussian_process(
     input_dim: int,
     min_inputs: Tensor,
     max_inputs: Tensor,
+    input_mask: Optional[InputMask],
     device: Device,
     jitter: float = 0.0,
     train_x: TrainingDataTuple = (None,),
@@ -233,11 +265,14 @@ def create_scaled_matern_gaussian_process(
     kernel_module = ScaledMaternKernel(
         smoothness_parameter, input_dim, jitter, device
     ).to(device)
-    input_normalizer = _create_input_normalizer(min_inputs, max_inputs, device)
+    input_normalizer = _create_input_normalizer(
+        min_inputs, max_inputs, input_mask, device
+    )
     return GP(
         mean=mean_module,
         kernel=kernel_module,
         input_normalizer=input_normalizer,
+        input_mask=input_mask,
         device=device,
         train_x=train_x,
         train_y=train_y,
@@ -245,8 +280,14 @@ def create_scaled_matern_gaussian_process(
 
 
 def _create_input_normalizer(
-    min_inputs: Tensor, max_inputs: Tensor, device: Device
+    min_inputs: Tensor,
+    max_inputs: Tensor,
+    input_mask: Optional[InputMask],
+    device: Device,
 ) -> InputNormalizer:
+    if input_mask is not None:
+        min_inputs = min_inputs[input_mask]
+        max_inputs = max_inputs[input_mask]
     return InputNormalizer(min_inputs, max_inputs, device).to(device)
 
 

@@ -43,16 +43,6 @@ def optimize_gp_hyperparameters(
     gaussian_process.train()
     gaussian_process.likelihood.train()
 
-    # optimizer = torch.optim.LBFGS(
-    #     params=gaussian_process.parameters(),
-    #     lr=learning_rate,
-    #     max_iter=20,
-    #     max_eval=None,
-    #     tolerance_grad=1e-12,
-    #     tolerance_change=1e-12,
-    #     history_size=100,
-    #     line_search_fn="strong_wolfe",
-    # )
     optimizer = torch.optim.AdamW(
         params=gaussian_process.parameters(),
         lr=learning_rate,
@@ -62,8 +52,8 @@ def optimize_gp_hyperparameters(
     marginal_log_likelihood = _create_marginal_log_likelihood(gaussian_process)
 
     def loss_func() -> Tensor:
-        output_dustribution = gaussian_process.forward_for_optimization(inputs)
-        return -marginal_log_likelihood(output_dustribution, gp_outputs)
+        output_distribution = gaussian_process.forward_for_optimization(inputs)
+        return -marginal_log_likelihood(output_distribution, gp_outputs)
 
     def loss_func_closure() -> float:
         optimizer.zero_grad(set_to_none=True)

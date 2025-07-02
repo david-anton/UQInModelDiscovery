@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from typing import TypeAlias
 
-from .customtypes import Tensor
+import torch
+
+from .customtypes import Tensor, Device
 from .errors import DataError
 from .testcases import (
     TestCaseIdentifier,
@@ -112,3 +114,38 @@ def create_four_terms_linka_model_parameters() -> LinkasModelParameters:
         a_fs / (2 * b_fs),
     )
     return LinkasModelParameters(names=parameter_names, values=parameter_values)
+
+
+def assemble_input_mask_for_treloar(device: Device) -> Tensor:
+    return torch.tensor([True, True, True], device=device)
+
+
+def assemble_input_masks_for_linka(device: Device) -> tuple[Tensor, ...]:
+
+    def create_mask(true_indices: list[int]) -> Tensor:
+        mask = torch.full((9,), False, device=device)
+        for index in true_indices:
+            mask[index] = True
+        return mask
+
+    input_mask_sigma_ff = create_mask([0, 8])
+    input_mask_sigma_fs = create_mask([3])
+    input_mask_sigma_fn = create_mask([6])
+
+    input_mask_sigma_sf = create_mask([1])
+    input_mask_sigma_sn = create_mask([7])
+
+    input_mask_sigma_nf = create_mask([2])
+    input_mask_sigma_ns = create_mask([5])
+    input_mask_sigma_nn = create_mask([0, 8])
+
+    return (
+        input_mask_sigma_ff,
+        input_mask_sigma_fs,
+        input_mask_sigma_fn,
+        input_mask_sigma_sf,
+        input_mask_sigma_sn,
+        input_mask_sigma_nf,
+        input_mask_sigma_ns,
+        input_mask_sigma_nn,
+    )

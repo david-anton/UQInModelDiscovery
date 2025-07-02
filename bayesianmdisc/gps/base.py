@@ -12,6 +12,7 @@ GPLikelihoodsTuple: TypeAlias = tuple[GPLikelihood]
 NamedParameters: TypeAlias = dict[str, Tensor]
 TrainingDataTuple: TypeAlias = tuple[Optional[Tensor], ...]
 MarginalLogLikelihood: TypeAlias = gpytorch.mlls.MarginalLogLikelihood
+InputMask: TypeAlias = Tensor
 
 
 def validate_training_data(

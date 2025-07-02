@@ -9,7 +9,7 @@ from bayesianmdisc.bayes.distributions import (
     sample_and_analyse_distribution,
 )
 from bayesianmdisc.bayes.likelihood import create_likelihood
-from bayesianmdisc.customtypes import GPModel, NPArray
+from bayesianmdisc.customtypes import GPModel, NPArray, Tensor
 from bayesianmdisc.data import (
     DataSetProtocol,
     KawabataDataSet,
@@ -23,6 +23,8 @@ from bayesianmdisc.data import (
 )
 from bayesianmdisc.datasettings import (
     create_four_terms_linka_model_parameters,
+    assemble_input_mask_for_treloar,
+    assemble_input_masks_for_linka,
     data_set_label_kawabata,
     data_set_label_linka,
     data_set_label_synthetic_linka,
@@ -52,6 +54,7 @@ from bayesianmdisc.models import (
     save_model_state,
     select_model_through_sobol_sensitivity_analysis,
 )
+from bayesianmdisc.errors import MainError
 from bayesianmdisc.normalizingflows import (
     FitNormalizingFlowConfig,
     LoadNormalizingFlowConfig,
@@ -77,7 +80,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_synthetic_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -446,21 +449,24 @@ if retrain_models:
         )
 
         def create_gp() -> GaussianProcess:
-            min_inputs = torch.amin(inputs, dim=0)
-            max_inputs = torch.amax(inputs, dim=0)
-            input_dim = inputs.size()[1]
-            output_dim = outputs.size()[1]
-            is_single_outut_gp = output_dim == 1
-            jitter = 1e-7
 
-            def create_single_output_gp() -> GP:
+            def create_single_output_gp(input_mask: Tensor | None) -> GP:
+                min_inputs = torch.amin(inputs, dim=0)
+                max_inputs = torch.amax(inputs, dim=0)
+                jitter = 1e-7
                 gp_mean = "zero"
+                if input_mask is not None:
+                    input_dim = int(torch.sum(input_mask).item())
+                else:
+                    input_dim = inputs.size()[1]
+
                 # gaussian_process = create_scaled_matern_gaussian_process(
                 #     mean=gp_mean,
                 #     smoothness_parameter=2.5,
                 #     input_dim=input_dim,
                 #     min_inputs=min_inputs,
                 #     max_inputs=max_inputs,
+                #     input_mask=input_mask,
                 #     jitter=jitter,
                 #     device=device,
                 # )
@@ -469,43 +475,45 @@ if retrain_models:
                     input_dim=input_dim,
                     min_inputs=min_inputs,
                     max_inputs=max_inputs,
+                    input_mask=input_mask,
                     jitter=jitter,
                     device=device,
                 )
                 initial_parameters_output_scale = [1.0]
                 initial_parameters_length_scale = [0.1 for _ in range(input_dim)]
-                initial_parameters_kernel = (
-                    initial_parameters_output_scale + initial_parameters_length_scale
-                )
-
                 initial_parameters = torch.tensor(
-                    initial_parameters_kernel, device=device
+                    initial_parameters_output_scale + initial_parameters_length_scale,
+                    device=device,
                 )
                 gaussian_process.set_parameters(initial_parameters)
                 return gaussian_process
 
-            def create_independent_multi_output_gp() -> IndependentMultiOutputGP:
+            if data_set_label == data_set_label_treloar:
+                input_mask = assemble_input_mask_for_treloar(device)
+                return create_single_output_gp(input_mask)
+            elif (
+                data_set_label == data_set_label_linka
+                or data_set_label == data_set_label_synthetic_linka
+            ):
+                input_masks = assemble_input_masks_for_linka(device)
                 gaussian_processes = [
-                    create_single_output_gp() for _ in range(output_dim)
+                    create_single_output_gp(input_mask) for input_mask in input_masks
                 ]
                 return IndependentMultiOutputGP(
                     gps=tuple(gaussian_processes), device=device
                 )
-
-            if is_single_outut_gp:
-                return create_single_output_gp()
             else:
-                return create_independent_multi_output_gp()
+                raise MainError(f"Unknwon dataset label: {data_set_label}")
 
         def select_gp_prior() -> None:
             num_iterations = int(1e4)
             learning_rate = 2e-1
             if data_set_label == data_set_label_treloar:
-                factor_length_scales = 0.6
+                factor_length_scales = 1.0
             elif data_set_label == data_set_label_linka:
-                factor_length_scales = 0.6
+                factor_length_scales = 1.0
             elif data_set_label == data_set_label_synthetic_linka:
-                factor_length_scales = 0.6
+                factor_length_scales = 1.0
 
             def optimize_hyperparameters() -> None:
                 return optimize_gp_hyperparameters(
