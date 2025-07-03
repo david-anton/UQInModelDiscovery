@@ -411,7 +411,7 @@ class CANNSEF:
         self._initial_num_parameters = self._init_number_of_parameters()
         self._initial_parameter_names = self._init_parameter_names()
         self._scale_linear_parameters = 1.0
-        self._scale_parameters_in_exponent = 1e-3
+        self._scale_parameters_in_exponent = 1e-4
         self.num_parameters = self._initial_num_parameters
         self.parameter_names = self._initial_parameter_names
         self.parameter_scales = self._init_parameter_scales()
