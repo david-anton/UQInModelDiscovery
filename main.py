@@ -163,7 +163,7 @@ elif data_set_label == data_set_label_synthetic_linka:
 
     relative_noise_stddevs = 1e-1
     min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [5_000, 5_000]
+    list_num_wasserstein_iterations = [1_000, 1_000]
     total_sobol_index_thresshold = 1e-2
 
 num_samples_parameter_distribution = 8192
