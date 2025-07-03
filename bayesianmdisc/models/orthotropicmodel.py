@@ -761,7 +761,7 @@ class OutputSelectorLinka:
                 selection_mask[3] = True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_21:
-                selection_mask[1] = False  # True
+                selection_mask[1] = True
                 # selection_mask[3] = True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_13:
@@ -769,7 +769,7 @@ class OutputSelectorLinka:
                 selection_mask[5] = True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_31:
-                selection_mask[2] = False  # True
+                selection_mask[2] = True
                 # selection_mask[5] = True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_23:
@@ -777,7 +777,7 @@ class OutputSelectorLinka:
                 selection_mask[6] = True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_32:
-                selection_mask[4] = False  # True
+                selection_mask[4] = True
                 # selection_mask[6] = True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_biaxial_tension:
