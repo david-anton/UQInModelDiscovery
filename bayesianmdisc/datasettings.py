@@ -92,27 +92,12 @@ def create_four_terms_linka_model_parameters() -> LinkasModelParameters:
         "W_2_7 (l2, I_2, p2, I)",
         "W_1_12 (l1, I_4f, p2, exp)",
         "W_2_12 (l2, I_4f, p2, exp)",
-        "W_2_20 (l2, I_4n, p2, exp)",
         "W_1_20 (l1, I_4n, p2, exp)",
+        "W_2_20 (l2, I_4n, p2, exp)",
         "W_1_24 (l1, I_8fs, p2, exp)",
         "W_2_24 (l2, I_8fs, p2, exp)",
     )
-    mu = 10.324  # [kPa]
-    a_f = 3.427  # [kPa]
-    a_n = 2.754  # [kPa]
-    a_fs = 0.494  # [kPa]
-    b_f = 21.151  # [-]
-    b_n = 4.371  # [-]
-    b_fs = 0.508  # [-]
-    parameter_values = (
-        mu / 2,
-        b_f,
-        a_f / (2 * b_f),
-        b_n,
-        a_n / (2 * b_n),
-        b_fs,
-        a_fs / (2 * b_fs),
-    )
+    parameter_values = (5.162, 21.151, 0.081, 4.371, 0.315, 0.508, 0.486)
     return LinkasModelParameters(names=parameter_names, values=parameter_values)
 
 

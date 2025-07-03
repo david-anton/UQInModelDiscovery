@@ -41,12 +41,12 @@ max_nominal_principal_stretch = 1.1
 irrelevant_stress_components = [4]
 
 test_case_identifiers_ss = [
-    test_case_identifier_simple_shear_21,
-    test_case_identifier_simple_shear_31,
     test_case_identifier_simple_shear_12,
-    test_case_identifier_simple_shear_32,
     test_case_identifier_simple_shear_13,
+    test_case_identifier_simple_shear_21,
     test_case_identifier_simple_shear_23,
+    test_case_identifier_simple_shear_31,
+    test_case_identifier_simple_shear_32,
 ]
 stretch_ratios = [
     (1.0, 1.0),
@@ -90,22 +90,6 @@ class LinkaHeartDataSet:
         if self._consider_shear_data:
             column = self._start_column_shear
             deformations_column, test_cases_colum, stresses_column = (
-                self._read_shear_data(column, test_case_identifier_simple_shear_21)
-            )
-            all_deformation_gradients.append(deformations_column)
-            all_test_cases.append(test_cases_colum)
-            all_stresse_tensors.append(stresses_column)
-
-            column = column + 2
-            deformations_column, test_cases_colum, stresses_column = (
-                self._read_shear_data(column, test_case_identifier_simple_shear_31)
-            )
-            all_deformation_gradients.append(deformations_column)
-            all_test_cases.append(test_cases_colum)
-            all_stresse_tensors.append(stresses_column)
-
-            column = column + 3
-            deformations_column, test_cases_colum, stresses_column = (
                 self._read_shear_data(column, test_case_identifier_simple_shear_12)
             )
             all_deformation_gradients.append(deformations_column)
@@ -114,7 +98,7 @@ class LinkaHeartDataSet:
 
             column = column + 2
             deformations_column, test_cases_colum, stresses_column = (
-                self._read_shear_data(column, test_case_identifier_simple_shear_32)
+                self._read_shear_data(column, test_case_identifier_simple_shear_13)
             )
             all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
@@ -122,7 +106,7 @@ class LinkaHeartDataSet:
 
             column = column + 3
             deformations_column, test_cases_colum, stresses_column = (
-                self._read_shear_data(column, test_case_identifier_simple_shear_13)
+                self._read_shear_data(column, test_case_identifier_simple_shear_21)
             )
             all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
@@ -131,6 +115,22 @@ class LinkaHeartDataSet:
             column = column + 2
             deformations_column, test_cases_colum, stresses_column = (
                 self._read_shear_data(column, test_case_identifier_simple_shear_23)
+            )
+            all_deformation_gradients.append(deformations_column)
+            all_test_cases.append(test_cases_colum)
+            all_stresse_tensors.append(stresses_column)
+
+            column = column + 3
+            deformations_column, test_cases_colum, stresses_column = (
+                self._read_shear_data(column, test_case_identifier_simple_shear_31)
+            )
+            all_deformation_gradients.append(deformations_column)
+            all_test_cases.append(test_cases_colum)
+            all_stresse_tensors.append(stresses_column)
+
+            column = column + 2
+            deformations_column, test_cases_colum, stresses_column = (
+                self._read_shear_data(column, test_case_identifier_simple_shear_32)
             )
             all_deformation_gradients.append(deformations_column)
             all_test_cases.append(test_cases_colum)
