@@ -116,11 +116,13 @@ def create_four_terms_linka_model_parameters() -> LinkasModelParameters:
     return LinkasModelParameters(names=parameter_names, values=parameter_values)
 
 
-def assemble_input_mask_for_treloar(device: Device) -> Tensor:
-    return torch.tensor([True, True, True], device=device)
+def assemble_input_mask_for_treloar(device: Device) -> Tensor | None:
+    return torch.tensor([True, True, False], device=device)
 
 
-def assemble_input_masks_for_linka(device: Device) -> tuple[Tensor, ...]:
+def assemble_input_masks_for_linka(
+    device: Device,
+) -> tuple[Tensor, ...] | tuple[None, ...]:
 
     def create_mask(true_indices: list[int]) -> Tensor:
         mask = torch.full((9,), False, device=device)

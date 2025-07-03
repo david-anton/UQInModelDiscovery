@@ -98,7 +98,7 @@ if data_set_label == data_set_label_treloar:
         input_directory, project_directory, device
     )
 
-    strain_energy_function_type = "cann"
+    strain_energy_function_type = "library"
     model: ModelProtocol = create_isotropic_model(
         strain_energy_function_type=strain_energy_function_type,
         output_dim=1,
@@ -106,7 +106,7 @@ if data_set_label == data_set_label_treloar:
     )
 
     relative_noise_stddevs = 1e-1
-    min_absolute_noise_stddev = 1e-3
+    min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [20_000, 10_000]
     if strain_energy_function_type == "library":
         total_sobol_index_thresshold = 1e-4
@@ -126,8 +126,8 @@ elif data_set_label == data_set_label_linka:
     model = OrthotropicCANN(device, use_only_squared_anisotropic_invariants)
 
     relative_noise_stddevs = 1e-1
-    min_absolute_noise_stddev = 1e-3
-    list_num_wasserstein_iterations = [10_000, 10_000]
+    min_absolute_noise_stddev = 1e-2
+    list_num_wasserstein_iterations = [5_000, 5_000]
     total_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
@@ -161,8 +161,8 @@ elif data_set_label == data_set_label_synthetic_linka:
 
     model = OrthotropicCANN(device, use_only_squared_anisotropic_invariants)
 
-    relative_noise_stddevs = 5e-1  # 1e-1
-    min_absolute_noise_stddev = 1e-3
+    relative_noise_stddevs = 1e-1
+    min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [5_000, 5_000]
     total_sobol_index_thresshold = 1e-2
 
@@ -170,7 +170,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_4_512_lambda_100_iters_10_kernel_rbf_0.6_cann_scaled_1e-4"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_lipschitz_nn_4_256_lambda_10_iters_10_kernel_rbf_0.8_library_scaled_1"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -509,11 +509,11 @@ if retrain_models:
             num_iterations = int(1e4)
             learning_rate = 2e-1
             if data_set_label == data_set_label_treloar:
-                factor_length_scales = 1.0
+                factor_length_scales = 0.8  # 1.0
             elif data_set_label == data_set_label_linka:
-                factor_length_scales = 1.0
+                factor_length_scales = 0.8  # 1.0
             elif data_set_label == data_set_label_synthetic_linka:
-                factor_length_scales = 1.0
+                factor_length_scales = 0.8  # 1.0
 
             def optimize_hyperparameters() -> None:
                 return optimize_gp_hyperparameters(
