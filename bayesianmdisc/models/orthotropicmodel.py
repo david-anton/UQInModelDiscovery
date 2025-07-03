@@ -774,7 +774,7 @@ class OutputSelectorLinka:
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_23:
                 # selection_mask[4] = True
-                selection_mask[6] = True
+                selection_mask[6] = False  # True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_32:
                 selection_mask[4] = True
