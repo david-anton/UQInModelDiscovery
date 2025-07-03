@@ -116,7 +116,7 @@ class OrthotropicCANN:
         self._num_parameters = self._initial_num_parameters
         self._parameter_names = self._initial_parameter_names
         self._scale_linear_parameters = 1.0
-        self._scale_parameters_in_exponent = 1e-4
+        self._scale_parameters_in_exponent = 1e-2
         self._parameter_scales = self._init_parameter_scales()
         self._parameter_mask = init_parameter_mask(self._num_parameters, self._device)
         self._parameter_population_matrix = init_parameter_population_matrix(
@@ -758,7 +758,7 @@ class OutputSelectorLinka:
             )
             if test_case == test_case_identifier_simple_shear_12:
                 # selection_mask[1] = True
-                selection_mask[3] = False  # True
+                selection_mask[3] = True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_21:
                 selection_mask[1] = False  # True
@@ -774,15 +774,15 @@ class OutputSelectorLinka:
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_23:
                 # selection_mask[4] = True
-                selection_mask[6] = False  # True
+                selection_mask[6] = True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_32:
-                selection_mask[4] = False  # True
+                selection_mask[4] = True
                 # selection_mask[6] = True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_biaxial_tension:
-                selection_mask[0] = True
-                selection_mask[7] = True
+                selection_mask[0] = False  # True
+                selection_mask[7] = False  # True
                 selection_mask_list += _reshape(selection_mask)
             else:
                 raise OutputSelectorError(
