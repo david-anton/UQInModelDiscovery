@@ -102,7 +102,7 @@ class LinkaHeartDataSet:
                 all_deformation_gradients.append(deformations_column)
                 all_test_cases.append(test_cases_colum)
                 all_stresse_tensors.append(stresses_column)
-                if test_case_index < len(test_case_identifiers_ss):
+                if test_case_index < len(test_case_identifiers_ss) - 1:
                     column += self._column_offsets_shear[test_case_index]
 
         if self._consider_biaxial_data:
@@ -115,7 +115,7 @@ class LinkaHeartDataSet:
                 all_deformation_gradients.append(deformations_column)
                 all_test_cases.append(test_cases_colum)
                 all_stresse_tensors.append(stresses_column)
-                if test_case_index < self._num_data_sets_biaxial:
+                if test_case_index < self._num_data_sets_biaxial - 1:
                     column += self._column_offsets_biaxial[test_case_index]
 
         deformation_gradients = stack_arrays(all_deformation_gradients)
