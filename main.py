@@ -513,7 +513,7 @@ if retrain_models:
             elif data_set_label == data_set_label_linka:
                 factor_length_scales = 0.8  # 1.0
             elif data_set_label == data_set_label_synthetic_linka:
-                factor_length_scales = 0.8  # 1.0
+                factor_length_scales = 0.6  # 1.0
 
             def optimize_hyperparameters() -> None:
                 return optimize_gp_hyperparameters(
