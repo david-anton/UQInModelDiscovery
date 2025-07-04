@@ -911,14 +911,14 @@ class OutputSelectorTreloar:
         self._expected_full_output_size = determine_full_output_size(
             self._num_outputs, self._single_full_output_dim
         )
-        self._selection_mask = self._determine_output_selction_mask()
+        self.selection_mask = self._determine_output_selction_mask()
         self.total_num_selected_outputs = count_number_of_selected_outputs(
-            self._selection_mask
+            self.selection_mask
         )
 
     def __call__(self, full_outputs: StressOutputs) -> StressOutputs:
         validate_full_output_size(full_outputs, self._expected_full_output_size)
-        return torch.masked_select(full_outputs, self._selection_mask)
+        return torch.masked_select(full_outputs, self.selection_mask)
 
     def _determine_output_selction_mask(self) -> OutputSelectionMask:
         full_output_dim = self._expected_full_output_size[0]

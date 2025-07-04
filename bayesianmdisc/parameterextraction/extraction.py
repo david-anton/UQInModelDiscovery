@@ -1,5 +1,5 @@
-from typing import cast
-
+from typing import cast, TypeAlias
+import math
 import torch
 import torch.nn as nn
 from torch.func import grad, vmap
@@ -34,8 +34,50 @@ from bayesianmdisc.testcases import TestCases
 from bayesianmdisc.utility import flatten_outputs
 
 print_interval = 10
-num_iters_lipschitz_pretraining = 2_000
 file_name_model_parameters_nf = "normalizing_flow_parameters"
+
+
+FuncSizes: TypeAlias = list[int]
+TensorList: TypeAlias = list[Tensor]
+
+
+class LipschitzFunction(nn.Module):
+    def __init__(
+        self,
+        func_sizes: FuncSizes,
+        num_layers: int,
+        rel_layer_width: float,
+        device: Device,
+    ) -> None:
+        super().__init__()
+        self.func_sizes = func_sizes
+        self._num_funcs = len(func_sizes)
+        self._num_layers = num_layers
+        self._rel_layer_width = rel_layer_width
+        self._device = device
+        self._networks = nn.ModuleList(self._init_networks())
+
+    def __call__(self, all_funcs: TensorList) -> TensorList:
+        return [network(funcs) for network, funcs in zip(self._networks, all_funcs)]
+
+    def forward_single_network(self, funcs: Tensor, func_dim: int) -> Tensor:
+        return self._networks[func_dim](funcs)
+
+    def _init_networks(self) -> list[Module]:
+        def init_one_network(func_size: int) -> Module:
+            hidden_layer_size = int(math.floor(self._rel_layer_width * func_size))
+            layer_sizes = [func_size]
+            layer_sizes += [hidden_layer_size for _ in range(self._num_layers)]
+            layer_sizes += [1]
+            return FFNN(
+                layer_sizes=layer_sizes,
+                activation=nn.Softplus(),
+                init_weights=nn.init.xavier_uniform_,
+                init_bias=nn.init.zeros_,
+                use_spectral_norm=False,
+            ).to(self._device)
+
+        return [init_one_network(func_size) for func_size in self.func_sizes]
 
 
 def extract_gp_inducing_parameter_distribution(
@@ -43,54 +85,31 @@ def extract_gp_inducing_parameter_distribution(
     model: ModelProtocol,
     output_selector: OutputSelectorProtocol,
     distribution_type: str,
-    is_mean_trainable: bool,
     inputs: Tensor,
     test_cases: TestCases,
-    noise_stddevs: Tensor,
     num_func_samples: int,
-    resample: bool,
     lipschitz_penalty_coefficient: float,
     num_iters_wasserstein: int,
     num_layers_lipschitz_nn: int,
-    layer_size_lipschitz_nn: int,
+    relative_width_lipschitz_nn: float,
     num_iters_lipschitz: int,
-    lipschitz_func_pretraining: bool,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
     device: Device,
 ) -> DistributionProtocol:
-    num_flattened_outputs = output_selector.total_num_selected_outputs
-
-    penalty_coefficient_lipschitz = torch.tensor(
-        lipschitz_penalty_coefficient, device=device
-    )
-    initial_learning_rate_lipschitz_func = 1e-4
-    lr_decay_rate_lipschitz_func = 1.0
-    # final_learning_rate_lipschitz_func = 1e-4
-    # lr_decay_rate_lipschitz_func = (
-    #     final_learning_rate_lipschitz_func / initial_learning_rate_lipschitz_func
-    # ) ** (1 / num_iters_wasserstein)
-
-    initial_learning_rate_distribution = 5e-4
+    lipschitz_coefficient = torch.tensor(lipschitz_penalty_coefficient, device=device)
+    initial_lr_lipschitz_func = 1e-4
+    lr_decay_rate_lipschitz = 1.0
+    initial_lr_distribution = 5e-4
     lr_decay_rate_distribution = 0.9999
-    # final_learning_rate_distribution = 1e-6
-    # lr_decay_rate_distribution = (
-    #     final_learning_rate_distribution / initial_learning_rate_distribution
-    # ) ** (1 / num_iters_wasserstein)
 
-    def create_lipschitz_network(
-        num_layers: int, layer_size: int, device: Device
-    ) -> Module:
-        layer_sizes = [num_flattened_outputs]
-        layer_sizes += [layer_size for _ in range(num_layers)]
-        layer_sizes += [1]
-        return FFNN(
-            layer_sizes=layer_sizes,
-            activation=nn.Softplus(),
-            init_weights=nn.init.xavier_uniform_,
-            init_bias=nn.init.zeros_,
-            use_spectral_norm=False,
-        ).to(device)
+    def determine_func_dims() -> int:
+        return gp.num_gps
+
+    def determine_func_sizes() -> FuncSizes:
+        output_mask = output_selector.selection_mask
+        splitted_output_mask = torch.chunk(output_mask, func_dims)
+        return [int(torch.sum(mask).item()) for mask in splitted_output_mask]
 
     def freeze_gp(gp: GaussianProcess) -> None:
         gp.train(False)
@@ -100,104 +119,122 @@ def extract_gp_inducing_parameter_distribution(
         for parameters in likelihood.parameters():
             parameters.requires_grad = False
 
-    def infer_predictive_distribution() -> GPMultivariateNormal:
-        # return gp.infer_predictive_distribution(inputs, noise_stddevs)
+    def infer_gp_distribution() -> GPMultivariateNormal:
         return gp(inputs)
 
     def create_distribution_optimizer() -> TorchOptimizer:
         return torch.optim.RMSprop(
             params=distribution.parameters(),
-            lr=initial_learning_rate_distribution,
+            lr=initial_lr_distribution,
         )
 
     def create_lipschitz_func_optimizer() -> TorchOptimizer:
         return torch.optim.AdamW(
             params=lipschitz_func.parameters(),
-            lr=initial_learning_rate_lipschitz_func,
+            lr=initial_lr_lipschitz_func,
             betas=(0.0, 0.9),
         )
 
-    def create_learning_rate_scheduler(
+    def create_lr_scheduler(
         optimizer: TorchOptimizer, decay_rate: float
     ) -> TorchLRScheduler:
         return torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=decay_rate)
 
-    def sample_from_gp() -> Tensor:
-        # Output of multi-output GP is already flattened, output = [output1_1:n, output2_1:n, ...].
+    def draw_gp_funcs() -> Tensor:
         func_samples = gp_distribution.rsample(
             sample_shape=torch.Size([num_func_samples])
         )
         vmap_func = lambda _func_sample: output_selector(_func_sample)
         return vmap(vmap_func)(func_samples)
 
-    def draw_gp_func_values() -> Tensor:
-        if resample:
-            return sample_from_gp()
-        else:
-            return fixed_gp_func_values
-
-    def draw_model_func_values() -> Tensor:
+    def draw_model_funcs() -> Tensor:
         model_parameters = distribution(num_func_samples)
-        vmap_model_func = lambda _model_parameters: output_selector(
+        vmap_func = lambda _model_parameters: output_selector(
             flatten_outputs(model(inputs, test_cases, _model_parameters))
         )
-        return vmap(vmap_model_func)(model_parameters)
+        return vmap(vmap_func)(model_parameters)
 
-    def wasserstein_loss(gp_func_values: Tensor, model_func_values: Tensor) -> Tensor:
-        lipschitz_func_gp = lipschitz_func(gp_func_values)
-        lipschitz_func_model = lipschitz_func(model_func_values)
-        return torch.mean(lipschitz_func_gp - lipschitz_func_model)
+    def split_in_func_dimensions(all_funcs: Tensor) -> TensorList:
+        return list(torch.split(all_funcs, list(func_sizes), dim=1))
 
-    def lipschitz_func_loss(
-        gp_func_values: Tensor, model_func_values: Tensor, penalty_coefficient: Tensor
+    def draw_splitted_gp_outputs() -> TensorList:
+        all_funcs = draw_gp_funcs()
+        return split_in_func_dimensions(all_funcs)
+
+    def draw_splitted_model_outputs() -> TensorList:
+        all_funcs = draw_model_funcs()
+        return split_in_func_dimensions(all_funcs)
+
+    def wasserstein_losses(
+        all_gp_funcs: TensorList, all_model_funcs: TensorList
     ) -> Tensor:
-        def gradient_penalty(
-            gp_func_values: Tensor, model_func_values: Tensor
+        lipschitz_outputs_gp = lipschitz_func(all_gp_funcs)
+        lipschitz_outputs_model = lipschitz_func(all_model_funcs)
+        return torch.concat(
+            [
+                torch.unsqueeze(
+                    torch.mean(lipschitz_output_gp - lipschitz_output_model), dim=0
+                )
+                for lipschitz_output_gp, lipschitz_output_model in zip(
+                    lipschitz_outputs_gp, lipschitz_outputs_model
+                )
+            ]
+        )
+
+    def wasserstein_loss(
+        all_gp_funcs: TensorList, all_model_funcs: TensorList
+    ) -> Tensor:
+        losses = wasserstein_losses(all_gp_funcs, all_model_funcs)
+        return torch.sum(losses)
+
+    def gradient_penalty(
+        all_gp_funcs: TensorList, all_model_funcs: TensorList
+    ) -> Tensor:
+        def gradient_penalty_for_one_output_dim(
+            gp_funcs: Tensor, model_funcs: Tensor, func_dim: int
         ) -> Tensor:
             one = torch.tensor(1.0, device=device)
-            _lipschitz_func = lambda func_values: lipschitz_func(func_values)[0]
+            single_lipschitz_func = lambda func: lipschitz_func.forward_single_network(
+                func, func_dim
+            )[0]
 
-            def l2_norm(values: Tensor) -> Tensor:
-                return torch.sqrt(torch.sum(torch.square(values)))
+            def l2_norm(grads: Tensor) -> Tensor:
+                return torch.sqrt(torch.sum(torch.square(grads)))
 
             epsilon = torch.rand((num_func_samples, 1), device=device)
-            combined_funcs = (
-                epsilon * model_func_values + (one - epsilon) * gp_func_values
-            )
+            combined_funcs = epsilon * model_funcs + (one - epsilon) * gp_funcs
 
-            vmap_grad_penalty = lambda func_values: (
+            vmap_grad_penalty = lambda _func: (
                 torch.square(
-                    l2_norm(grad(_lipschitz_func, argnums=0)(func_values)) - one
+                    l2_norm(grad(single_lipschitz_func, argnums=0)(_func)) - one
                 )
             )
             return torch.mean(vmap(vmap_grad_penalty)(combined_funcs))
 
-        return -wasserstein_loss(
-            gp_func_values, model_func_values
-        ) + penalty_coefficient * gradient_penalty(gp_func_values, model_func_values)
-
-    def pretrain_lipschitz_func() -> None:
-        print("Start pretraining of Lipschitz function ...")
-        optimizer_lipschitz_func = create_lipschitz_func_optimizer()
-
-        for iter_pretraining in range(num_iters_lipschitz_pretraining):
-            gp_func_values = draw_gp_func_values()
-            model_func_values = draw_model_func_values()
-
-            def lipschitz_loss_closure() -> float:
-                optimizer_lipschitz_func.zero_grad(set_to_none=True)
-                loss_lipschitz = lipschitz_func_loss(
-                    gp_func_values,
-                    model_func_values,
-                    penalty_coefficient_lipschitz,
+        return torch.concat(
+            [
+                torch.unsqueeze(
+                    gradient_penalty_for_one_output_dim(
+                        gp_output, model_output, func_dim
+                    ),
+                    dim=0,
                 )
-                loss_lipschitz.backward(retain_graph=True)
-                return loss_lipschitz.item()
+                for gp_output, model_output, func_dim in zip(
+                    all_gp_funcs, all_model_funcs, range(func_dims)
+                )
+            ]
+        )
 
-            loss_lipschitz = optimizer_lipschitz_func.step(lipschitz_loss_closure)
+    def lipschitz_losses(
+        all_gp_funcs: TensorList, all_model_funcs: TensorList
+    ) -> Tensor:
+        _wasserstein_losses = wasserstein_loss(all_gp_funcs, all_model_funcs)
+        _gradient_penalty = gradient_penalty(all_gp_funcs, all_model_funcs)
+        return -_wasserstein_losses + lipschitz_coefficient * _gradient_penalty
 
-            if print_condition(iter_pretraining):
-                print(f"Lipschitz loss: {loss_lipschitz}")
+    def lipschitz_loss(all_gp_funcs: TensorList, all_model_funcs: TensorList) -> Tensor:
+        losses = lipschitz_losses(all_gp_funcs, all_model_funcs)
+        return torch.sum(losses)
 
     def print_condition(iter_wasserstein: int) -> bool:
         is_first = iter_wasserstein == 1
@@ -206,79 +243,72 @@ def extract_gp_inducing_parameter_distribution(
         return is_first | is_last | is_interval_reached
 
     def print_progress(
-        iter_wasserstein: int, loss_wasserstein: float, loss_lipschitz_func: float
+        iter_wasserstein: int, loss_wasserstein: float, loss_lipschitz: float
     ) -> None:
         if print_condition(iter_wasserstein):
             print("############################################################")
             print(f"Iteration: {iter_wasserstein}")
             print(f"Loss Wasserstein distance: {loss_wasserstein}")
-            print(f"Loss Lipschitz function: {loss_lipschitz_func}")
+            print(f"Loss Lipschitz function: {loss_lipschitz}")
 
+    func_dims = determine_func_dims()
+    func_sizes = determine_func_sizes()
+
+    freeze_gp(gp)
+    gp_distribution = infer_gp_distribution()
     distribution = create_parameter_distribution(
         distribution_type=distribution_type,
-        is_mean_trainable=is_mean_trainable,
+        is_mean_trainable=True,
         model=model,
         device=device,
     )
-    lipschitz_func = create_lipschitz_network(
+    lipschitz_func = LipschitzFunction(
+        func_sizes=func_sizes,
         num_layers=num_layers_lipschitz_nn,
-        layer_size=layer_size_lipschitz_nn,
+        rel_layer_width=relative_width_lipschitz_nn,
         device=device,
     )
 
-    freeze_gp(gp)
-    gp_distribution = infer_predictive_distribution()
-
-    if not resample:
-        fixed_gp_func_values = sample_from_gp()
-
-    if lipschitz_func_pretraining:
-        pretrain_lipschitz_func()
-
     optimizer_distribution = create_distribution_optimizer()
-    optimizer_lipschitz_func = create_lipschitz_func_optimizer()
-    lr_scheduler_distribution = create_learning_rate_scheduler(
+    optimizer_lipschitz = create_lipschitz_func_optimizer()
+    lr_scheduler_distribution = create_lr_scheduler(
         optimizer_distribution, lr_decay_rate_distribution
     )
-    lr_scheduler_lipschitz_func = create_learning_rate_scheduler(
-        optimizer_lipschitz_func, lr_decay_rate_lipschitz_func
+    lr_scheduler_lipschitz = create_lr_scheduler(
+        optimizer_lipschitz, lr_decay_rate_lipschitz
     )
     wasserstein_loss_hist = []
 
     for iter_wasserstein in range(1, num_iters_wasserstein + 1):
         for _ in range(num_iters_lipschitz):
-            gp_func_values = draw_gp_func_values()
-            model_func_values = draw_model_func_values()
+            gp_outputs = draw_splitted_gp_outputs()
+            model_outputs = draw_splitted_model_outputs()
 
             def lipschitz_loss_closure() -> float:
-                optimizer_lipschitz_func.zero_grad(set_to_none=True)
-                loss_lipschitz = lipschitz_func_loss(
-                    gp_func_values,
-                    model_func_values,
-                    penalty_coefficient_lipschitz,
-                )
+                optimizer_lipschitz.zero_grad(set_to_none=True)
+                loss_lipschitz = lipschitz_loss(gp_outputs, model_outputs)
                 loss_lipschitz.backward(retain_graph=True)
                 return loss_lipschitz.item()
 
-            loss_lipschitz = optimizer_lipschitz_func.step(lipschitz_loss_closure)
+            loss_lipschitz = optimizer_lipschitz.step(lipschitz_loss_closure)
 
-        gp_func_values = draw_gp_func_values()
-        model_func_values = draw_model_func_values()
+        gp_outputs = draw_splitted_gp_outputs()
+        model_outputs = draw_splitted_model_outputs()
 
         def wasserstein_loss_closure() -> float:
             optimizer_distribution.zero_grad(set_to_none=True)
-            loss_wasserstein = wasserstein_loss(gp_func_values, model_func_values)
+            loss_wasserstein = wasserstein_loss(gp_outputs, model_outputs)
             loss_wasserstein.backward(retain_graph=True)
             return loss_wasserstein.item()
 
         loss_wasserstein = optimizer_distribution.step(wasserstein_loss_closure)
         lr_scheduler_distribution.step()
-        lr_scheduler_lipschitz_func.step()
+        lr_scheduler_lipschitz.step()
         wasserstein_loss_hist += [loss_wasserstein]
         print_progress(
             iter_wasserstein=iter_wasserstein,
             loss_wasserstein=loss_wasserstein,
-            loss_lipschitz_func=loss_lipschitz,
+            loss_lipschitz=loss_lipschitz,
         )
 
     history_plotter_config = HistoryPlotterConfig()

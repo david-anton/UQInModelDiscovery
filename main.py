@@ -566,13 +566,13 @@ if retrain_models:
 
         def extract_parameter_distribution() -> DistributionProtocol:
             num_func_samples = 32
+            num_points_per_test_case = 32
             num_iters_lipschitz = 10
+            num_layers_lipschitz_nn = 4
+            relative_width_lipschitz_nn = 4
 
             if data_set_label == data_set_label_treloar:
-                num_points_per_test_case = 32
                 lipschitz_penalty_coefficient = 10.0
-                num_layers_lipschitz_nn = 4
-                layer_size_lipschitz_nn = 256
                 data_set_treloar = cast(TreloarDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_treloar.generate_uniform_inputs(num_points_per_test_case)
@@ -584,10 +584,8 @@ if retrain_models:
                 data_set_label == data_set_label_linka
                 or data_set_label == data_set_label_synthetic_linka
             ):
-                num_points_per_test_case = 32
+
                 lipschitz_penalty_coefficient = 100.0
-                num_layers_lipschitz_nn = 4
-                layer_size_lipschitz_nn = 512
                 data_set_linka = cast(LinkaHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_linka.generate_uniform_inputs(num_points_per_test_case)
@@ -596,32 +594,19 @@ if retrain_models:
                     test_cases_extraction, cast(OrthotropicCANN, model), device
                 )
 
-            noise_stddevs_extraction = interpolate_heteroscedastic_noise(
-                new_inputs=inputs_extraction,
-                new_test_cases=test_cases_extraction,
-                inputs=inputs,
-                test_cases=test_cases,
-                noise_stddevs=noise_stddevs,
-                device=device,
-            )
-
             distribution = extract_gp_inducing_parameter_distribution(
                 gp=gaussian_process,
                 model=model,
                 output_selector=output_selector,
                 distribution_type="normalizing flow",
-                is_mean_trainable=True,
                 inputs=inputs_extraction,
                 test_cases=test_cases_extraction,
-                noise_stddevs=noise_stddevs_extraction,
                 num_func_samples=num_func_samples,
                 lipschitz_penalty_coefficient=lipschitz_penalty_coefficient,
-                resample=True,
                 num_iters_wasserstein=list_num_wasserstein_iterations[step],
                 num_layers_lipschitz_nn=num_layers_lipschitz_nn,
-                layer_size_lipschitz_nn=layer_size_lipschitz_nn,
+                relative_width_lipschitz_nn=relative_width_lipschitz_nn,
                 num_iters_lipschitz=num_iters_lipschitz,
-                lipschitz_func_pretraining=False,
                 output_subdirectory=output_subdirectory_parameters,
                 project_directory=project_directory,
                 device=device,

@@ -2,12 +2,13 @@ from typing import Protocol
 
 import torch
 
-from bayesianmdisc.customtypes import TensorSize
+from bayesianmdisc.customtypes import TensorSize, Tensor
 from bayesianmdisc.errors import OutputSelectorError
 from bayesianmdisc.models.base import OutputSelectionMask, StressOutputs
 
 
 class OutputSelectorProtocol(Protocol):
+    selection_mask: Tensor
     total_num_selected_outputs: int
 
     def __call__(self, full_outputs: StressOutputs) -> StressOutputs:
