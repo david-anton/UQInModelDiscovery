@@ -678,12 +678,12 @@ class LinkaDataConfig:
         self.min_shear_strain = 0.0
         self.max_shear_strain = 0.5
         self.input_labels = [
-            r"$\gamma_{fs}$" + " [-]",
-            r"$\gamma_{fn}$" + " [-]",
             r"$\gamma_{sf}$" + " [-]",
-            r"$\gamma_{sn}$" + " [-]",
             r"$\gamma_{nf}$" + " [-]",
+            r"$\gamma_{fs}$" + " [-]",
             r"$\gamma_{ns}$" + " [-]",
+            r"$\gamma_{fn}$" + " [-]",
+            r"$\gamma_{sn}$" + " [-]",
             r"$\lambda$" + " [-]",
             r"$\lambda$" + " [-]",
             r"$\lambda$" + " [-]",
@@ -732,12 +732,12 @@ class LinkaDataConfig:
             self.index_principal_stress_n,
         ]
         self.shear_stress_indices_plots = [
-            [self.index_shear_stress_sf],
-            [self.index_shear_stress_nf],
             [self.index_shear_stress_fs],
-            [self.index_shear_stress_ns],
             [self.index_shear_stress_fn],
+            [self.index_shear_stress_sf],
             [self.index_shear_stress_sn],
+            [self.index_shear_stress_nf],
+            [self.index_shear_stress_ns],
         ]
         self.principal_stress_indices_plots = [
             self.principal_stress_indices

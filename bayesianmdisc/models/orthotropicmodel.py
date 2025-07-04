@@ -78,13 +78,6 @@ class OrthotropicCANN:
         else:
             self._num_power_terms_anisotropic = 2
         self._num_activation_functions = 2
-        self._test_case_identifier_bt = test_case_identifier_biaxial_tension
-        self._test_case_identifier_ss_12 = test_case_identifier_simple_shear_12
-        self._test_case_identifier_ss_21 = test_case_identifier_simple_shear_21
-        self._test_case_identifier_ss_13 = test_case_identifier_simple_shear_13
-        self._test_case_identifier_ss_31 = test_case_identifier_simple_shear_31
-        self._test_case_identifier_ss_23 = test_case_identifier_simple_shear_23
-        self._test_case_identifier_ss_32 = test_case_identifier_simple_shear_32
         self._allowed_test_cases = self._init_allowed_test_cases()
         self._allowed_input_dimensions = [9]
         self._fiber_direction_reference = torch.tensor([1.0, 0.0, 0.0], device=device)
@@ -116,7 +109,7 @@ class OrthotropicCANN:
         self._num_parameters = self._initial_num_parameters
         self._parameter_names = self._initial_parameter_names
         self._scale_linear_parameters = 1.0
-        self._scale_parameters_in_exponent = 1e-4
+        self._scale_parameters_in_exponent = 1.0
         self._parameter_scales = self._init_parameter_scales()
         self._parameter_mask = init_parameter_mask(self._num_parameters, self._device)
         self._parameter_population_matrix = init_parameter_population_matrix(
@@ -264,13 +257,13 @@ class OrthotropicCANN:
     def _init_allowed_test_cases(self) -> AllowedTestCases:
         return torch.tensor(
             [
-                self._test_case_identifier_bt,
-                self._test_case_identifier_ss_12,
-                self._test_case_identifier_ss_21,
-                self._test_case_identifier_ss_13,
-                self._test_case_identifier_ss_31,
-                self._test_case_identifier_ss_23,
-                self._test_case_identifier_ss_32,
+                test_case_identifier_biaxial_tension,
+                test_case_identifier_simple_shear_12,
+                test_case_identifier_simple_shear_21,
+                test_case_identifier_simple_shear_13,
+                test_case_identifier_simple_shear_31,
+                test_case_identifier_simple_shear_23,
+                test_case_identifier_simple_shear_32,
             ],
             device=self._device,
         )
@@ -757,28 +750,22 @@ class OutputSelectorLinka:
                 (self._single_full_output_dim,), False, device=self._device
             )
             if test_case == test_case_identifier_simple_shear_12:
-                # selection_mask[1] = True
                 selection_mask[3] = False  # True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_21:
                 selection_mask[1] = True
-                # selection_mask[3] = True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_13:
-                # selection_mask[2] = True
                 selection_mask[5] = False  # True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_31:
                 selection_mask[2] = False  # True
-                # selection_mask[5] = True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_23:
-                # selection_mask[4] = True
                 selection_mask[6] = False  # True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_simple_shear_32:
                 selection_mask[4] = False  # True
-                # selection_mask[6] = True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_biaxial_tension:
                 selection_mask[0] = False  # True

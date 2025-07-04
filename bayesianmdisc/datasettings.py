@@ -59,12 +59,12 @@ relevant_test_cases_for_sensitivity_analysis_treloar = [
 ]
 relevant_test_cases_for_sensitivity_analysis_linka = [
     [test_case_identifier_biaxial_tension],
-    [test_case_identifier_simple_shear_21, test_case_identifier_simple_shear_12],
-    [test_case_identifier_simple_shear_31, test_case_identifier_simple_shear_13],
-    [test_case_identifier_simple_shear_12, test_case_identifier_simple_shear_21],
-    [test_case_identifier_simple_shear_32, test_case_identifier_simple_shear_23],
-    [test_case_identifier_simple_shear_13, test_case_identifier_simple_shear_31],
-    [test_case_identifier_simple_shear_23, test_case_identifier_simple_shear_32],
+    [test_case_identifier_simple_shear_21],
+    [test_case_identifier_simple_shear_31],
+    [test_case_identifier_simple_shear_12],
+    [test_case_identifier_simple_shear_32],
+    [test_case_identifier_simple_shear_13],
+    [test_case_identifier_simple_shear_23],
     [test_case_identifier_biaxial_tension],
 ]
 
