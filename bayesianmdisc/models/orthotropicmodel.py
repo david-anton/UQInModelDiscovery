@@ -768,8 +768,8 @@ class OutputSelectorLinka:
                 selection_mask[4] = True
                 selection_mask_list += _reshape(selection_mask)
             elif test_case == test_case_identifier_biaxial_tension:
-                selection_mask[0] = False  # True
-                selection_mask[7] = False  # True
+                selection_mask[0] = True
+                selection_mask[7] = True
                 selection_mask_list += _reshape(selection_mask)
             else:
                 raise OutputSelectorError(
