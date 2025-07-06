@@ -107,7 +107,7 @@ if data_set_label == data_set_label_treloar:
 
     relative_noise_stddevs = 1e-1
     min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [20_000, 10_000]
+    list_num_wasserstein_iterations = [40_000, 20_000]
     if strain_energy_function_type == "library":
         total_sobol_index_thresshold = 1e-4
     elif strain_energy_function_type == "cann":
