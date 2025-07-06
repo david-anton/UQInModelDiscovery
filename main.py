@@ -80,7 +80,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_synthetic_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -98,7 +98,7 @@ if data_set_label == data_set_label_treloar:
         input_directory, project_directory, device
     )
 
-    strain_energy_function_type = "cann"
+    strain_energy_function_type = "library"
     model: ModelProtocol = create_isotropic_model(
         strain_energy_function_type=strain_energy_function_type,
         output_dim=1,
@@ -170,7 +170,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_kernel_rbf_0.6"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_kernel_rbf_0.6_library"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -460,16 +460,6 @@ if retrain_models:
                 else:
                     input_dim = inputs.size()[1]
 
-                # gaussian_process = create_scaled_matern_gaussian_process(
-                #     mean=gp_mean,
-                #     smoothness_parameter=2.5,
-                #     input_dim=input_dim,
-                #     min_inputs=min_inputs,
-                #     max_inputs=max_inputs,
-                #     input_mask=input_mask,
-                #     jitter=jitter,
-                #     device=device,
-                # )
                 gaussian_process = create_scaled_rbf_gaussian_process(
                     mean=gp_mean,
                     input_dim=input_dim,
