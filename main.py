@@ -127,12 +127,12 @@ elif data_set_label == data_set_label_linka:
 
     relative_noise_stddevs = 1e-1
     min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [5_000, 5_000]
+    list_num_wasserstein_iterations = [20_000, 20_000]
     total_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
     file_name = "CANNsHEARTdata_synthetic.xlsx"
-    num_points_per_test_case = 32
+    num_points_per_test_case = 16  # 32
     use_only_squared_anisotropic_invariants = True
 
     model_data_generation = OrthotropicCANN(
@@ -161,9 +161,9 @@ elif data_set_label == data_set_label_synthetic_linka:
 
     model = OrthotropicCANN(device, use_only_squared_anisotropic_invariants)
 
-    relative_noise_stddevs = 2e-1
+    relative_noise_stddevs = 1e-1
     min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [5_000, 5_000]
+    list_num_wasserstein_iterations = [20_000, 20_000]
     total_sobol_index_thresshold = 1e-2
 
 num_samples_parameter_distribution = 8192
@@ -511,7 +511,7 @@ if retrain_models:
             if data_set_label == data_set_label_treloar:
                 factor_length_scales = 0.8  # 1.0
             elif data_set_label == data_set_label_linka:
-                factor_length_scales = 0.8  # 1.0
+                factor_length_scales = 0.6  # 1.0
             elif data_set_label == data_set_label_synthetic_linka:
                 factor_length_scales = 0.6  # 1.0
 
@@ -566,7 +566,7 @@ if retrain_models:
 
         def extract_parameter_distribution() -> DistributionProtocol:
             num_func_samples = 32
-            num_points_per_test_case = 32
+            num_points_per_test_case = 16  # 32
             num_iters_lipschitz = 10
             num_layers_lipschitz_nn = 4
             relative_width_lipschitz_nn = 4
