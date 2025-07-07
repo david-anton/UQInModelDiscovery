@@ -170,7 +170,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_0.8_lambda_10_funcsamples_128"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_0.8_lambda_10_funcsamples_128_funcpoints_64"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -555,7 +555,6 @@ if retrain_models:
             )
 
         def extract_parameter_distribution() -> DistributionProtocol:
-            num_points_per_test_case = 32
             lipschitz_penalty_coefficient = 10.0
             num_iters_lipschitz = 10
             num_layers_lipschitz_nn = 4
@@ -563,6 +562,7 @@ if retrain_models:
 
             if data_set_label == data_set_label_treloar:
                 num_func_samples = 32
+                num_points_per_test_case = 32
                 data_set_treloar = cast(TreloarDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_treloar.generate_uniform_inputs(num_points_per_test_case)
@@ -575,6 +575,7 @@ if retrain_models:
                 or data_set_label == data_set_label_synthetic_linka
             ):
                 num_func_samples = 128
+                num_points_per_test_case = 64
                 data_set_linka = cast(LinkaHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_linka.generate_uniform_inputs(num_points_per_test_case)
