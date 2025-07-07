@@ -170,7 +170,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_matern_1.0"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_1.0"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -460,9 +460,9 @@ if retrain_models:
                 else:
                     input_dim = inputs.size()[1]
 
-                gaussian_process = create_scaled_matern_gaussian_process(
+                gaussian_process = create_scaled_rbf_gaussian_process(
                     mean=gp_mean,
-                    smoothness_parameter=2.5,
+                    # smoothness_parameter=2.5,
                     input_dim=input_dim,
                     min_inputs=min_inputs,
                     max_inputs=max_inputs,
