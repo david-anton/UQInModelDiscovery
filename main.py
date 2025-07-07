@@ -80,7 +80,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_synthetic_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -107,7 +107,7 @@ if data_set_label == data_set_label_treloar:
 
     relative_noise_stddevs = 1e-1
     min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [40_000, 20_000]
+    list_num_wasserstein_iterations = [20_000, 10_000]
     if strain_energy_function_type == "library":
         total_sobol_index_thresshold = 1e-4
     elif strain_energy_function_type == "cann":
@@ -127,12 +127,12 @@ elif data_set_label == data_set_label_linka:
 
     relative_noise_stddevs = 1e-1
     min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [20_000, 20_000]
+    list_num_wasserstein_iterations = [5_000, 5_000]
     total_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
     file_name = "CANNsHEARTdata_synthetic.xlsx"
-    num_points_per_test_case = 16  # 32
+    num_points_per_test_case = 32
     use_only_squared_anisotropic_invariants = True
 
     model_data_generation = OrthotropicCANN(
@@ -163,14 +163,14 @@ elif data_set_label == data_set_label_synthetic_linka:
 
     relative_noise_stddevs = 1e-1
     min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [20_000, 20_000]
+    list_num_wasserstein_iterations = [5_000, 5_000]
     total_sobol_index_thresshold = 1e-2
 
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_kernel_rbf_0.6_numpoints_16"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_matern_1.0"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -460,8 +460,9 @@ if retrain_models:
                 else:
                     input_dim = inputs.size()[1]
 
-                gaussian_process = create_scaled_rbf_gaussian_process(
+                gaussian_process = create_scaled_matern_gaussian_process(
                     mean=gp_mean,
+                    smoothness_parameter=2.5,
                     input_dim=input_dim,
                     min_inputs=min_inputs,
                     max_inputs=max_inputs,
@@ -499,11 +500,11 @@ if retrain_models:
             num_iterations = int(1e4)
             learning_rate = 2e-1
             if data_set_label == data_set_label_treloar:
-                factor_length_scales = 0.8  # 1.0
+                factor_length_scales = 1.0
             elif data_set_label == data_set_label_linka:
-                factor_length_scales = 0.6  # 1.0
+                factor_length_scales = 1.0
             elif data_set_label == data_set_label_synthetic_linka:
-                factor_length_scales = 0.6  # 1.0
+                factor_length_scales = 1.0
 
             def optimize_hyperparameters() -> None:
                 return optimize_gp_hyperparameters(
@@ -556,7 +557,7 @@ if retrain_models:
 
         def extract_parameter_distribution() -> DistributionProtocol:
             num_func_samples = 32
-            num_points_per_test_case = 16  # 32
+            num_points_per_test_case = 32
             num_iters_lipschitz = 10
             num_layers_lipschitz_nn = 4
             relative_width_lipschitz_nn = 4
