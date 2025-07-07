@@ -80,7 +80,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_synthetic_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -127,7 +127,7 @@ elif data_set_label == data_set_label_linka:
 
     relative_noise_stddevs = 1e-1
     min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [5_000, 5_000]
+    list_num_wasserstein_iterations = [10_000, 10_000]
     total_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
@@ -163,14 +163,14 @@ elif data_set_label == data_set_label_synthetic_linka:
 
     relative_noise_stddevs = 2e-1  # 1e-1
     min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [5_000, 5_000]
+    list_num_wasserstein_iterations = [10_000, 10_000]
     total_sobol_index_thresshold = 1e-2
 
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_1.0"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_0.8"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -462,7 +462,6 @@ if retrain_models:
 
                 gaussian_process = create_scaled_rbf_gaussian_process(
                     mean=gp_mean,
-                    # smoothness_parameter=2.5,
                     input_dim=input_dim,
                     min_inputs=min_inputs,
                     max_inputs=max_inputs,
@@ -500,11 +499,11 @@ if retrain_models:
             num_iterations = int(1e4)
             learning_rate = 2e-1
             if data_set_label == data_set_label_treloar:
-                factor_length_scales = 1.0
+                factor_length_scales = 0.8
             elif data_set_label == data_set_label_linka:
-                factor_length_scales = 1.0
+                factor_length_scales = 0.8
             elif data_set_label == data_set_label_synthetic_linka:
-                factor_length_scales = 1.0
+                factor_length_scales = 0.8
 
             def optimize_hyperparameters() -> None:
                 return optimize_gp_hyperparameters(
