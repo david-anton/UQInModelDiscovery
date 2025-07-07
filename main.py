@@ -98,7 +98,7 @@ if data_set_label == data_set_label_treloar:
         input_directory, project_directory, device
     )
 
-    strain_energy_function_type = "cann"
+    strain_energy_function_type = "library"
     model: ModelProtocol = create_isotropic_model(
         strain_energy_function_type=strain_energy_function_type,
         output_dim=1,
@@ -170,7 +170,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_matern_1.0"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_matern_1.0_library"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
