@@ -170,7 +170,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_0.8_lambda_100_funcsamples_128"  # _funcpoints_64
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_0.8_lambda_100_funcsamples_128_funcpoints_64"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -576,7 +576,7 @@ if retrain_models:
             ):
                 lipschitz_penalty_coefficient = 100.0
                 num_func_samples = 128
-                num_points_per_test_case = 32  # 64
+                num_points_per_test_case = 64
                 data_set_linka = cast(LinkaHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_linka.generate_uniform_inputs(num_points_per_test_case)
