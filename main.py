@@ -80,7 +80,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_synthetic_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -105,9 +105,9 @@ if data_set_label == data_set_label_treloar:
         device=device,
     )
 
-    relative_noise_stddevs = 1e-1
+    relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [20_000, 10_000]
+    list_num_wasserstein_iterations = [40_000, 20_000]
     if strain_energy_function_type == "library":
         total_sobol_index_thresshold = 1e-4
     elif strain_energy_function_type == "cann":
@@ -170,7 +170,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_0.8_lambda_100_spectralnorm"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_0.8_lambda_10"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -667,16 +667,16 @@ if retrain_models:
             output_directory=output_directory_step,
         )
 
-        if is_last_step:
-            model.reset_parameter_deactivations()
-            if data_set_label == data_set_label_treloar:
-                perform_baysian_inference_on_kawabata_data(
-                    model=cast(IsotropicModel, model),
-                    parameter_distribution=parameter_distribution,
-                    output_directory_step=output_directory_step,
-                )
-        else:
-            model.reduce_to_activated_parameters()
+        # if is_last_step:
+        #     model.reset_parameter_deactivations()
+        #     if data_set_label == data_set_label_treloar:
+        #         perform_baysian_inference_on_kawabata_data(
+        #             model=cast(IsotropicModel, model),
+        #             parameter_distribution=parameter_distribution,
+        #             output_directory_step=output_directory_step,
+        #         )
+        # else:
+        #     model.reduce_to_activated_parameters()
 
         save_model_state(model, output_directory_step, project_directory)
 else:
