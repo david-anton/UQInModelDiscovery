@@ -70,47 +70,47 @@ class LipschitzFunction(nn.Module):
             activation=nn.Softplus(),
             init_weights=nn.init.xavier_uniform_,
             init_bias=nn.init.zeros_,
-            use_spectral_norm=False,
+            use_spectral_norm=True,
         ).to(self._device)
 
 
-class IndependentLipschitzFunctions(nn.Module):
-    def __init__(
-        self,
-        func_sizes: FuncSizes,
-        num_layers: int,
-        rel_layer_width: float,
-        device: Device,
-    ) -> None:
-        super().__init__()
-        self.func_sizes = func_sizes
-        self._num_funcs = len(func_sizes)
-        self._num_layers = num_layers
-        self._rel_layer_width = rel_layer_width
-        self._device = device
-        self._networks = nn.ModuleList(self._init_networks())
+# class IndependentLipschitzFunctions(nn.Module):
+#     def __init__(
+#         self,
+#         func_sizes: FuncSizes,
+#         num_layers: int,
+#         rel_layer_width: float,
+#         device: Device,
+#     ) -> None:
+#         super().__init__()
+#         self.func_sizes = func_sizes
+#         self._num_funcs = len(func_sizes)
+#         self._num_layers = num_layers
+#         self._rel_layer_width = rel_layer_width
+#         self._device = device
+#         self._networks = nn.ModuleList(self._init_networks())
 
-    def __call__(self, all_funcs: TensorList) -> TensorList:
-        return [network(funcs) for network, funcs in zip(self._networks, all_funcs)]
+#     def __call__(self, all_funcs: TensorList) -> TensorList:
+#         return [network(funcs) for network, funcs in zip(self._networks, all_funcs)]
 
-    def forward_single_network(self, funcs: Tensor, func_dim: int) -> Tensor:
-        return self._networks[func_dim](funcs)
+#     def forward_single_network(self, funcs: Tensor, func_dim: int) -> Tensor:
+#         return self._networks[func_dim](funcs)
 
-    def _init_networks(self) -> list[Module]:
-        def init_one_network(func_size: int) -> Module:
-            hidden_layer_size = int(math.floor(self._rel_layer_width * func_size))
-            layer_sizes = [func_size]
-            layer_sizes += [hidden_layer_size for _ in range(self._num_layers)]
-            layer_sizes += [1]
-            return FFNN(
-                layer_sizes=layer_sizes,
-                activation=nn.Softplus(),
-                init_weights=nn.init.xavier_uniform_,
-                init_bias=nn.init.zeros_,
-                use_spectral_norm=False,
-            ).to(self._device)
+#     def _init_networks(self) -> list[Module]:
+#         def init_one_network(func_size: int) -> Module:
+#             hidden_layer_size = int(math.floor(self._rel_layer_width * func_size))
+#             layer_sizes = [func_size]
+#             layer_sizes += [hidden_layer_size for _ in range(self._num_layers)]
+#             layer_sizes += [1]
+#             return FFNN(
+#                 layer_sizes=layer_sizes,
+#                 activation=nn.Softplus(),
+#                 init_weights=nn.init.xavier_uniform_,
+#                 init_bias=nn.init.zeros_,
+#                 use_spectral_norm=False,
+#             ).to(self._device)
 
-        return [init_one_network(func_size) for func_size in self.func_sizes]
+#         return [init_one_network(func_size) for func_size in self.func_sizes]
 
 
 def _freeze_gp(gp: GaussianProcess) -> None:
