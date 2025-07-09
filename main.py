@@ -170,7 +170,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_0.8_lipschitz_net_2_4_lambda_1000_noised"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_0.6_lipschitz_net_2_4_lambda_100_noised"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -503,7 +503,7 @@ if retrain_models:
             elif data_set_label == data_set_label_linka:
                 factor_length_scales = 0.8
             elif data_set_label == data_set_label_synthetic_linka:
-                factor_length_scales = 0.8
+                factor_length_scales = 0.6
 
             def optimize_hyperparameters() -> None:
                 return optimize_gp_hyperparameters(
@@ -570,11 +570,17 @@ if retrain_models:
                 output_selector: OutputSelectorProtocol = OutputSelectorTreloar(
                     test_cases_extraction, cast(IsotropicModel, model), device
                 )
-            elif (
-                data_set_label == data_set_label_linka
-                or data_set_label == data_set_label_synthetic_linka
-            ):
-                lipschitz_penalty_coefficient = 1000.0  # 100.0
+            elif data_set_label == data_set_label_linka:
+                lipschitz_penalty_coefficient = 1000.0
+                data_set_linka = cast(LinkaHeartDataSet, data_set)
+                inputs_extraction, test_cases_extraction = (
+                    data_set_linka.generate_uniform_inputs(num_points_per_test_case)
+                )
+                output_selector = OutputSelectorLinka(
+                    test_cases_extraction, cast(OrthotropicCANN, model), device
+                )
+            elif data_set_label == data_set_label_synthetic_linka:
+                lipschitz_penalty_coefficient = 100.0
                 data_set_linka = cast(LinkaHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_linka.generate_uniform_inputs(num_points_per_test_case)
