@@ -80,7 +80,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_synthetic_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -563,7 +563,7 @@ if retrain_models:
             relative_width_lipschitz_nn = 4
 
             if data_set_label == data_set_label_treloar:
-                lipschitz_penalty_coefficient = 100.0
+                lipschitz_penalty_coefficient = 10.0
                 data_set_treloar = cast(TreloarDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_treloar.generate_uniform_inputs(num_points_per_test_case)
