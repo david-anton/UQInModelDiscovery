@@ -170,7 +170,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_matern_1.0_lipschitz_net_2_4_lambda_10"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_0.8_lipschitz_net_2_8_lambda_10"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -460,9 +460,8 @@ if retrain_models:
                 else:
                     input_dim = inputs.size()[1]
 
-                gaussian_process = create_scaled_matern_gaussian_process(
+                gaussian_process = create_scaled_rbf_gaussian_process(
                     mean=gp_mean,
-                    smoothness_parameter=2.5,
                     input_dim=input_dim,
                     min_inputs=min_inputs,
                     max_inputs=max_inputs,
@@ -500,7 +499,7 @@ if retrain_models:
             num_iterations = int(1e4)
             learning_rate = 2e-1
             if data_set_label == data_set_label_treloar:
-                factor_length_scales = 1.0  # 0.8
+                factor_length_scales = 0.8
             elif data_set_label == data_set_label_linka:
                 factor_length_scales = 0.8
             elif data_set_label == data_set_label_synthetic_linka:
@@ -560,7 +559,7 @@ if retrain_models:
             num_points_per_test_case = 32
             num_iters_lipschitz = 10
             num_layers_lipschitz_nn = 2
-            relative_width_lipschitz_nn = 4
+            relative_width_lipschitz_nn = 8  # 4
 
             if data_set_label == data_set_label_treloar:
                 lipschitz_penalty_coefficient = 10.0
