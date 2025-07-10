@@ -102,7 +102,7 @@ def create_four_terms_linka_model_parameters() -> LinkasModelParameters:
 
 
 def assemble_input_mask_for_treloar(device: Device) -> Tensor | None:
-    return torch.tensor([True, True, True], device=device)
+    return torch.tensor([True, True, False], device=device)
 
 
 def assemble_input_masks_for_linka(
