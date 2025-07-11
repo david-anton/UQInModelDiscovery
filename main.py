@@ -170,7 +170,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_0.8_lipschitz_net_2_8_lambda_10_nf_16_4"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_0.8_lipschitz_net_2_4_lambda_10_nf_16_4_lrdist_1e-4"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -559,7 +559,7 @@ if retrain_models:
             num_points_per_test_case = 32
             num_iters_lipschitz = 10
             num_layers_lipschitz_nn = 2
-            relative_width_lipschitz_nn = 8  # 4
+            relative_width_lipschitz_nn = 4
 
             if data_set_label == data_set_label_treloar:
                 lipschitz_penalty_coefficient = 10.0

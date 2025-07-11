@@ -174,7 +174,7 @@ def extract_gp_inducing_parameter_distribution(
 
     initial_lr_lipschitz_func = 1e-4
     lr_decay_rate_lipschitz_func = 1.0
-    initial_lr_distribution = 5e-4
+    initial_lr_distribution = 1e-4  # 5e-4
     lr_decay_rate_distribution = 0.9999
 
     def draw_gp_func_values() -> Tensor:
