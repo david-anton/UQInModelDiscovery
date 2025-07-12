@@ -70,7 +70,7 @@ class LipschitzFunction(nn.Module):
             activation=nn.Softplus(),
             init_weights=nn.init.xavier_uniform_,
             init_bias=nn.init.zeros_,
-            use_spectral_norm=False,
+            use_spectral_norm=True,
         ).to(self._device)
 
 
