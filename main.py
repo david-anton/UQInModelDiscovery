@@ -571,7 +571,7 @@ if retrain_models:
                     test_cases_extraction, cast(IsotropicModel, model), device
                 )
             elif data_set_label == data_set_label_linka:
-                lipschitz_penalty_coefficient = 1000.0
+                lipschitz_penalty_coefficient = 100.0
                 data_set_linka = cast(LinkaHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_linka.generate_uniform_inputs(num_points_per_test_case)
@@ -673,16 +673,16 @@ if retrain_models:
             output_directory=output_directory_step,
         )
 
-        # if is_last_step:
-        #     model.reset_parameter_deactivations()
-        #     if data_set_label == data_set_label_treloar:
-        #         perform_baysian_inference_on_kawabata_data(
-        #             model=cast(IsotropicModel, model),
-        #             parameter_distribution=parameter_distribution,
-        #             output_directory_step=output_directory_step,
-        #         )
-        # else:
-        #     model.reduce_to_activated_parameters()
+        if is_last_step:
+            model.reset_parameter_deactivations()
+            # if data_set_label == data_set_label_treloar:
+            #     perform_baysian_inference_on_kawabata_data(
+            #         model=cast(IsotropicModel, model),
+            #         parameter_distribution=parameter_distribution,
+            #         output_directory_step=output_directory_step,
+            #     )
+        else:
+            model.reduce_to_activated_parameters()
 
         save_model_state(model, output_directory_step, project_directory)
 else:
