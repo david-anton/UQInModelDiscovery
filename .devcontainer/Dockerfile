@@ -17,10 +17,10 @@ SHELL ["/bin/bash", "--login", "-c"]
 # For more information, see:
 # - https://code.visualstudio.com/remote/advancedcontainers/add-nonroot-user
 # - https://vsupalov.com/docker-shared-permissions/
-ENV USER_NAME docker_user
-ENV USER_UID $uid
-ENV USER_GID $gid
-ENV HOME_DIR /home/$USER_NAME
+ENV USER_NAME=docker_user
+ENV USER_UID=$uid
+ENV USER_GID=$gid
+ENV HOME_DIR=/home/$USER_NAME
 RUN groupadd --gid $USER_GID $USER_NAME && \
     adduser \
     --disabled-password \
@@ -32,7 +32,7 @@ RUN groupadd --gid $USER_GID $USER_NAME && \
 
 
 ### Create directories
-ENV DATA_DIR $HOME_DIR
+ENV DATA_DIR=$HOME_DIR
 
 
 ### Copy files
