@@ -80,7 +80,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_synthetic_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -107,7 +107,7 @@ if data_set_label == data_set_label_treloar:
 
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [40_000, 20_000]
+    list_num_wasserstein_iterations = [20_000, 10_000]
     if strain_energy_function_type == "library":
         total_sobol_index_thresshold = 1e-4
     elif strain_energy_function_type == "cann":
@@ -170,7 +170,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_0.6_lipschitz_net_2_4_lambda_100_nf_16_4_noised_spectralnorm"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_0.8_lipschitz_net_2_4_lambda_10_nf_16_4"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
