@@ -223,14 +223,18 @@ class OrthotropicCANN:
         self.activate_parameters(active_parameter_indices)
         self.reduce_to_activated_parameters()
 
-    def get_model_state(self) -> ParameterPopulationMatrix:
-        return self._parameter_population_matrix
+    def get_model_state(self) -> tuple[ParameterPopulationMatrix, ParameterScales]:
+        return self._parameter_population_matrix, self._parameter_scales
 
     def init_model_state(
-        self, parameter_population_matrix: ParameterPopulationMatrix
+        self,
+        parameter_population_matrix: ParameterPopulationMatrix,
+        parameter_scales: ParameterScales,
     ) -> None:
         population_matrix = parameter_population_matrix
-        validate_model_state(population_matrix, self._initial_num_parameters)
+        validate_model_state(
+            population_matrix, parameter_scales, self._initial_num_parameters
+        )
         initial_parameter_mask = determine_initial_parameter_mask(population_matrix)
 
         def init_reuced_models_num_parameters() -> None:
@@ -240,6 +244,9 @@ class OrthotropicCANN:
             self._parameter_names = filter_active_parameter_names(
                 initial_parameter_mask, self._initial_parameter_names
             )
+
+        def init_reduced_model_parameter_scales() -> None:
+            self._parameter_scales = parameter_scales
 
         def init_reduced_models_parameter_mask() -> None:
             self._parameter_mask = init_parameter_mask(
@@ -251,6 +258,7 @@ class OrthotropicCANN:
 
         init_reuced_models_num_parameters()
         init_reduced_models_parameter_names()
+        init_reduced_model_parameter_scales()
         init_reduced_models_parameter_mask()
         init_reduced_models_population_matrix()
 

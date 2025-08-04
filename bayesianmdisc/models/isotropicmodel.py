@@ -206,14 +206,18 @@ class LibrarySEF:
         parameter_indices = list(range(self.num_parameters))
         self.deactivate_parameters(parameter_indices)
 
-    def get_state(self) -> ParameterPopulationMatrix:
-        return self._parameter_population_matrix
+    def get_state(self) -> tuple[ParameterPopulationMatrix, ParameterScales]:
+        return self._parameter_population_matrix, self.parameter_scales
 
     def init_state(
-        self, parameter_population_matrix: ParameterPopulationMatrix
+        self,
+        parameter_population_matrix: ParameterPopulationMatrix,
+        parameter_scales: ParameterScales,
     ) -> None:
         population_matrix = parameter_population_matrix
-        validate_model_state(population_matrix, self._initial_num_parameters)
+        validate_model_state(
+            population_matrix, parameter_scales, self._initial_num_parameters
+        )
         initial_parameter_mask = determine_initial_parameter_mask(population_matrix)
 
         def init_reuced_models_num_parameters() -> None:
@@ -223,6 +227,9 @@ class LibrarySEF:
             self.parameter_names = filter_active_parameter_names(
                 initial_parameter_mask, self._initial_parameter_names
             )
+
+        def init_reduced_model_parameter_scales() -> None:
+            self.parameter_scales = parameter_scales
 
         def init_reduced_models_parameter_mask() -> None:
             self._parameter_mask = init_parameter_mask(
@@ -234,6 +241,7 @@ class LibrarySEF:
 
         init_reuced_models_num_parameters()
         init_reduced_models_parameter_names()
+        init_reduced_model_parameter_scales()
         init_reduced_models_parameter_mask()
         init_reduced_models_population_matrix()
 
@@ -494,14 +502,18 @@ class CANNSEF:
         parameter_indices = list(range(self.num_parameters))
         self.deactivate_parameters(parameter_indices)
 
-    def get_state(self) -> ParameterPopulationMatrix:
-        return self._parameter_population_matrix
+    def get_state(self) -> tuple[ParameterPopulationMatrix, ParameterScales]:
+        return self._parameter_population_matrix, self.parameter_scales
 
     def init_state(
-        self, parameter_population_matrix: ParameterPopulationMatrix
+        self,
+        parameter_population_matrix: ParameterPopulationMatrix,
+        parameter_scales: ParameterScales,
     ) -> None:
         population_matrix = parameter_population_matrix
-        validate_model_state(population_matrix, self._initial_num_parameters)
+        validate_model_state(
+            population_matrix, parameter_scales, self._initial_num_parameters
+        )
         initial_parameter_mask = determine_initial_parameter_mask(population_matrix)
 
         def init_reuced_models_num_parameters() -> None:
@@ -511,6 +523,9 @@ class CANNSEF:
             self.parameter_names = filter_active_parameter_names(
                 initial_parameter_mask, self._initial_parameter_names
             )
+
+        def init_reduced_model_parameter_scales() -> None:
+            self.parameter_scales = parameter_scales
 
         def init_reduced_models_parameter_mask() -> None:
             self._parameter_mask = init_parameter_mask(
@@ -522,6 +537,7 @@ class CANNSEF:
 
         init_reuced_models_num_parameters()
         init_reduced_models_parameter_names()
+        init_reduced_model_parameter_scales()
         init_reduced_models_parameter_mask()
         init_reduced_models_population_matrix()
 

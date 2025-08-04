@@ -77,10 +77,12 @@ class ModelProtocol(Protocol):
         self, parameter_names: ParameterNames
     ) -> None: ...
 
-    def get_model_state(self) -> ParameterPopulationMatrix: ...
+    def get_model_state(self) -> tuple[ParameterPopulationMatrix, ParameterScales]: ...
 
     def init_model_state(
-        self, parameter_population_matrix: ParameterPopulationMatrix
+        self,
+        parameter_population_matrix: ParameterPopulationMatrix,
+        parameter_scales: ParameterScales,
     ) -> None: ...
 
 
@@ -136,27 +138,47 @@ def validate_parameters(parameters: Parameters, expected_num_parameters: int) ->
 
 
 def validate_model_state(
-    parameter_population_matrix: ParameterPopulationMatrix, num_initial_parameters: int
+    parameter_population_matrix: ParameterPopulationMatrix,
+    parameter_scales: ParameterScales,
+    num_initial_parameters: int,
 ) -> None:
-    def validate_dimensions() -> None:
-        dims = parameter_population_matrix.dim()
-        expected_dims = 2
-        if not dims == expected_dims:
-            raise ModelError(
-                f"""The population matrix is expected to be two-dimensional."""
-            )
 
-    def validate_number_of_columns() -> None:
-        num_columns = parameter_population_matrix.shape[0]
-        expected_num_columns = num_initial_parameters
-        if not num_columns == expected_num_columns:
-            raise ModelError(
-                f"""The number of columns of the population matrix is expected 
-                to match the number of initial model parameters."""
-            )
+    def validate_populatiopn_matrix() -> None:
 
-    validate_dimensions()
-    validate_number_of_columns()
+        def validate_dimensions() -> None:
+            dims = parameter_population_matrix.dim()
+            expected_dims = 2
+            if not dims == expected_dims:
+                raise ModelError(
+                    f"""The population matrix is expected to be two-dimensional."""
+                )
+
+        def validate_number_of_columns() -> None:
+            num_columns = parameter_population_matrix.shape[0]
+            expected_num_columns = num_initial_parameters
+            if not num_columns == expected_num_columns:
+                raise ModelError(
+                    f"""The number of columns of the population matrix is expected 
+                    to match the number of initial model parameters."""
+                )
+
+        validate_dimensions()
+        validate_number_of_columns()
+
+    def validate_scales() -> None:
+
+        def validate_dimension() -> None:
+            dims = parameter_scales.dim()
+            expected_dims = 1
+            if not dims == expected_dims:
+                raise ModelError(
+                    f"""The scale vector is expected to be one-dimensional."""
+                )
+
+        validate_dimension()
+
+    validate_populatiopn_matrix()
+    validate_scales()
 
 
 # Masking and population of parameters
