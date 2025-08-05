@@ -43,6 +43,7 @@ from bayesianmdisc.utility import from_numpy_to_torch, from_torch_to_numpy
 
 GaussianProcess: TypeAlias = GP | IndependentMultiOutputGP
 MetricList: TypeAlias = list[float]
+OutputList: TypeAlias = list[NPArray]
 
 credible_interval = 0.95
 factor_stddev_credible_interval = 1.96
@@ -386,9 +387,9 @@ def plot_model_stresses_treloar(
         )
         text = "\n".join(
             (
-                "Mean " + r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
-                "Mean " + r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
-                "Mean " + r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
+                "Total " + r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
+                "Total " + r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
+                "Total " + r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
             )
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
@@ -850,6 +851,8 @@ def plot_model_stresses_linka(
     axes[5, 2].axis("off")
     subfigure_counter = 0
     coverage_list: MetricList = []
+    data_output_list: OutputList = []
+    mean_model_output_list: OutputList = []
 
     def plot_one_data_set(
         inputs: NPArray,
@@ -859,13 +862,17 @@ def plot_model_stresses_linka(
         data_set_index: int,
         subfigure_counter: int,
         coverage_list: MetricList,
-    ) -> tuple[int, MetricList]:
+        data_output_list: OutputList,
+        mean_model_output_list: OutputList,
+    ) -> tuple[int, MetricList, OutputList, OutputList]:
 
         def plot_one_stress(
             stress_index: int,
             subfigure_counter: int,
             coverage_list: MetricList,
-        ) -> tuple[int, MetricList]:
+            data_output_list: OutputList,
+            mean_model_output_list: OutputList,
+        ) -> tuple[int, MetricList, OutputList, OutputList]:
             is_principal_stress = stress_index in data_config.principal_stress_indices
 
             subfigure_indicex = data_config.subfigure_indices[subfigure_counter]
@@ -1082,6 +1089,19 @@ def plot_model_stresses_linka(
                 bbox=text_properties,
             )
 
+            # model outputs for total metrics
+            data_outputs = outputs[:, stress_index].reshape((-1, 1))
+            data_output_list += [data_outputs]
+            mean_model_output, _ = calculate_model_mean_and_stddev(
+                model,
+                parameter_samples,
+                inputs,
+                metrics_test_cases,
+                device,
+                output_dim=stress_index,
+            )
+            mean_model_output_list += [mean_model_output]
+
             if subfigure_counter == 15:
                 # legend
                 model_credible_interval = Patch(
@@ -1099,12 +1119,26 @@ def plot_model_stresses_linka(
                     borderaxespad=0.0,
                 )
 
-                mean_coverage = np.mean(np.array(coverage_list))
+                total_coverage = np.mean(np.array(coverage_list))
+                total_data_outputs = np.concatenate(data_output_list, axis=0)
+                total_mean_model_outputs = np.concatenate(
+                    mean_model_output_list, axis=0
+                )
+                total_r_squared = coefficient_of_determination(
+                    total_mean_model_outputs, total_data_outputs
+                )
+                total_rmse = root_mean_squared_error(
+                    total_mean_model_outputs, total_data_outputs
+                )
                 text = "\n".join(
                     (
-                        "Mean "
+                        "Total "
                         + r"$C_{95\%}=$"
-                        + r"${0}\%$".format(round(mean_coverage, 2)),
+                        + r"${0}\%$".format(round(total_coverage, 2)),
+                        "Total "
+                        + r"$R^{2}=$"
+                        + r"${0}$".format(round(total_r_squared, 4)),
+                        "Total " + r"$RMSE=$" + r"${0}$".format(round(total_rmse, 4)),
                     )
                 )
                 text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
@@ -1119,14 +1153,33 @@ def plot_model_stresses_linka(
                 )
 
             subfigure_counter += 1
-            return subfigure_counter, coverage_list
-
-        for stress_index in stress_indices:
-            subfigure_counter, coverage_list = plot_one_stress(
-                stress_index, subfigure_counter, coverage_list
+            return (
+                subfigure_counter,
+                coverage_list,
+                data_output_list,
+                mean_model_output_list,
             )
 
-        return subfigure_counter, coverage_list
+        for stress_index in stress_indices:
+            (
+                subfigure_counter,
+                coverage_list,
+                data_output_list,
+                mean_model_output_list,
+            ) = plot_one_stress(
+                stress_index,
+                subfigure_counter,
+                coverage_list,
+                data_output_list,
+                mean_model_output_list,
+            )
+
+        return (
+            subfigure_counter,
+            coverage_list,
+            data_output_list,
+            mean_model_output_list,
+        )
 
     input_sets, test_case_identifiers, output_sets = split_linka_inputs_and_outputs(
         inputs, test_cases, outputs, num_points_per_test_case
@@ -1145,14 +1198,18 @@ def plot_model_stresses_linka(
         data_config.stress_indices_list,
         range(data_config.num_data_sets),
     ):
-        subfigure_counter, coverage_list = plot_one_data_set(
-            input_set,
-            test_case_identifier,
-            output_set,
-            stress_indices,
-            data_set_index,
-            subfigure_counter,
-            coverage_list,
+        subfigure_counter, coverage_list, data_output_list, mean_model_output_list = (
+            plot_one_data_set(
+                input_set,
+                test_case_identifier,
+                output_set,
+                stress_indices,
+                data_set_index,
+                subfigure_counter,
+                coverage_list,
+                data_output_list,
+                mean_model_output_list,
+            )
         )
 
     output_path = project_directory.create_output_file_path(
@@ -1629,7 +1686,7 @@ def plot_gp_stresses_treloar(
             device,
         )
         text = "\n".join(
-            ("Mean " + r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),)
+            ("Total " + r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),)
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axis_all.text(
@@ -1963,12 +2020,12 @@ def plot_gp_stresses_linka(
                     borderaxespad=0.0,
                 )
 
-                mean_coverage = np.mean(np.array(coverage_list))
+                total_coverage = np.mean(np.array(coverage_list))
                 text = "\n".join(
                     (
-                        "Mean "
+                        "Total "
                         + r"$C_{95\%}=$"
-                        + r"${0}\%$".format(round(mean_coverage, 2)),
+                        + r"${0}\%$".format(round(total_coverage, 2)),
                     )
                 )
                 text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
