@@ -8,7 +8,6 @@ from bayesianmdisc.bayes.distributions import (
     DistributionProtocol,
     sample_and_analyse_distribution,
 )
-from bayesianmdisc.bayes.likelihood import create_likelihood
 from bayesianmdisc.customtypes import GPModel, NPArray, Tensor
 from bayesianmdisc.data import (
     DataSetProtocol,
@@ -35,7 +34,6 @@ from bayesianmdisc.gps import (
     GaussianProcess,
     IndependentMultiOutputGP,
     condition_gp,
-    create_scaled_matern_gaussian_process,
     create_scaled_rbf_gaussian_process,
     load_gp,
     optimize_gp_hyperparameters,
@@ -80,7 +78,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -132,7 +130,7 @@ elif data_set_label == data_set_label_linka:
 elif data_set_label == data_set_label_synthetic_linka:
     input_directory = data_set_label
     file_name = "CANNsHEARTdata_synthetic.xlsx"
-    num_points_per_test_case = 11  # 16
+    num_points_per_test_case = 11
     use_only_squared_anisotropic_invariants = True
 
     model_data_generation = OrthotropicCANN(
@@ -170,7 +168,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_rbf_0.6_lipschitz_net_2_4_lambda_100_nf_16_4_spectralnorm"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -278,6 +276,10 @@ def plot_model_stresses(
         )
 
     def plot_linka() -> None:
+        plot_four_term_model = False
+        if data_set_label == data_set_label_synthetic_linka:
+            plot_four_term_model = True
+
         plot_model_stresses_linka(
             model=cast(OrthotropicCANN, model),
             parameter_samples=model_parameter_samples,
@@ -288,6 +290,7 @@ def plot_model_stresses(
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
             device=device,
+            plot_four_term_model=plot_four_term_model,
         )
 
     if data_set_label == data_set_label_treloar:
@@ -323,103 +326,6 @@ def plot_relevenat_sobol_indices_results(
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
         )
-
-
-def perform_baysian_inference_on_kawabata_data(
-    model: IsotropicModel,
-    parameter_distribution: DistributionProtocol,
-    output_directory_step: str,
-) -> None:
-    input_directory = data_set_label_kawabata
-    output_directory_name = "bayesian_inference_kawabata"
-    output_subdirectory_name_parameters = "parameters"
-    output_directory = os.path.join(output_directory_step, output_directory_name)
-    output_subdirectory_parameters = os.path.join(
-        output_directory, output_subdirectory_name_parameters
-    )
-
-    output_dim = 2
-    model.set_output_dimension(output_dim)
-    relative_noise_stddevs = 5e-2
-    min_absolute_noise_stddev = 1e-2  # 5e-2
-
-    data_set_kawabata = KawabataDataSet(input_directory, project_directory, device)
-    inputs, test_cases, outputs = data_set_kawabata.read_data()
-    noise_stddevs = determine_heteroscedastic_noise(
-        relative_noise_stddevs,
-        min_absolute_noise_stddev,
-        outputs,
-    )
-    validate_data(inputs, test_cases, outputs, noise_stddevs)
-
-    num_parameters = model.num_parameters
-    parameter_names = model.parameter_names
-
-    num_flows = 16
-    relative_width_flow_layers = 4
-    if retrain_models:
-        likelihood = create_likelihood(
-            model=model,
-            relative_noise_stddev=relative_noise_stddevs,
-            min_noise_stddev=min_absolute_noise_stddev,
-            inputs=inputs,
-            test_cases=test_cases,
-            outputs=outputs,
-            device=device,
-        )
-        prior = parameter_distribution
-
-        fit_normalizing_flow_config = FitNormalizingFlowConfig(
-            likelihood=likelihood,
-            prior=prior,
-            num_flows=num_flows,
-            relative_width_flow_layers=relative_width_flow_layers,
-            num_samples=32,
-            initial_learning_rate=5e-4,
-            final_learning_rate=1e-5,  # 1e-6,
-            num_iterations=200_000,
-            output_subdirectory=output_directory,
-            project_directory=project_directory,
-        )
-
-        normalizing_flow = fit_normalizing_flow(fit_normalizing_flow_config, device)
-    else:
-        load_normalizing_flow_config = LoadNormalizingFlowConfig(
-            num_parameters=num_parameters,
-            parameter_scales=model.parameter_scales,
-            num_flows=num_flows,
-            relative_width_flow_layers=relative_width_flow_layers,
-            output_subdirectory=output_directory,
-            project_directory=project_directory,
-        )
-        normalizing_flow = load_normalizing_flow(load_normalizing_flow_config, device)
-
-    normalizing_flow_distribution = NormalizingFlowDistribution(
-        normalizing_flow, device
-    )
-    parameter_moments, parameter_samples = sample_and_analyse_distribution(
-        normalizing_flow_distribution, num_samples_parameter_distribution
-    )
-
-    plot_histograms(
-        parameter_names=parameter_names,
-        true_parameters=tuple(None for _ in range(num_parameters)),
-        moments=parameter_moments,
-        samples=parameter_samples,
-        algorithm_name="nf",
-        output_subdirectory=output_subdirectory_parameters,
-        project_directory=project_directory,
-    )
-    plot_model_stresses_kawabata(
-        model=cast(IsotropicModel, model),
-        parameter_samples=parameter_samples,
-        inputs=from_torch_to_numpy(inputs),
-        outputs=from_torch_to_numpy(outputs),
-        test_cases=from_torch_to_numpy(test_cases),
-        output_subdirectory=output_directory,
-        project_directory=project_directory,
-        device=device,
-    )
 
 
 inputs, test_cases, outputs = data_set.read_data()
@@ -675,12 +581,6 @@ if retrain_models:
 
         if is_last_step:
             model.reset_parameter_deactivations()
-            # if data_set_label == data_set_label_treloar:
-            #     perform_baysian_inference_on_kawabata_data(
-            #         model=cast(IsotropicModel, model),
-            #         parameter_distribution=parameter_distribution,
-            #         output_directory_step=output_directory_step,
-            #     )
         else:
             model.reduce_to_activated_parameters()
 
@@ -766,9 +666,3 @@ else:
 
         if is_last_step:
             model.reset_parameter_deactivations()
-            if data_set_label == data_set_label_treloar:
-                perform_baysian_inference_on_kawabata_data(
-                    model=cast(IsotropicModel, model),
-                    parameter_distribution=parameter_distribution,
-                    output_directory_step=output_directory_step,
-                )
