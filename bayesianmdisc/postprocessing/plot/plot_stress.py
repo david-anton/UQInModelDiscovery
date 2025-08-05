@@ -40,6 +40,7 @@ from bayesianmdisc.testcases import (
     test_case_identifier_uniaxial_tension,
 )
 from bayesianmdisc.utility import from_numpy_to_torch, from_torch_to_numpy
+from bayesianmdisc.datasettings import create_four_terms_linka_model_parameters
 
 GaussianProcess: TypeAlias = GP | IndependentMultiOutputGP
 MetricList: TypeAlias = list[float]
@@ -811,8 +812,14 @@ class ModelStressPlotterConfigLinka:
         self.data_color = "tab:blue"
         self.data_marker_size = 5
         # model
-        self.model_label = "model"
+        self.model_label = "mean"
         self.model_color = "tab:blue"
+        # four term model
+        self.four_term_model_label = "Four-term-model (Martonová et al., 2024)"
+        self.four_term_model_color = "tab:red"
+        self.four_term_model_linestyle = "dashed"
+        self.four_term_model_linewidth = 1.0
+        self.four_term_model_alpha = 0.8
         # credible interval
         self.model_credible_interval_alpha = 0.4
         # samples
@@ -838,6 +845,7 @@ def plot_model_stresses_linka(
     output_subdirectory: str,
     project_directory: ProjectDirectory,
     device: Device,
+    plot_four_term_model: bool = False,
 ) -> None:
     plotter_config = ModelStressPlotterConfigLinka()
     data_config = LinkaDataConfig()
@@ -902,7 +910,6 @@ def plot_model_stresses_linka(
                     _input_index = data_config.stretch_ratio_index_normal
                 max_input = np.amax(_model_inputs[:, _input_index])
                 model_inputs_axis = np.linspace(min_input, max_input, num_model_inputs)
-
             else:
                 # model inputs
                 min_input = data_config.min_shear_strain
@@ -992,6 +999,28 @@ def plot_model_stresses_linka(
                     color=plotter_config.model_samples_color,
                     linewidth=plotter_config.model_samples_linewidth,
                     alpha=plotter_config.model_samples_alpha,
+                )
+
+            # four term model
+            if plot_four_term_model:
+                four_term_model, four_term_model_parameters = (
+                    create_four_terms_linka_model(device)
+                )
+                four_term_model_output = calculate_model_predictions(
+                    four_term_model,
+                    four_term_model_parameters,
+                    model_inputs,
+                    model_test_cases,
+                    device,
+                )[0, :, stress_index].reshape(-1, 1)
+                axis.plot(
+                    model_inputs_axis,
+                    four_term_model_output,
+                    color=plotter_config.four_term_model_color,
+                    label=plotter_config.four_term_model_label,
+                    linestyle=plotter_config.four_term_model_linestyle,
+                    alpha=plotter_config.four_term_model_alpha,
+                    linewidth=plotter_config.four_term_model_linewidth,
                 )
 
             # axis ticks
@@ -1109,8 +1138,17 @@ def plot_model_stresses_linka(
                     alpha=plotter_config.model_credible_interval_alpha,
                     label="95%-credible interval",
                 )
-                data_legend_handles, _ = axis.get_legend_handles_labels()
-                legend_handles = data_legend_handles + [model_credible_interval]
+                # data_legend_handles, _ = axis.get_legend_handles_labels()
+                # legend_handles = data_legend_handles.insert(3, model_credible_interval)
+                # axis.legend(
+                #     handles=legend_handles,
+                #     fontsize=plotter_config.font_size,
+                #     bbox_to_anchor=(1.15, 0.95),
+                #     loc="upper left",
+                #     borderaxespad=0.0,
+                # )
+                legend_handles, _ = axis.get_legend_handles_labels()
+                legend_handles.insert(3, model_credible_interval)
                 axis.legend(
                     handles=legend_handles,
                     fontsize=plotter_config.font_size,
@@ -1142,9 +1180,14 @@ def plot_model_stresses_linka(
                     )
                 )
                 text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+                if plot_four_term_model:
+                    x_position_text = 2.8
+                else:
+                    x_position_text = 2.18
+
                 axis.text(
-                    1.17,
-                    0.35,
+                    x_position_text,
+                    0.92,
                     text,
                     transform=axis.transAxes,
                     fontsize=plotter_config.font_size,
@@ -2030,8 +2073,8 @@ def plot_gp_stresses_linka(
                 )
                 text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
                 axis.text(
-                    1.17,
-                    0.35,
+                    2.18,
+                    0.92,
                     text,
                     transform=axis.transAxes,
                     fontsize=plotter_config.font_size,
@@ -2253,3 +2296,12 @@ def _validate_noise_standard_deviations_and_output_dimension(
             """Output dimension can not be defined for 
             single-output noise standard deviations"""
         )
+
+
+def create_four_terms_linka_model(device: Device) -> tuple[OrthotropicCANN, NPArray]:
+    model = OrthotropicCANN(device)
+    four_terms_model_parameters = create_four_terms_linka_model_parameters()
+    parameter_names = four_terms_model_parameters.names
+    parameter_values = np.array(four_terms_model_parameters.values).reshape(1, -1)
+    model.reduce_model_to_parameter_names(parameter_names)
+    return model, parameter_values
