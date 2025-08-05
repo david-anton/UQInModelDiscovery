@@ -42,6 +42,7 @@ from bayesianmdisc.testcases import (
 from bayesianmdisc.utility import from_numpy_to_torch, from_torch_to_numpy
 
 GaussianProcess: TypeAlias = GP | IndependentMultiOutputGP
+MetricList: TypeAlias = list[float]
 
 credible_interval = 0.95
 factor_stddev_credible_interval = 1.96
@@ -129,7 +130,7 @@ def plot_model_stresses_treloar(
     num_model_inputs = 256
     num_model_samples = 16
 
-    file_name = f"treloar_data.png"
+    file_name = f"model.png"
     figure, axes = plt.subplots(2, 2, figsize=config.figure_size)
     figure.tight_layout(pad=config.pad_subplots)
     axis_all = axes[1, 1]
@@ -385,9 +386,9 @@ def plot_model_stresses_treloar(
         )
         text = "\n".join(
             (
-                r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
-                r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
-                r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
+                "Mean" + r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
+                "Mean" + r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
+                "Mean" + r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
             )
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
@@ -755,26 +756,51 @@ class LinkaDataConfig:
         self.stress_indices_list = (
             self.shear_stress_indices_plots + self.principal_stress_indices_plots
         )
+        self.subfigure_indices = [
+            [0, 0],
+            [0, 1],
+            [0, 2],
+            [1, 0],
+            [1, 1],
+            [1, 2],
+            [2, 0],
+            [2, 1],
+            [2, 2],
+            [3, 0],
+            [3, 1],
+            [3, 2],
+            [4, 0],
+            [4, 1],
+            [4, 2],
+            [5, 0],
+        ]
 
 
 class ModelStressPlotterConfigLinka:
     def __init__(self) -> None:
         # label size
-        self.label_size = 10
+        self.label_size = 7
         # font size in legend
-        self.font_size = 12
+        self.font_size = 7
+        self.ratio_font_size = 5
         self.font: Dict[str, Any] = {"size": self.font_size}
 
+        # figure size
+        self.figure_size = (16 * cm_to_inch, 24 * cm_to_inch)
+        self.pad_subplots = 0.8
+
         ## ticks
-        self.num_x_tick_labels = 6
+        self.num_x_ticks = 5
+        self.num_y_ticks = 5
+
         # major ticks
-        self.major_tick_label_size = 12
-        self.major_ticks_size = self.font_size
+        self.major_tick_label_size = 7
+        self.major_ticks_size = 7
         self.major_ticks_width = 2
 
         # minor ticks
-        self.minor_tick_label_size = 12
-        self.minor_ticks_size = 12
+        self.minor_tick_label_size = 7
+        self.minor_ticks_size = 7
         self.minor_ticks_width = 1
 
         ### stresses
@@ -817,19 +843,33 @@ def plot_model_stresses_linka(
     num_model_inputs = 256
     num_model_samples = 16
 
+    file_name = f"model.png"
+    figure, axes = plt.subplots(6, 3, figsize=plotter_config.figure_size)
+    figure.tight_layout(pad=plotter_config.pad_subplots)
+    axes[5, 1].axis("off")
+    axes[5, 2].axis("off")
+    subfigure_counter = 0
+    coverage_list: MetricList = []
+
     def plot_one_data_set(
         inputs: NPArray,
         test_case_identifier: int,
         outputs: NPArray,
         stress_indices: list[int],
         data_set_index: int,
-    ) -> None:
+        subfigure_counter: int,
+        coverage_list: MetricList,
+    ) -> tuple[int, MetricList]:
 
-        def plot_one_stress(stress_index: int) -> None:
+        def plot_one_stress(
+            stress_index: int,
+            subfigure_counter: int,
+            coverage_list: MetricList,
+        ) -> tuple[int, MetricList]:
             is_principal_stress = stress_index in data_config.principal_stress_indices
-            stress_file_name_label = data_config.stress_file_name_labels[stress_index]
 
-            figure, axes = plt.subplots()
+            subfigure_indicex = data_config.subfigure_indices[subfigure_counter]
+            axis = axes[subfigure_indicex[0], subfigure_indicex[1]]
 
             if is_principal_stress:
                 principal_stretch_data_set_index = (
@@ -855,8 +895,6 @@ def plot_model_stresses_linka(
                     _input_index = data_config.stretch_ratio_index_normal
                 max_input = np.amax(_model_inputs[:, _input_index])
                 model_inputs_axis = np.linspace(min_input, max_input, num_model_inputs)
-                # file name
-                file_name = f"principalstress_{stress_file_name_label}_stretchratio_{stretch_ratio_fiber}_{stretch_ratio_normal}.pdf"
 
             else:
                 # model inputs
@@ -864,15 +902,13 @@ def plot_model_stresses_linka(
                 max_input = data_config.max_shear_strain
                 model_inputs_axis = np.linspace(min_input, max_input, num_model_inputs)
                 _model_inputs = model_inputs_axis.reshape((-1, 1))
-                # file name
-                file_name = f"shearstress_{stress_file_name_label}.pdf"
 
             # data points
             data_inputs_axis = np.linspace(
                 min_input, max_input, num_points_per_test_case
             )
             data_stresses = outputs[:, stress_index]
-            axes.plot(
+            axis.plot(
                 data_inputs_axis,
                 data_stresses,
                 marker=plotter_config.data_marker,
@@ -910,13 +946,13 @@ def plot_model_stresses_linka(
             min_quantile_model_stresses = min_quantile_model_stresses.reshape((-1,))
             max_quantile_model_stresses = max_quantile_model_stresses.reshape((-1,))
 
-            axes.plot(
+            axis.plot(
                 model_inputs_axis,
                 mean_model_stresses,
                 color=plotter_config.model_color,
                 label=plotter_config.model_label,
             )
-            axes.fill_between(
+            axis.fill_between(
                 model_inputs_axis,
                 min_quantile_model_stresses,
                 max_quantile_model_stresses,
@@ -935,7 +971,7 @@ def plot_model_stresses_linka(
             for sample_counter, sample in enumerate(samples):
                 sample_plot = sample.reshape((-1,))
                 if sample_counter == (num_model_samples - 1):
-                    axes.plot(
+                    axis.plot(
                         model_inputs_axis,
                         sample_plot,
                         color=plotter_config.model_samples_color,
@@ -943,7 +979,7 @@ def plot_model_stresses_linka(
                         alpha=plotter_config.model_samples_alpha,
                         label=plotter_config.model_samples_label,
                     )
-                axes.plot(
+                axis.plot(
                     model_inputs_axis,
                     sample,
                     color=plotter_config.model_samples_color,
@@ -955,57 +991,44 @@ def plot_model_stresses_linka(
             x_ticks = np.linspace(
                 min_input,
                 max_input,
-                num=plotter_config.num_x_tick_labels,
+                num=plotter_config.num_x_ticks,
             )
             x_tick_labels = [str(round(tick, 3)) for tick in x_ticks]
-            axes.set_xticks(x_ticks)
-            axes.set_xticklabels(x_tick_labels)
+            axis.set_xticks(x_ticks)
+            axis.set_xticklabels(x_tick_labels)
+            axis.yaxis.set_major_locator(MaxNLocator(nbins=plotter_config.num_y_ticks))
 
             # axis labels
             input_label = data_config.input_labels[data_set_index]
-            axes.set_xlabel(input_label, **plotter_config.font)
+            axis.set_xlabel(input_label, **plotter_config.font)
             stress_label = data_config.stress_labels[stress_index]
-            axes.set_ylabel(stress_label, **plotter_config.font)
-            axes.tick_params(
+            axis.set_ylabel(stress_label, **plotter_config.font)
+            axis.tick_params(
                 axis="both",
                 which="minor",
                 labelsize=plotter_config.minor_tick_label_size,
             )
-            axes.tick_params(
+            axis.tick_params(
                 axis="both",
                 which="major",
                 labelsize=plotter_config.major_tick_label_size,
-            )
-
-            # legend
-            model_credible_interval = Patch(
-                facecolor=plotter_config.model_color,
-                alpha=plotter_config.model_credible_interval_alpha,
-                label="95%-credible interval",
-            )
-            data_legend_handles, _ = axes.get_legend_handles_labels()
-            legend_handles = data_legend_handles + [model_credible_interval]
-            axes.legend(
-                handles=legend_handles,
-                fontsize=plotter_config.font_size,
-                loc="upper left",
             )
 
             # text box ratios
             if is_principal_stress:
                 text = "\n".join(
                     (
-                        r"$\lambda_{f}=%.2f \, \lambda$" % (stretch_ratio_fiber,),
-                        r"$\lambda_{n}=%.2f \, \lambda$" % (stretch_ratio_normal,),
+                        r"$\lambda_{f}=1+%.2f(\lambda-1)$" % (stretch_ratio_fiber,),
+                        r"$\lambda_{n}=1+%.2f(\lambda-1)$" % (stretch_ratio_normal,),
                     )
                 )
                 text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
-                axes.text(
-                    0.55,
-                    0.96,
+                axis.text(
+                    0.04,
+                    0.60,
                     text,
-                    transform=axes.transAxes,
-                    fontsize=plotter_config.font_size,
+                    transform=axis.transAxes,
+                    fontsize=plotter_config.ratio_font_size,
                     verticalalignment="top",
                     bbox=text_properties,
                 )
@@ -1022,6 +1045,7 @@ def plot_model_stresses_linka(
                 device,
                 output_dim=stress_index,
             )
+            coverage_list += [coverage]
             r_squared = calculate_coefficient_of_determinant(
                 model,
                 parameter_samples,
@@ -1048,24 +1072,61 @@ def plot_model_stresses_linka(
                 )
             )
             text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
-            axes.text(
-                0.03,
-                0.65,
+            axis.text(
+                0.04,
+                0.95,
                 text,
-                transform=axes.transAxes,
+                transform=axis.transAxes,
                 fontsize=plotter_config.font_size,
                 verticalalignment="top",
                 bbox=text_properties,
             )
 
-            output_path = project_directory.create_output_file_path(
-                file_name=file_name, subdir_name=output_subdirectory
-            )
-            figure.savefig(output_path, bbox_inches="tight", dpi=plotter_config.dpi)
-            plt.clf()
+            if subfigure_counter == 15:
+                # legend
+                model_credible_interval = Patch(
+                    facecolor=plotter_config.model_color,
+                    alpha=plotter_config.model_credible_interval_alpha,
+                    label="95%-credible interval",
+                )
+                data_legend_handles, _ = axis.get_legend_handles_labels()
+                legend_handles = data_legend_handles + [model_credible_interval]
+                axis.legend(
+                    handles=legend_handles,
+                    fontsize=plotter_config.font_size,
+                    bbox_to_anchor=(1.15, 0.95),
+                    loc="upper left",
+                    borderaxespad=0.0,
+                )
+
+                mean_coverage = np.mean(np.array(coverage_list))
+                text = "\n".join(
+                    (
+                        "Mean"
+                        + r"$C_{95\%}=$"
+                        + r"${0}\%$".format(round(mean_coverage, 2)),
+                    )
+                )
+                text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+                axis.text(
+                    1.17,
+                    0.35,
+                    text,
+                    transform=axis.transAxes,
+                    fontsize=plotter_config.font_size,
+                    verticalalignment="top",
+                    bbox=text_properties,
+                )
+
+            subfigure_counter += 1
+            return subfigure_counter, coverage_list
 
         for stress_index in stress_indices:
-            plot_one_stress(stress_index)
+            subfigure_counter, coverage_list = plot_one_stress(
+                stress_index, subfigure_counter, coverage_list
+            )
+
+        return subfigure_counter, coverage_list
 
     input_sets, test_case_identifiers, output_sets = split_linka_inputs_and_outputs(
         inputs, test_cases, outputs, num_points_per_test_case
@@ -1084,9 +1145,21 @@ def plot_model_stresses_linka(
         data_config.stress_indices_list,
         range(data_config.num_data_sets),
     ):
-        plot_one_data_set(
-            input_set, test_case_identifier, output_set, stress_indices, data_set_index
+        subfigure_counter, coverage_list = plot_one_data_set(
+            input_set,
+            test_case_identifier,
+            output_set,
+            stress_indices,
+            data_set_index,
+            subfigure_counter,
+            coverage_list,
         )
+
+    output_path = project_directory.create_output_file_path(
+        file_name=file_name, subdir_name=output_subdirectory
+    )
+    figure.savefig(output_path, bbox_inches="tight", dpi=plotter_config.dpi)
+    plt.clf()
 
 
 def calculate_model_predictions(
@@ -1326,7 +1399,7 @@ def plot_gp_stresses_treloar(
     num_gp_samples = 8
     num_gp_inputs = 256
 
-    file_name = f"treloar_data.png"
+    file_name = f"gaussian_processes.png"
     figure, axes = plt.subplots(2, 2, figsize=config.figure_size)
     figure.tight_layout(pad=config.pad_subplots)
     axis_all = axes[1, 1]
@@ -1555,7 +1628,9 @@ def plot_gp_stresses_treloar(
             noise_stddevs,
             device,
         )
-        text = "\n".join((r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),))
+        text = "\n".join(
+            ("Mean" + r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),)
+        )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axis_all.text(
             0.03,
@@ -1588,21 +1663,27 @@ def plot_gp_stresses_treloar(
 class GPStressPlotterConfigLinka:
     def __init__(self) -> None:
         # label size
-        self.label_size = 10
+        self.label_size = 7
         # font size in legend
-        self.font_size = 12
+        self.font_size = 7
+        self.ratio_font_size = 5
         self.font: Dict[str, Any] = {"size": self.font_size}
+        # figure size
+        self.figure_size = (16 * cm_to_inch, 24 * cm_to_inch)
+        self.pad_subplots = 0.8
 
         ## ticks
-        self.num_x_tick_labels = 6
+        self.num_x_ticks = 5
+        self.num_y_ticks = 5
+
         # major ticks
-        self.major_tick_label_size = 12
-        self.major_ticks_size = self.font_size
+        self.major_tick_label_size = 7
+        self.major_ticks_size = 7
         self.major_ticks_width = 2
 
         # minor ticks
-        self.minor_tick_label_size = 12
-        self.minor_ticks_size = 12
+        self.minor_tick_label_size = 7
+        self.minor_ticks_size = 7
         self.minor_ticks_width = 1
 
         ### stresses
@@ -1646,6 +1727,14 @@ def plot_gp_stresses_linka(
     num_gp_samples = 8
     num_gp_inputs = 256
 
+    file_name = f"gaussian_processes.png"
+    figure, axes = plt.subplots(6, 3, figsize=plotter_config.figure_size)
+    figure.tight_layout(pad=plotter_config.pad_subplots)
+    axes[5, 1].axis("off")
+    axes[5, 2].axis("off")
+    subfigure_counter = 0
+    coverage_list: MetricList = []
+
     def plot_one_data_set(
         input_set: NPArray,
         test_case_identifier: int,
@@ -1653,16 +1742,20 @@ def plot_gp_stresses_linka(
         noise_stddev_set: NPArray,
         stress_indices: list[int],
         data_set_index: int,
-    ) -> None:
+        subfigure_counter: int,
+        coverage_list: MetricList,
+    ) -> tuple[int, MetricList]:
 
-        def plot_one_stress(stress_index: int) -> None:
+        def plot_one_stress(
+            stress_index: int, subfigure_counter: int, coverage_list: MetricList
+        ) -> tuple[int, MetricList]:
             is_principal_stress = stress_index in data_config.principal_stress_indices
-            stress_file_name_label = data_config.stress_file_name_labels[stress_index]
             test_case_set = np.full(
                 (len(input_set),), test_case_identifier, dtype=np.int64
             )
 
-            figure, axes = plt.subplots()
+            subfigure_indicex = data_config.subfigure_indices[subfigure_counter]
+            axis = axes[subfigure_indicex[0], subfigure_indicex[1]]
 
             if is_principal_stress:
                 principal_stretch_data_set_index = (
@@ -1686,23 +1779,19 @@ def plot_gp_stresses_linka(
                     _input_index = data_config.stretch_ratio_index_normal
                 max_input = np.amax(_gp_inputs[:, _input_index])
                 gp_inputs_axis = np.linspace(min_input, max_input, num_gp_inputs)
-                # file name
-                file_name = f"principalstress_{stress_file_name_label}_stretchratio_{stretch_ratio_fiber}_{stretch_ratio_normal}.pdf"
             else:
                 # model inputs
                 min_input = data_config.min_shear_strain
                 max_input = data_config.max_shear_strain
                 gp_inputs_axis = np.linspace(min_input, max_input, num_gp_inputs)
                 _gp_inputs = gp_inputs_axis.reshape((-1, 1))
-                # file name
-                file_name = f"shearstress_{stress_file_name_label}.pdf"
 
             # data points
             data_inputs_axis = np.linspace(
                 min_input, max_input, num_points_per_test_case
             )
             data_stresses = output_set[:, stress_index]
-            axes.plot(
+            axis.plot(
                 data_inputs_axis,
                 data_stresses,
                 marker=plotter_config.data_marker,
@@ -1749,13 +1838,13 @@ def plot_gp_stresses_linka(
             min_quantiles_plot = min_quantile_gp_stresses.reshape((-1,))
             max_quantiles_plot = max_quantile_gp_stresses.reshape((-1,))
 
-            axes.plot(
+            axis.plot(
                 gp_inputs_axis,
                 means_plot,
                 color=plotter_config.gp_color,
                 label=plotter_config.gp_mean_label,
             )
-            axes.fill_between(
+            axis.fill_between(
                 gp_inputs_axis,
                 min_quantiles_plot,
                 max_quantiles_plot,
@@ -1773,7 +1862,7 @@ def plot_gp_stresses_linka(
             )
             for sample_counter, sample in enumerate(samples):
                 if sample_counter == (num_gp_samples - 1):
-                    axes.plot(
+                    axis.plot(
                         gp_inputs_axis,
                         sample,
                         color=plotter_config.gp_samples_color,
@@ -1781,7 +1870,7 @@ def plot_gp_stresses_linka(
                         alpha=plotter_config.gp_samples_alpha,
                         label=plotter_config.gp_samples_label,
                     )
-                axes.plot(
+                axis.plot(
                     gp_inputs_axis,
                     sample,
                     color=plotter_config.gp_samples_color,
@@ -1793,57 +1882,44 @@ def plot_gp_stresses_linka(
             x_ticks = np.linspace(
                 min_input,
                 max_input,
-                num=plotter_config.num_x_tick_labels,
+                num=plotter_config.num_x_ticks,
             )
             x_tick_labels = [str(round(tick, 3)) for tick in x_ticks]
-            axes.set_xticks(x_ticks)
-            axes.set_xticklabels(x_tick_labels)
+            axis.set_xticks(x_ticks)
+            axis.set_xticklabels(x_tick_labels)
+            axis.yaxis.set_major_locator(MaxNLocator(nbins=plotter_config.num_y_ticks))
 
             # axis labels
             input_label = data_config.input_labels[data_set_index]
-            axes.set_xlabel(input_label, **plotter_config.font)
+            axis.set_xlabel(input_label, **plotter_config.font)
             stress_label = data_config.stress_labels[stress_index]
-            axes.set_ylabel(stress_label, **plotter_config.font)
-            axes.tick_params(
+            axis.set_ylabel(stress_label, **plotter_config.font)
+            axis.tick_params(
                 axis="both",
                 which="minor",
                 labelsize=plotter_config.minor_tick_label_size,
             )
-            axes.tick_params(
+            axis.tick_params(
                 axis="both",
                 which="major",
                 labelsize=plotter_config.major_tick_label_size,
-            )
-
-            # legend
-            model_credible_interval = Patch(
-                facecolor=plotter_config.gp_color,
-                alpha=plotter_config.gp_credible_interval_alpha,
-                label="95%-credible interval",
-            )
-            data_legend_handles, _ = axes.get_legend_handles_labels()
-            legend_handles = data_legend_handles + [model_credible_interval]
-            axes.legend(
-                handles=legend_handles,
-                fontsize=plotter_config.font_size,
-                loc="upper left",
             )
 
             # text box ratios
             if is_principal_stress:
                 text = "\n".join(
                     (
-                        r"$\lambda_{f}=%.2f \, \lambda$" % (stretch_ratio_fiber,),
-                        r"$\lambda_{n}=%.2f \, \lambda$" % (stretch_ratio_normal,),
+                        r"$\lambda_{f}=1+%.2f(\lambda-1)$" % (stretch_ratio_fiber,),
+                        r"$\lambda_{n}=1+%.2f(\lambda-1)$" % (stretch_ratio_normal,),
                     )
                 )
                 text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
-                axes.text(
-                    0.55,
-                    0.96,
+                axis.text(
+                    0.04,
+                    0.76,
                     text,
-                    transform=axes.transAxes,
-                    fontsize=plotter_config.font_size,
+                    transform=axis.transAxes,
+                    fontsize=plotter_config.ratio_font_size,
                     verticalalignment="top",
                     bbox=text_properties,
                 )
@@ -1857,26 +1933,64 @@ def plot_gp_stresses_linka(
                 device,
                 output_dim=stress_index,
             )
+            coverage_list += [coverage]
             text = "\n".join((r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),))
             text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
-            axes.text(
-                0.03,
-                0.65,
+            axis.text(
+                0.04,
+                0.95,
                 text,
-                transform=axes.transAxes,
+                transform=axis.transAxes,
                 fontsize=plotter_config.font_size,
                 verticalalignment="top",
                 bbox=text_properties,
             )
 
-            output_path = project_directory.create_output_file_path(
-                file_name=file_name, subdir_name=output_subdirectory
-            )
-            figure.savefig(output_path, bbox_inches="tight", dpi=plotter_config.dpi)
-            plt.clf()
+            # legend + overall coverage
+            if subfigure_counter == 15:
+                model_credible_interval = Patch(
+                    facecolor=plotter_config.gp_color,
+                    alpha=plotter_config.gp_credible_interval_alpha,
+                    label="95%-credible interval",
+                )
+                data_legend_handles, _ = axis.get_legend_handles_labels()
+                legend_handles = data_legend_handles + [model_credible_interval]
+                axis.legend(
+                    handles=legend_handles,
+                    fontsize=plotter_config.font_size,
+                    bbox_to_anchor=(1.15, 0.95),
+                    loc="upper left",
+                    borderaxespad=0.0,
+                )
+
+                mean_coverage = np.mean(np.array(coverage_list))
+                text = "\n".join(
+                    (
+                        "Mean"
+                        + r"$C_{95\%}=$"
+                        + r"${0}\%$".format(round(mean_coverage, 2)),
+                    )
+                )
+                text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+                axis.text(
+                    1.17,
+                    0.35,
+                    text,
+                    transform=axis.transAxes,
+                    fontsize=plotter_config.font_size,
+                    verticalalignment="top",
+                    bbox=text_properties,
+                )
+
+            subfigure_counter += 1
+            return subfigure_counter, coverage_list
 
         for stress_index in stress_indices:
-            plot_one_stress(stress_index)
+            subfigure_counter, coverage_list = plot_one_stress(
+                stress_index, subfigure_counter, coverage_list
+            )
+
+        return subfigure_counter, coverage_list
 
     input_sets, test_case_identifiers, output_sets = split_linka_inputs_and_outputs(
         inputs, test_cases, outputs, num_points_per_test_case
@@ -1900,14 +2014,22 @@ def plot_gp_stresses_linka(
         data_config.stress_indices_list,
         range(data_config.num_data_sets),
     ):
-        plot_one_data_set(
+        subfigure_counter, coverage_list = plot_one_data_set(
             input_set,
             test_case_identifier,
             output_set,
             noise_stddev_set,
             stress_indices,
             data_set_index,
+            subfigure_counter,
+            coverage_list,
         )
+
+    output_path = project_directory.create_output_file_path(
+        file_name=file_name, subdir_name=output_subdirectory
+    )
+    figure.savefig(output_path, bbox_inches="tight", dpi=plotter_config.dpi)
+    plt.clf()
 
 
 def calculate_gp_means(
