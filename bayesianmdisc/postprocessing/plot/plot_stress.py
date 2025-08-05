@@ -386,9 +386,9 @@ def plot_model_stresses_treloar(
         )
         text = "\n".join(
             (
-                "Mean" + r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
-                "Mean" + r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
-                "Mean" + r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
+                "Mean " + r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
+                "Mean " + r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
+                "Mean " + r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
             )
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
@@ -1102,7 +1102,7 @@ def plot_model_stresses_linka(
                 mean_coverage = np.mean(np.array(coverage_list))
                 text = "\n".join(
                     (
-                        "Mean"
+                        "Mean "
                         + r"$C_{95\%}=$"
                         + r"${0}\%$".format(round(mean_coverage, 2)),
                     )
@@ -1629,7 +1629,7 @@ def plot_gp_stresses_treloar(
             device,
         )
         text = "\n".join(
-            ("Mean" + r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),)
+            ("Mean " + r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),)
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axis_all.text(
@@ -1966,7 +1966,7 @@ def plot_gp_stresses_linka(
                 mean_coverage = np.mean(np.array(coverage_list))
                 text = "\n".join(
                     (
-                        "Mean"
+                        "Mean "
                         + r"$C_{95\%}=$"
                         + r"${0}\%$".format(round(mean_coverage, 2)),
                     )
