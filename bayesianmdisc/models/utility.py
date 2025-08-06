@@ -47,7 +47,7 @@ def load_model_state(
         output_directory,
         header=None,
         read_from_output_dir=True,
-    )
+    ).reshape((-1,))
     model.init_model_state(
         parameter_population_matrix=torch.from_numpy(population_matrix)
         .type(torch.get_default_dtype())

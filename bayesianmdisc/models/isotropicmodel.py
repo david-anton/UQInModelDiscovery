@@ -98,10 +98,12 @@ class SEF(Protocol):
 
     def deactivate_all_parameters(self) -> None: ...
 
-    def get_state(self) -> ParameterPopulationMatrix: ...
+    def get_state(self) -> tuple[ParameterPopulationMatrix, ParameterScales]: ...
 
     def init_state(
-        self, parameter_population_matrix: ParameterPopulationMatrix
+        self,
+        parameter_population_matrix: ParameterPopulationMatrix,
+        parameter_scales: ParameterScales,
     ) -> None: ...
 
 
@@ -803,13 +805,17 @@ class IsotropicModel:
     def reduce_model_to_parameter_names(self, parameter_names: ParameterNames) -> None:
         self._strain_energy_function.reduce_model_to_parameter_names(parameter_names)
 
-    def get_model_state(self) -> ParameterPopulationMatrix:
+    def get_model_state(self) -> tuple[ParameterPopulationMatrix, ParameterScales]:
         return self._strain_energy_function.get_state()
 
     def init_model_state(
-        self, parameter_population_matrix: ParameterPopulationMatrix
+        self,
+        parameter_population_matrix: ParameterPopulationMatrix,
+        parameter_scales: ParameterScales,
     ) -> None:
-        self._strain_energy_function.init_state(parameter_population_matrix)
+        self._strain_energy_function.init_state(
+            parameter_population_matrix, parameter_scales
+        )
 
     def set_output_dimension(self, output_dim: int) -> None:
         validate_stress_output_dimension(output_dim, self._allowed_output_dimensions)
