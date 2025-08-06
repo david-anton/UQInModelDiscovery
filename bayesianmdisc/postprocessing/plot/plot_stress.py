@@ -687,6 +687,7 @@ class LinkaDataConfig:
             self.num_data_sets_simple_shear + self.num_data_sets_biaxial_tension
         )
         self.min_principal_stretch = 1.0
+        self.max_principal_stretch = 1.1
         self.min_shear_strain = 0.0
         self.max_shear_strain = 0.5
         self.input_labels = [
@@ -883,8 +884,8 @@ def plot_model_stresses_linka(
         ) -> tuple[int, MetricList, OutputList, OutputList]:
             is_principal_stress = stress_index in data_config.principal_stress_indices
 
-            subfigure_indicex = data_config.subfigure_indices[subfigure_counter]
-            axis = axes[subfigure_indicex[0], subfigure_indicex[1]]
+            subfigure_indices = data_config.subfigure_indices[subfigure_counter]
+            axis = axes[subfigure_indices[0], subfigure_indices[1]]
 
             if is_principal_stress:
                 principal_stretch_data_set_index = (
@@ -903,23 +904,28 @@ def plot_model_stresses_linka(
                     stretch_ratio, num_model_inputs
                 )
                 # model inputs
-                min_input = data_config.min_principal_stretch
-                if stress_index == data_config.index_principal_stress_f:
-                    _input_index = data_config.stretch_ratio_index_fiber
-                elif stress_index == data_config.index_principal_stress_n:
-                    _input_index = data_config.stretch_ratio_index_normal
-                max_input = np.amax(_model_inputs[:, _input_index])
-                model_inputs_axis = np.linspace(min_input, max_input, num_model_inputs)
+                min_input_axis = data_config.min_principal_stretch
+                # if stress_index == data_config.index_principal_stress_f:
+                #     _input_index = data_config.stretch_ratio_index_fiber
+                # elif stress_index == data_config.index_principal_stress_n:
+                #     _input_index = data_config.stretch_ratio_index_normal
+                # max_input = np.amax(_model_inputs[:, _input_index])
+                max_input_axis = data_config.max_principal_stretch
+                model_inputs_axis = np.linspace(
+                    min_input_axis, max_input_axis, num_model_inputs
+                )
             else:
                 # model inputs
-                min_input = data_config.min_shear_strain
-                max_input = data_config.max_shear_strain
-                model_inputs_axis = np.linspace(min_input, max_input, num_model_inputs)
+                min_input_axis = data_config.min_shear_strain
+                max_input_axis = data_config.max_shear_strain
+                model_inputs_axis = np.linspace(
+                    min_input_axis, max_input_axis, num_model_inputs
+                )
                 _model_inputs = model_inputs_axis.reshape((-1, 1))
 
             # data points
             data_inputs_axis = np.linspace(
-                min_input, max_input, num_points_per_test_case
+                min_input_axis, max_input_axis, num_points_per_test_case
             )
             data_stresses = outputs[:, stress_index]
             axis.plot(
@@ -1025,8 +1031,8 @@ def plot_model_stresses_linka(
 
             # axis ticks
             x_ticks = np.linspace(
-                min_input,
-                max_input,
+                min_input_axis,
+                max_input_axis,
                 num=plotter_config.num_x_ticks,
             )
             x_tick_labels = [str(round(tick, 3)) for tick in x_ticks]
@@ -1854,8 +1860,8 @@ def plot_gp_stresses_linka(
                 (len(input_set),), test_case_identifier, dtype=np.int64
             )
 
-            subfigure_indicex = data_config.subfigure_indices[subfigure_counter]
-            axis = axes[subfigure_indicex[0], subfigure_indicex[1]]
+            subfigure_indices = data_config.subfigure_indices[subfigure_counter]
+            axis = axes[subfigure_indices[0], subfigure_indices[1]]
 
             if is_principal_stress:
                 principal_stretch_data_set_index = (
@@ -1872,23 +1878,28 @@ def plot_gp_stresses_linka(
                 ]
                 _gp_inputs = generate_principal_stretches(stretch_ratio, num_gp_inputs)
                 # model inputs
-                min_input = data_config.min_principal_stretch
-                if stress_index == data_config.index_principal_stress_f:
-                    _input_index = data_config.stretch_ratio_index_fiber
-                elif stress_index == data_config.index_principal_stress_n:
-                    _input_index = data_config.stretch_ratio_index_normal
-                max_input = np.amax(_gp_inputs[:, _input_index])
-                gp_inputs_axis = np.linspace(min_input, max_input, num_gp_inputs)
+                min_input_axis = data_config.min_principal_stretch
+                # if stress_index == data_config.index_principal_stress_f:
+                #     _input_index = data_config.stretch_ratio_index_fiber
+                # elif stress_index == data_config.index_principal_stress_n:
+                #     _input_index = data_config.stretch_ratio_index_normal
+                # max_input = np.amax(_gp_inputs[:, _input_index])
+                max_input_axis = data_config.max_principal_stretch
+                gp_inputs_axis = np.linspace(
+                    min_input_axis, max_input_axis, num_gp_inputs
+                )
             else:
                 # model inputs
-                min_input = data_config.min_shear_strain
-                max_input = data_config.max_shear_strain
-                gp_inputs_axis = np.linspace(min_input, max_input, num_gp_inputs)
+                min_input_axis = data_config.min_shear_strain
+                max_input_axis = data_config.max_shear_strain
+                gp_inputs_axis = np.linspace(
+                    min_input_axis, max_input_axis, num_gp_inputs
+                )
                 _gp_inputs = gp_inputs_axis.reshape((-1, 1))
 
             # data points
             data_inputs_axis = np.linspace(
-                min_input, max_input, num_points_per_test_case
+                min_input_axis, max_input_axis, num_points_per_test_case
             )
             data_stresses = output_set[:, stress_index]
             axis.plot(
@@ -1980,8 +1991,8 @@ def plot_gp_stresses_linka(
 
             # axis ticks
             x_ticks = np.linspace(
-                min_input,
-                max_input,
+                min_input_axis,
+                max_input_axis,
                 num=plotter_config.num_x_ticks,
             )
             x_tick_labels = [str(round(tick, 3)) for tick in x_ticks]
