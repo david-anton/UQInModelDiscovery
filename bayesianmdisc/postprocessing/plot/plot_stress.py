@@ -63,8 +63,8 @@ class ModelStressPlotterConfigTreloar:
         self.font_size = 7
         self.font: Dict[str, Any] = {"size": self.font_size}
         # figure size
-        self.figure_size = (16 * cm_to_inch, 14 * cm_to_inch)
-        self.pad_subplots = 1.0
+        self.figure_size = (16 * cm_to_inch, 12 * cm_to_inch)
+        self.pad_subplots = 0.8
 
         # ticks
         self.num_x_ticks = 5
@@ -1430,8 +1430,8 @@ class GPStressPlotterConfigTreloar:
         self.font_size = 7
         self.font: Dict[str, Any] = {"size": self.font_size}
         # figure size
-        self.figure_size = (16 * cm_to_inch, 14 * cm_to_inch)
-        self.pad_subplots = 1.0
+        self.figure_size = (16 * cm_to_inch, 12 * cm_to_inch)
+        self.pad_subplots = 0.8
 
         # ticks
         self.num_x_ticks = 5
