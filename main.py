@@ -107,7 +107,7 @@ if data_set_label == data_set_label_treloar:
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [20_000, 10_000]
     if strain_energy_function_type == "library":
-        total_sobol_index_thresshold = 1e-4
+        total_sobol_index_thresshold = 1e-2
     elif strain_energy_function_type == "cann":
         total_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_linka:
@@ -276,9 +276,7 @@ def plot_model_stresses(
         )
 
     def plot_linka() -> None:
-        plot_four_term_model = False
-        if data_set_label == data_set_label_synthetic_linka:
-            plot_four_term_model = True
+        plot_four_term_model = True
 
         plot_model_stresses_linka(
             model=cast(OrthotropicCANN, model),
@@ -409,7 +407,7 @@ if retrain_models:
             elif data_set_label == data_set_label_linka:
                 factor_length_scales = 0.6
             elif data_set_label == data_set_label_synthetic_linka:
-                factor_length_scales = 0.4
+                factor_length_scales = 0.6
 
             def optimize_hyperparameters() -> None:
                 return optimize_gp_hyperparameters(
