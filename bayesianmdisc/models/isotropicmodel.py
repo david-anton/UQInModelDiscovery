@@ -114,12 +114,13 @@ class LibrarySEF:
         self._mr_exponents = self._determine_mr_exponents()
         self._num_regular_negative_ogden_terms = 4
         self._num_regular_positive_ogden_terms = 4
-        self._min_regular_ogden_exponent = torch.tensor(-1.0, device=self._device)
-        self._max_regular_ogden_exponent = torch.tensor(1.0, device=self._device)
+        self._min_regular_ogden_exponent = torch.tensor(-5.0, device=self._device)
+        self._max_regular_ogden_exponent = torch.tensor(5.0, device=self._device)
         self._additional_ogden_terms: list[float] = []
         self._num_additional_ogden_terms = len(self._additional_ogden_terms)
         self._num_ogden_terms = self._determine_number_of_ogden_terms()
         self._ogden_exponents = self._determine_ogden_exponents()
+        print(self._ogden_exponents)
         self._num_ln_feature_terms = 1
         (
             self._num_mr_parameters,
@@ -267,14 +268,17 @@ class LibrarySEF:
     def _determine_ogden_exponents(self) -> OgdenExponents:
         negative_exponents = torch.linspace(
             start=self._min_regular_ogden_exponent,
-            end=0.0,
-            steps=self._num_regular_negative_ogden_terms + 1,
+            end=-2.0,
+            steps=self._num_regular_negative_ogden_terms,
         )[:-1].tolist()
+        negative_exponents += [-1.0]
+
         positive_exponents = torch.linspace(
-            start=0.0,
+            start=2.0,
             end=self._max_regular_ogden_exponent,
-            steps=self._num_regular_positive_ogden_terms + 1,
+            steps=self._num_regular_positive_ogden_terms,
         )[1:].tolist()
+        positive_exponents = [1.0] + positive_exponents
         return negative_exponents + positive_exponents + self._additional_ogden_terms
 
     def _determine_number_of_parameters(
