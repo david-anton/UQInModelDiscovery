@@ -64,7 +64,8 @@ class ModelStressPlotterConfigTreloar:
         self.font: Dict[str, Any] = {"size": self.font_size}
         # figure size
         self.figure_size = (16 * cm_to_inch, 12 * cm_to_inch)
-        self.pad_subplots = 0.8
+        self.pad_subplots_width = 0.8
+        self.pad_subplots_hight = 1.2
 
         # ticks
         self.num_x_ticks = 5
@@ -134,7 +135,9 @@ def plot_model_stresses_treloar(
 
     file_name = f"model.png"
     figure, axes = plt.subplots(2, 2, figsize=config.figure_size)
-    figure.tight_layout(pad=config.pad_subplots)
+    figure.tight_layout(
+        w_pad=config.pad_subplots_width, h_pad=config.pad_subplots_hight
+    )
     axis_all = axes[1, 1]
 
     def plot_one_input_output_set(
@@ -1428,67 +1431,9 @@ def calculate_root_mean_squared_error(
 ################################################################################
 
 
-class GPStressPlotterConfigTreloar:
+class GPStressPlotterConfigTreloar(ModelStressPlotterConfigTreloar):
     def __init__(self) -> None:
-        # label size
-        self.label_size = 7
-        # font size in legend
-        self.font_size = 7
-        self.font: Dict[str, Any] = {"size": self.font_size}
-        # figure size
-        self.figure_size = (16 * cm_to_inch, 12 * cm_to_inch)
-        self.pad_subplots = 0.8
-
-        # ticks
-        self.num_x_ticks = 5
-        self.num_y_ticks = 5
-
-        # major ticks
-        self.major_tick_label_size = 7
-        self.major_ticks_size = 7
-        self.major_ticks_width = 2
-
-        # minor ticks
-        self.minor_tick_label_size = 7
-        self.minor_ticks_size = 7
-        self.minor_ticks_width = 1
-
-        ### stresses
-        # data
-        self.data_label_ut = "data UT"
-        self.data_label_ebt = "data EBT"
-        self.data_label_ps = "data PS"
-        self.data_marker_ut = "x"
-        self.data_marker_ebt = "x"
-        self.data_marker_ps = "x"
-        self.data_color_ut = "tab:blue"
-        self.data_color_ebt = "tab:purple"
-        self.data_color_ps = "tab:green"
-        self.data_marker_size = 5
-        ### gp
-        self.gp_color_ut = "tab:blue"
-        self.gp_color_ebt = "tab:purple"
-        self.gp_color_ps = "tab:green"
-        # mean
-        self.gp_mean_label_ut = "mean UT"
-        self.gp_mean_label_ebt = "mean EBT"
-        self.gp_mean_label_ps = "mean PS"
-        self.gp_mean_linewidth = 1.0
-        # credible interval
-        self.gp_credible_interval_alpha = 0.4
-        # samples
-        self.gp_samples_label_ut = "samples UT"
-        self.gp_samples_label_ebt = "samples EBT"
-        self.gp_samples_label_ps = "samples PS"
-        self.gp_samples_color = "tab:gray"
-        self.gp_samples_linewidth = 1.0
-        self.gp_samples_alpha = 0.2
-
-        # scientific notation
-        self.scientific_notation_size = self.font_size
-
-        # save options
-        self.dpi = 300
+        super().__init__()
 
 
 def plot_gp_stresses_treloar(
@@ -1507,7 +1452,9 @@ def plot_gp_stresses_treloar(
 
     file_name = f"gaussian_processes.png"
     figure, axes = plt.subplots(2, 2, figsize=config.figure_size)
-    figure.tight_layout(pad=config.pad_subplots)
+    figure.tight_layout(
+        w_pad=config.pad_subplots_width, h_pad=config.pad_subplots_hight
+    )
     axis_all = axes[1, 1]
 
     def plot_one_input_output_set(
@@ -1521,28 +1468,28 @@ def plot_gp_stresses_treloar(
             data_marker = config.data_marker_ut
             data_color = config.data_color_ut
             data_label = config.data_label_ut
-            gp_color = config.gp_color_ut
-            gp_color_credible_interval = config.gp_color_ut
-            gp_label_mean = config.gp_mean_label_ut
-            gp_label_samples = config.gp_samples_label_ut
+            gp_color = config.model_color_ut
+            gp_color_credible_interval = config.model_color_ut
+            gp_label_mean = config.model_mean_label_ut
+            gp_label_samples = config.model_samples_label_ut
         elif test_case_identifier == test_case_identifier_equibiaxial_tension:
             axis = axes[0, 1]
             data_marker = config.data_marker_ebt
             data_color = config.data_color_ebt
             data_label = config.data_label_ebt
-            gp_color = config.gp_color_ebt
-            gp_color_credible_interval = config.gp_color_ebt
-            gp_label_mean = config.gp_mean_label_ebt
-            gp_label_samples = config.gp_samples_label_ebt
+            gp_color = config.model_color_ebt
+            gp_color_credible_interval = config.model_color_ebt
+            gp_label_mean = config.model_mean_label_ebt
+            gp_label_samples = config.model_samples_label_ebt
         else:
             axis = axes[1, 0]
             data_marker = config.data_marker_ps
             data_color = config.data_color_ps
             data_label = config.data_label_ps
-            gp_color = config.gp_color_ps
-            gp_color_credible_interval = config.gp_color_ps
-            gp_label_mean = config.gp_mean_label_ps
-            gp_label_samples = config.gp_samples_label_ps
+            gp_color = config.model_color_ps
+            gp_color_credible_interval = config.model_color_ps
+            gp_label_mean = config.model_mean_label_ps
+            gp_label_samples = config.model_samples_label_ps
 
         test_case_set = np.full((len(input_set),), test_case_identifier, dtype=np.int64)
 
@@ -1609,7 +1556,7 @@ def plot_gp_stresses_treloar(
             gp_stretches_plot,
             means_plot,
             color=gp_color,
-            linewidth=config.gp_mean_linewidth,
+            linewidth=config.model_mean_linewidth,
             label=gp_label_mean,
         )
         axis.fill_between(
@@ -1617,13 +1564,13 @@ def plot_gp_stresses_treloar(
             min_quantiles_plot,
             max_quantiles_plot,
             color=gp_color_credible_interval,
-            alpha=config.gp_credible_interval_alpha,
+            alpha=config.model_credible_interval_alpha,
         )
         axis_all.plot(
             gp_stretches_plot,
             means_plot,
             color=gp_color,
-            linewidth=config.gp_mean_linewidth,
+            linewidth=config.model_mean_linewidth,
             label=gp_label_mean,
         )
         axis_all.fill_between(
@@ -1631,7 +1578,7 @@ def plot_gp_stresses_treloar(
             min_quantiles_plot,
             max_quantiles_plot,
             color=gp_color_credible_interval,
-            alpha=config.gp_credible_interval_alpha,
+            alpha=config.model_credible_interval_alpha,
         )
 
         samples = sample_from_gp(
@@ -1642,17 +1589,17 @@ def plot_gp_stresses_treloar(
                 axis.plot(
                     gp_stretches_plot,
                     sample,
-                    color=config.gp_samples_color,
-                    linewidth=config.gp_samples_linewidth,
-                    alpha=config.gp_samples_alpha,
+                    color=config.model_samples_color,
+                    linewidth=config.model_samples_linewidth,
+                    alpha=config.model_samples_alpha,
                     label=gp_label_samples,
                 )
             axis.plot(
                 gp_stretches_plot,
                 sample,
-                color=config.gp_samples_color,
-                linewidth=config.gp_samples_linewidth,
-                alpha=config.gp_samples_alpha,
+                color=config.model_samples_color,
+                linewidth=config.model_samples_linewidth,
+                alpha=config.model_samples_alpha,
             )
 
         # axis ticks
@@ -1675,7 +1622,7 @@ def plot_gp_stresses_treloar(
         # legend
         model_credible_interval = Patch(
             facecolor=gp_color_credible_interval,
-            alpha=config.gp_credible_interval_alpha,
+            alpha=config.model_credible_interval_alpha,
             label="95%-credible interval",
         )
         data_legend_handles, _ = axis.get_legend_handles_labels()
