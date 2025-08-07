@@ -221,7 +221,7 @@ class IndicesDevelopmentPlotterConfigLinka:
         self.font_size = 7
         self.font: Dict[str, Any] = {"size": self.font_size}
         # figure size
-        self.figure_size = (16 * cm_to_inch, 24 * cm_to_inch)
+        self.figure_size = (16 * cm_to_inch, 20 * cm_to_inch)
         self.pad_subplots_hight = 2.0
         self.pad_subplots_width = -0.5
 
