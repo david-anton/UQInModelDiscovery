@@ -103,6 +103,7 @@ class ModelStressPlotterConfigTreloar:
         self.model_mean_label_ps = "mean PS"
         self.model_mean_linewidth = 1.0
         # credible interval
+        self.model_credible_interval_label = "95%-credible interval"
         self.model_credible_interval_alpha = 0.4
         # samples
         self.model_samples_label_ut = "samples UT"
@@ -295,7 +296,7 @@ def plot_model_stresses_treloar(
         model_credible_interval = Patch(
             facecolor=model_color_credible_interval,
             alpha=config.model_credible_interval_alpha,
-            label="95%-credible interval",
+            label=config.model_credible_interval_label,
         )
         data_legend_handles, _ = axis.get_legend_handles_labels()
         legend_handles = data_legend_handles + [
@@ -452,6 +453,7 @@ class ModelStressPlotterConfigKawabata:
         # model
         self.model_label = "model"
         # credible interval
+        self.model_credible_interval_label = "95%-credible interval"
         self.model_credible_interval_alpha = 0.4
 
         # legend
@@ -602,7 +604,7 @@ def plot_model_stresses_kawabata(
         model_credible_interval = Patch(
             facecolor=config.legend_color,
             alpha=config.model_credible_interval_alpha,
-            label="95%-credible interval",
+            label=config.model_credible_interval_label,
         )
         data_legend_handles, _ = axes.get_legend_handles_labels()
         legend_handles = [
@@ -764,22 +766,23 @@ class LinkaDataConfig:
         )
         self.subfigure_indices = [
             [0, 0],
+            [1, 0],
+            [2, 0],
+            [3, 0],
+            [4, 0],
+            [5, 0],
             [0, 1],
             [0, 2],
-            [1, 0],
             [1, 1],
             [1, 2],
-            [2, 0],
             [2, 1],
             [2, 2],
-            [3, 0],
             [3, 1],
             [3, 2],
-            [4, 0],
             [4, 1],
             [4, 2],
-            [5, 0],
         ]
+        self.subfigure_indices_with_xaxis = [0, 1, 2, 3, 4, 5, 14, 15]
 
 
 class ModelStressPlotterConfigLinka:
@@ -793,7 +796,8 @@ class ModelStressPlotterConfigLinka:
 
         # figure size
         self.figure_size = (16 * cm_to_inch, 24 * cm_to_inch)
-        self.pad_subplots = 0.8
+        self.pad_subplots_width = 0.8
+        self.pad_subplots_hight = 1.2
 
         ## ticks
         self.num_x_ticks = 5
@@ -816,15 +820,16 @@ class ModelStressPlotterConfigLinka:
         self.data_color = "tab:blue"
         self.data_marker_size = 5
         # model
-        self.model_label = "mean"
         self.model_color = "tab:blue"
+        self.model_mean_label = "mean"
         # four term model
-        self.four_term_model_label = "Four-term-model (Martonová et al., 2024)"
+        self.four_term_model_label = "four-term-model (Martonová et al., 2024)"
         self.four_term_model_color = "tab:red"
-        self.four_term_model_linestyle = "dashed"
+        self.four_term_model_linestyle = (0, (5, 5))  # "dashed"
         self.four_term_model_linewidth = 1.0
         self.four_term_model_alpha = 0.8
         # credible interval
+        self.model_credible_interval_label = "95%-credible interval"
         self.model_credible_interval_alpha = 0.4
         # samples
         self.model_samples_label = "samples"
@@ -858,7 +863,9 @@ def plot_model_stresses_linka(
 
     file_name = f"model.png"
     figure, axes = plt.subplots(6, 3, figsize=plotter_config.figure_size)
-    figure.tight_layout(pad=plotter_config.pad_subplots)
+    figure.tight_layout(
+        w_pad=plotter_config.pad_subplots_width, h_pad=plotter_config.pad_subplots_hight
+    )
     axes[5, 1].axis("off")
     axes[5, 2].axis("off")
     subfigure_counter = 0
@@ -973,7 +980,7 @@ def plot_model_stresses_linka(
                 model_inputs_axis,
                 mean_model_stresses,
                 color=plotter_config.model_color,
-                label=plotter_config.model_label,
+                label=plotter_config.model_mean_label,
             )
             axis.fill_between(
                 model_inputs_axis,
@@ -1032,22 +1039,27 @@ def plot_model_stresses_linka(
                     linewidth=plotter_config.four_term_model_linewidth,
                 )
 
-            # axis ticks
+            # x axis
             x_ticks = np.linspace(
                 min_input_axis,
                 max_input_axis,
                 num=plotter_config.num_x_ticks,
             )
-            x_tick_labels = [str(round(tick, 3)) for tick in x_ticks]
             axis.set_xticks(x_ticks)
-            axis.set_xticklabels(x_tick_labels)
-            axis.yaxis.set_major_locator(MaxNLocator(nbins=plotter_config.num_y_ticks))
+            if subfigure_counter in data_config.subfigure_indices_with_xaxis:
+                x_tick_labels = [str(round(tick, 3)) for tick in x_ticks]
+                axis.set_xticklabels(x_tick_labels)
+                input_label = data_config.input_labels[data_set_index]
+                axis.set_xlabel(input_label, **plotter_config.font)
+            else:
+                axis.set_xticklabels([])
 
-            # axis labels
-            input_label = data_config.input_labels[data_set_index]
-            axis.set_xlabel(input_label, **plotter_config.font)
+            # y axis
+            axis.yaxis.set_major_locator(MaxNLocator(nbins=plotter_config.num_y_ticks))
             stress_label = data_config.stress_labels[stress_index]
             axis.set_ylabel(stress_label, **plotter_config.font)
+
+            # axis
             axis.tick_params(
                 axis="both",
                 which="minor",
@@ -1063,14 +1075,14 @@ def plot_model_stresses_linka(
             if is_principal_stress:
                 text = "\n".join(
                     (
-                        r"$\lambda_{f}=1+%.2f(\lambda-1)$" % (stretch_ratio_fiber,),
-                        r"$\lambda_{n}=1+%.2f(\lambda-1)$" % (stretch_ratio_normal,),
+                        r"$\lambda_{f}^{*}=%.2f$" % (stretch_ratio_fiber,),
+                        r"$\lambda_{n}^{*}=%.2f$" % (stretch_ratio_normal,),
                     )
                 )
                 text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
                 axis.text(
                     0.04,
-                    0.60,
+                    0.57,
                     text,
                     transform=axis.transAxes,
                     fontsize=plotter_config.ratio_font_size,
@@ -1119,7 +1131,7 @@ def plot_model_stresses_linka(
             text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
             axis.text(
                 0.04,
-                0.95,
+                0.94,
                 text,
                 transform=axis.transAxes,
                 fontsize=plotter_config.font_size,
@@ -1140,12 +1152,12 @@ def plot_model_stresses_linka(
             )
             mean_model_output_list += [mean_model_output]
 
-            if subfigure_counter == 15:
+            if subfigure_counter == 5:
                 # legend
                 model_credible_interval = Patch(
                     facecolor=plotter_config.model_color,
                     alpha=plotter_config.model_credible_interval_alpha,
-                    label="95%-credible interval",
+                    label=plotter_config.model_credible_interval_label,
                 )
                 # data_legend_handles, _ = axis.get_legend_handles_labels()
                 # legend_handles = data_legend_handles.insert(3, model_credible_interval)
@@ -1623,7 +1635,7 @@ def plot_gp_stresses_treloar(
         model_credible_interval = Patch(
             facecolor=gp_color_credible_interval,
             alpha=config.model_credible_interval_alpha,
-            label="95%-credible interval",
+            label=config.model_credible_interval_label,
         )
         data_legend_handles, _ = axis.get_legend_handles_labels()
         legend_handles = data_legend_handles + [
@@ -1713,55 +1725,9 @@ def plot_gp_stresses_treloar(
     plt.clf()
 
 
-class GPStressPlotterConfigLinka:
+class GPStressPlotterConfigLinka(ModelStressPlotterConfigLinka):
     def __init__(self) -> None:
-        # label size
-        self.label_size = 7
-        # font size in legend
-        self.font_size = 7
-        self.ratio_font_size = 5
-        self.font: Dict[str, Any] = {"size": self.font_size}
-        # figure size
-        self.figure_size = (16 * cm_to_inch, 24 * cm_to_inch)
-        self.pad_subplots = 0.8
-
-        ## ticks
-        self.num_x_ticks = 5
-        self.num_y_ticks = 5
-
-        # major ticks
-        self.major_tick_label_size = 7
-        self.major_ticks_size = 7
-        self.major_ticks_width = 2
-
-        # minor ticks
-        self.minor_tick_label_size = 7
-        self.minor_ticks_size = 7
-        self.minor_ticks_width = 1
-
-        ### stresses
-        # data
-        self.data_label = "data"
-        self.data_marker = "x"
-        self.data_color = "tab:blue"
-        self.data_marker_size = 5
-        ### gp
-        self.gp_color = "tab:blue"
-        # mean
-        self.gp_mean_label = "mean"
-        # credible interval
-        self.gp_credible_interval_alpha = 0.4
-        # samples
-        self.gp_samples_label = "samples"
-        self.gp_samples_color = "tab:gray"
-        self.gp_samples_linewidth = 1.0
-        self.gp_samples_alpha = 0.2
-
-        # scientific notation
-        self.scientific_notation_size = self.font_size
-
-        # save options
-        self.dpi = 300
+        super().__init__()
 
 
 def plot_gp_stresses_linka(
@@ -1782,7 +1748,9 @@ def plot_gp_stresses_linka(
 
     file_name = f"gaussian_processes.png"
     figure, axes = plt.subplots(6, 3, figsize=plotter_config.figure_size)
-    figure.tight_layout(pad=plotter_config.pad_subplots)
+    figure.tight_layout(
+        w_pad=plotter_config.pad_subplots_width, h_pad=plotter_config.pad_subplots_hight
+    )
     axes[5, 1].axis("off")
     axes[5, 2].axis("off")
     subfigure_counter = 0
@@ -1899,15 +1867,15 @@ def plot_gp_stresses_linka(
             axis.plot(
                 gp_inputs_axis,
                 means_plot,
-                color=plotter_config.gp_color,
-                label=plotter_config.gp_mean_label,
+                color=plotter_config.model_color,
+                label=plotter_config.model_mean_label,
             )
             axis.fill_between(
                 gp_inputs_axis,
                 min_quantiles_plot,
                 max_quantiles_plot,
-                color=plotter_config.gp_color,
-                alpha=plotter_config.gp_credible_interval_alpha,
+                color=plotter_config.model_color,
+                alpha=plotter_config.model_credible_interval_alpha,
             )
 
             samples = sample_from_gp(
@@ -1923,35 +1891,40 @@ def plot_gp_stresses_linka(
                     axis.plot(
                         gp_inputs_axis,
                         sample,
-                        color=plotter_config.gp_samples_color,
-                        linewidth=plotter_config.gp_samples_linewidth,
-                        alpha=plotter_config.gp_samples_alpha,
-                        label=plotter_config.gp_samples_label,
+                        color=plotter_config.model_samples_color,
+                        linewidth=plotter_config.model_samples_linewidth,
+                        alpha=plotter_config.model_samples_alpha,
+                        label=plotter_config.model_samples_label,
                     )
                 axis.plot(
                     gp_inputs_axis,
                     sample,
-                    color=plotter_config.gp_samples_color,
-                    linewidth=plotter_config.gp_samples_linewidth,
-                    alpha=plotter_config.gp_samples_alpha,
+                    color=plotter_config.model_samples_color,
+                    linewidth=plotter_config.model_samples_linewidth,
+                    alpha=plotter_config.model_samples_alpha,
                 )
 
-            # axis ticks
+            # x axis
             x_ticks = np.linspace(
                 min_input_axis,
                 max_input_axis,
                 num=plotter_config.num_x_ticks,
             )
-            x_tick_labels = [str(round(tick, 3)) for tick in x_ticks]
             axis.set_xticks(x_ticks)
-            axis.set_xticklabels(x_tick_labels)
-            axis.yaxis.set_major_locator(MaxNLocator(nbins=plotter_config.num_y_ticks))
+            if subfigure_counter in data_config.subfigure_indices_with_xaxis:
+                x_tick_labels = [str(round(tick, 3)) for tick in x_ticks]
+                axis.set_xticklabels(x_tick_labels)
+                input_label = data_config.input_labels[data_set_index]
+                axis.set_xlabel(input_label, **plotter_config.font)
+            else:
+                axis.set_xticklabels([])
 
-            # axis labels
-            input_label = data_config.input_labels[data_set_index]
-            axis.set_xlabel(input_label, **plotter_config.font)
+            # y axis
+            axis.yaxis.set_major_locator(MaxNLocator(nbins=plotter_config.num_y_ticks))
             stress_label = data_config.stress_labels[stress_index]
             axis.set_ylabel(stress_label, **plotter_config.font)
+
+            # axis
             axis.tick_params(
                 axis="both",
                 which="minor",
@@ -1967,14 +1940,14 @@ def plot_gp_stresses_linka(
             if is_principal_stress:
                 text = "\n".join(
                     (
-                        r"$\lambda_{f}=1+%.2f(\lambda-1)$" % (stretch_ratio_fiber,),
-                        r"$\lambda_{n}=1+%.2f(\lambda-1)$" % (stretch_ratio_normal,),
+                        r"$\lambda_{f}^{*}=%.2f$" % (stretch_ratio_fiber,),
+                        r"$\lambda_{n}^{*}=%.2f$" % (stretch_ratio_normal,),
                     )
                 )
                 text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
                 axis.text(
                     0.04,
-                    0.76,
+                    0.77,
                     text,
                     transform=axis.transAxes,
                     fontsize=plotter_config.ratio_font_size,
@@ -1996,7 +1969,7 @@ def plot_gp_stresses_linka(
             text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
             axis.text(
                 0.04,
-                0.95,
+                0.94,
                 text,
                 transform=axis.transAxes,
                 fontsize=plotter_config.font_size,
@@ -2005,11 +1978,11 @@ def plot_gp_stresses_linka(
             )
 
             # legend + overall coverage
-            if subfigure_counter == 15:
+            if subfigure_counter == 5:
                 model_credible_interval = Patch(
-                    facecolor=plotter_config.gp_color,
-                    alpha=plotter_config.gp_credible_interval_alpha,
-                    label="95%-credible interval",
+                    facecolor=plotter_config.model_color,
+                    alpha=plotter_config.model_credible_interval_alpha,
+                    label=plotter_config.model_credible_interval_label,
                 )
                 data_legend_handles, _ = axis.get_legend_handles_labels()
                 legend_handles = data_legend_handles + [model_credible_interval]
