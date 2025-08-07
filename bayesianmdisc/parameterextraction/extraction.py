@@ -1,5 +1,6 @@
-from typing import cast, TypeAlias
 import math
+from typing import TypeAlias, cast
+
 import torch
 import torch.nn as nn
 from torch.func import grad, vmap
@@ -24,8 +25,8 @@ from bayesianmdisc.normalizingflows import (
 )
 from bayesianmdisc.parameterextraction.parameterdistributions import (
     NormalizingFlowParameterDistribution,
-    create_parameter_distribution,
     ParameterDistribution,
+    create_parameter_distribution,
 )
 from bayesianmdisc.postprocessing.plot import (
     HistoryPlotterConfig,

@@ -17,27 +17,25 @@ from bayesianmdisc.data import (
     TreloarDataSet,
     add_noise_to_data,
     determine_heteroscedastic_noise,
-    interpolate_heteroscedastic_noise,
     validate_data,
 )
 from bayesianmdisc.datasettings import (
-    create_four_terms_linka_model_parameters,
     assemble_input_mask_for_treloar,
     assemble_input_masks_for_linka,
+    create_four_terms_linka_model_parameters,
     data_set_label_kawabata,
     data_set_label_linka,
     data_set_label_synthetic_linka,
     data_set_label_treloar,
 )
+from bayesianmdisc.errors import MainError
 from bayesianmdisc.gps import (
     GP,
     GaussianProcess,
     IndependentMultiOutputGP,
     condition_gp,
     create_scaled_rbf_gaussian_process,
-    load_gp,
     optimize_gp_hyperparameters,
-    save_gp,
 )
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import (
@@ -52,14 +50,7 @@ from bayesianmdisc.models import (
     save_model_state,
     select_model_through_sobol_sensitivity_analysis,
 )
-from bayesianmdisc.errors import MainError
-from bayesianmdisc.normalizingflows import (
-    FitNormalizingFlowConfig,
-    LoadNormalizingFlowConfig,
-    NormalizingFlowDistribution,
-    fit_normalizing_flow,
-    load_normalizing_flow,
-)
+from bayesianmdisc.normalizingflows import NormalizingFlowDistribution
 from bayesianmdisc.parameterextraction import (
     extract_gp_inducing_parameter_distribution,
     load_normalizing_flow_parameter_distribution,
@@ -72,13 +63,13 @@ from bayesianmdisc.postprocessing.plot import (
     plot_model_stresses_kawabata,
     plot_model_stresses_linka,
     plot_model_stresses_treloar,
-    plot_sobol_indice_paths_treloar,
     plot_sobol_indice_paths_linka,
+    plot_sobol_indice_paths_treloar,
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_synthetic_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings

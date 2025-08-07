@@ -9,9 +9,9 @@ from bayesianmdisc.errors import GPError
 from bayesianmdisc.gps.base import (
     GPLikelihoodsTuple,
     GPMultivariateNormal,
+    InputMask,
     NamedParameters,
     TrainingDataTuple,
-    InputMask,
     validate_likelihood_noise_variance,
     validate_likelihoods,
     validate_training_data,

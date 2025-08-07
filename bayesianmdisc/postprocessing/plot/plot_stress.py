@@ -14,6 +14,7 @@ from bayesianmdisc.data.linkaheartdataset import (
     assemble_flattened_deformation_gradients,
     generate_principal_stretches,
 )
+from bayesianmdisc.datasettings import create_four_terms_linka_model_parameters
 from bayesianmdisc.errors import PlotterError
 from bayesianmdisc.gps.base import GPMultivariateNormal
 from bayesianmdisc.gps.gp import GP
@@ -40,7 +41,6 @@ from bayesianmdisc.testcases import (
     test_case_identifier_uniaxial_tension,
 )
 from bayesianmdisc.utility import from_numpy_to_torch, from_torch_to_numpy
-from bayesianmdisc.datasettings import create_four_terms_linka_model_parameters
 
 GaussianProcess: TypeAlias = GP | IndependentMultiOutputGP
 MetricList: TypeAlias = list[float]

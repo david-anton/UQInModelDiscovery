@@ -3,7 +3,7 @@ from typing import TypeAlias
 
 import torch
 
-from .customtypes import Tensor, Device
+from .customtypes import Device, Tensor
 from .errors import DataError
 from .testcases import (
     TestCaseIdentifier,

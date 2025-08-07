@@ -5,8 +5,8 @@ from .plot_history import (
     plot_statistical_loss_history,
 )
 from .plot_sobol_indices import (
-    plot_sobol_indice_paths_treloar,
     plot_sobol_indice_paths_linka,
+    plot_sobol_indice_paths_treloar,
 )
 from .plot_stress import (
     plot_gp_stresses_linka,

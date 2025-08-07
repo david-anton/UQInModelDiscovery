@@ -2,7 +2,7 @@ from typing import Protocol
 
 import torch
 
-from bayesianmdisc.customtypes import TensorSize, Tensor
+from bayesianmdisc.customtypes import Tensor, TensorSize
 from bayesianmdisc.errors import OutputSelectorError
 from bayesianmdisc.models.base import OutputSelectionMask, StressOutputs
 
