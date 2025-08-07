@@ -73,7 +73,7 @@ from bayesianmdisc.postprocessing.plot import (
     plot_model_stresses_linka,
     plot_model_stresses_treloar,
     plot_sobol_indice_paths_treloar,
-    plot_sobol_indice_statistics,
+    plot_sobol_indice_paths_linka,
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
@@ -302,25 +302,28 @@ def plot_model_stresses(
         plot_linka()
 
 
-def plot_relevenat_sobol_indices_results(
+def plot_sobol_indices_results(
     relevant_parameter_indices: list[int],
     data_set_label: str,
-    num_outputs: int,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
 ) -> None:
-    plot_sobol_indice_statistics(
-        relevant_parameter_indices=relevant_parameter_indices,
-        num_outputs=num_outputs,
-        output_subdirectory=output_subdirectory,
-        project_directory=project_directory,
-    )
     if data_set_label == data_set_label_treloar:
         plot_sobol_indice_paths_treloar(
             relevant_parameter_indices=relevant_parameter_indices,
             inputs=from_torch_to_numpy(inputs),
             test_cases=from_torch_to_numpy(test_cases),
             outputs=from_torch_to_numpy(outputs),
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+        )
+    elif (
+        data_set_label == data_set_label_linka
+        or data_set_label == data_set_label_synthetic_linka
+    ):
+        plot_sobol_indice_paths_linka(
+            relevant_parameter_indices=relevant_parameter_indices,
+            num_points_per_testcase=num_points_per_test_case,
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
         )
@@ -562,10 +565,9 @@ if retrain_models:
             project_directory=project_directory,
             device=device,
         )
-        plot_relevenat_sobol_indices_results(
+        plot_sobol_indices_results(
             relevant_parameter_indices=model.get_active_parameter_indices(),
             data_set_label=data_set_label,
-            num_outputs=model.output_dim,
             output_subdirectory=output_subdirectory_sensitivities,
             project_directory=project_directory,
         )
@@ -647,10 +649,9 @@ else:
             project_directory=project_directory,
             device=device,
         )
-        plot_relevenat_sobol_indices_results(
+        plot_sobol_indices_results(
             relevant_parameter_indices=model.get_active_parameter_indices(),
             data_set_label=data_set_label,
-            num_outputs=model.output_dim,
             output_subdirectory=output_subdirectory_sensitivities,
             project_directory=project_directory,
         )
