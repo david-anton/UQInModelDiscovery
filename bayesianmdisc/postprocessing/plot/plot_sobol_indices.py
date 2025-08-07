@@ -12,8 +12,14 @@ from bayesianmdisc.postprocessing.plot.utility import split_treloar_inputs_and_o
 from bayesianmdisc.testcases import (
     map_test_case_identifiers_to_labels,
     test_case_identifier_equibiaxial_tension,
-    test_case_identifier_pure_shear,
     test_case_identifier_uniaxial_tension,
+    test_case_identifier_biaxial_tension,
+    test_case_identifier_simple_shear_12,
+    test_case_identifier_simple_shear_13,
+    test_case_identifier_simple_shear_21,
+    test_case_identifier_simple_shear_23,
+    test_case_identifier_simple_shear_31,
+    test_case_identifier_simple_shear_32,
 )
 
 # first_indices_label = "first_sobol_indices"
@@ -33,7 +39,7 @@ class IndicesDevelopmentPlotterConfigTreloar:
         self.font: Dict[str, Any] = {"size": self.font_size}
         # figure size
         self.figure_size = (16 * cm_to_inch, 6 * cm_to_inch)
-        self.pad_subplots = 0.0
+        self.pad_subplots_width = 0.0
 
         # ticks
         self.num_x_ticks = 5
@@ -50,12 +56,12 @@ class IndicesDevelopmentPlotterConfigTreloar:
         self.minor_ticks_width = 1
 
         # titles
-        self.title_ut = "uniaxial tension"
-        self.title_ebt = "equibiaxial tension"
-        self.title_ps = "pure shear"
+        self.title_ut = "uniaxial tension (UT)"
+        self.title_ebt = "equibiaxial tension (EBT)"
+        self.title_ps = "pure shear (PS)"
 
         # labels
-        self.xaxis_label = "stretch [-]"
+        self.xaxis_label = "stretch " + r"$\lambda$" + " [-]"
         self.yaxis_label_total_indice = "total Sobol indice [-]"
 
         # results
@@ -89,6 +95,10 @@ class IndicesDevelopmentPlotterConfigTreloar:
         # save options
         self.dpi = 300
 
+        # sensitivities
+        self.min_total_sobol_indice = 0.0
+        self.max_total_sobol_indice = 1.0
+
 
 def plot_sobol_indice_paths_treloar(
     relevant_parameter_indices: list[int],
@@ -115,7 +125,7 @@ def plot_sobol_indice_paths_treloar(
 
     config = IndicesDevelopmentPlotterConfigTreloar()
     figure, axes = plt.subplots(1, 3, figsize=config.figure_size, sharey=True)
-    figure.tight_layout(pad=config.pad_subplots)
+    figure.tight_layout(w_pad=config.pad_subplots_width)
 
     def plot_one_indice_development(inputs: NPArray, test_case_identifier: int) -> None:
         if test_case_identifier == test_case_identifier_uniaxial_tension:
@@ -155,20 +165,25 @@ def plot_sobol_indice_paths_treloar(
                 label=parameter_name_plot,
             )
 
-        # axis ticks
+        # x axis
         x_ticks = np.linspace(min_stretch, max_stretch, num=config.num_x_ticks)
-        x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
         axis.set_xticks(x_ticks)
+        x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
         axis.set_xticklabels(x_tick_labels)
-        axis.yaxis.set_major_locator(MaxNLocator(nbins=config.num_y_ticks))
-
-        # axis labels
         axis.set_xlabel(config.xaxis_label, **config.font)
+
+        # y axis
+        y_ticks = np.linspace(
+            config.min_total_sobol_indice,
+            config.max_total_sobol_indice,
+            num=config.num_x_ticks,
+        )
+        axis.set_yticks(y_ticks)
         if test_case_identifier == test_case_identifier_uniaxial_tension:
             y_label = config.yaxis_label_total_indice
             axis.set_ylabel(y_label, **config.font)
-        else:
-            axis.yaxis.set_visible(False)
+
+        # axis
         axis.tick_params(
             axis="both", which="minor", labelsize=config.minor_tick_label_size
         )
@@ -207,10 +222,11 @@ class IndicesDevelopmentPlotterConfigLinka:
         self.font: Dict[str, Any] = {"size": self.font_size}
         # figure size
         self.figure_size = (16 * cm_to_inch, 24 * cm_to_inch)
-        self.pad_subplots = 0.8
+        self.pad_subplots_hight = 2.0
+        self.pad_subplots_width = -0.5
 
         # ticks
-        self.num_x_ticks = 5
+        self.num_x_ticks = 6
         self.num_y_ticks = 6
 
         # major ticks
@@ -234,11 +250,26 @@ class IndicesDevelopmentPlotterConfigLinka:
         ]
         self.title_bt_prefix_sigma_ff = r"$\sigma_{ff}$"
         self.title_bt_prefix_sigma_nn = r"$\sigma_{nn}$"
+        # self.title_bt_ratios = [
+        #     ", ".join(
+        #         (
+        #             r"$\lambda_{f}=1+%.2f(\lambda-1)$" % (stretch_ratio_fiber,),
+        #             r"$\lambda_{n}=1+%.2f(\lambda-1)$" % (stretch_ratio_normal,),
+        #         )
+        #     )
+        #     for stretch_ratio_fiber, stretch_ratio_normal in [
+        #         (1.0, 1.0),
+        #         (1.0, 0.75),
+        #         (0.75, 1.0),
+        #         (1.0, 0.5),
+        #         (0.5, 1.0),
+        #     ]
+        # ]
         self.title_bt_ratios = [
-            " ".join(
+            ", ".join(
                 (
-                    r"$\lambda_{f}=1+%.2f(\lambda-1)$" % (stretch_ratio_fiber,),
-                    r"$\lambda_{n}=1+%.2f(\lambda-1)$" % (stretch_ratio_normal,),
+                    "(" + r"$\lambda_{f}^{*}=%.2f$" % (stretch_ratio_fiber,),
+                    r"$\lambda_{n}^{*}=%.2f$" % (stretch_ratio_normal,) + ")",
                 )
             )
             for stretch_ratio_fiber, stretch_ratio_normal in [
@@ -295,30 +326,45 @@ class IndicesDevelopmentPlotterConfigLinka:
 
         # subfigures
         self.subfigure_indices = [
-            [2, 0],
-            [2, 2],
-            [3, 1],
-            [4, 0],
-            [4, 2],
-            [0, 0],
             [0, 1],
-            [0, 2],
-            [1, 0],
             [1, 1],
-            [1, 2],
             [2, 1],
-            [3, 0],
-            [3, 2],
+            [3, 1],
             [4, 1],
+            [0, 0],
+            [1, 0],
+            [2, 0],
+            [3, 0],
+            [4, 0],
             [5, 0],
+            [0, 2],
+            [1, 2],
+            [2, 2],
+            [3, 2],
+            [4, 2],
         ]
-        self.subfigure_indices_with_yaxis = [0, 3, 6, 9, 12, 15]
+        self.subfigure_indices_with_xaxis = [4, 5, 6, 7, 8, 9, 10, 15]
+        self.subfigure_indices_with_yaxis = [5, 6, 7, 8, 9, 10]
+
+        # test cases
+        self.test_case_identifiers_ps = [
+            test_case_identifier_simple_shear_21,
+            test_case_identifier_simple_shear_31,
+            test_case_identifier_simple_shear_12,
+            test_case_identifier_simple_shear_32,
+            test_case_identifier_simple_shear_13,
+            test_case_identifier_simple_shear_23,
+        ]
 
         # mechanics
         self.min_principal_stretch = 1.0
         self.max_principal_stretch = 1.1
         self.min_shear_strain = 0.0
         self.max_shear_strain = 0.5
+
+        # sensitivities
+        self.min_total_sobol_indice = 0.0
+        self.max_total_sobol_indice = 1.0
 
 
 def plot_sobol_indice_paths_linka(
@@ -330,7 +376,9 @@ def plot_sobol_indice_paths_linka(
 
     config = IndicesDevelopmentPlotterConfigLinka()
     figure, axes = plt.subplots(6, 3, figsize=config.figure_size)
-    figure.tight_layout(pad=config.pad_subplots)
+    figure.tight_layout(
+        h_pad=config.pad_subplots_hight, w_pad=config.pad_subplots_width
+    )
     axes[5, 1].axis("off")
     axes[5, 2].axis("off")
     subfigure_counter = 0
@@ -340,15 +388,20 @@ def plot_sobol_indice_paths_linka(
     colors = color_map(np.linspace(0, 1.0, num_relevant_parameters))
 
     def plot_indice_development_for_ps(
-        output_index: int, subfigure_couinter: int
+        output_index: int, subfigure_counter: int
     ) -> int:
         pure_shear_index = output_index - 1
-        parameter_names, results = read_indices_results(
+        parameter_names, results_ = read_indices_results(
             indice_label=total_indice_label,
             output_index=output_index,
             relevant_parameter_indices=relevant_parameter_indices,
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
+        )
+        results = filter_indice_results_for_test_case(
+            indice_results=results_,
+            test_case_identifier=config.test_case_identifiers_ps[pure_shear_index],
+            parameter_names=parameter_names,
         )
 
         # axis
@@ -379,18 +432,27 @@ def plot_sobol_indice_paths_linka(
 
         # x axis
         x_ticks = np.linspace(min_input, max_input, num=config.num_x_ticks)
-        x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
         axis.set_xticks(x_ticks)
-        axis.set_xticklabels(x_tick_labels)
-        axis.set_xlabel(config.xaxis_label_ps[pure_shear_index], **config.font)
+        if subfigure_counter in config.subfigure_indices_with_xaxis:
+            x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
+            axis.set_xticklabels(x_tick_labels)
+            axis.set_xlabel(config.xaxis_label_ps[pure_shear_index], **config.font)
+        else:
+            axis.set_xticklabels([])
 
         # y axis
+        y_ticks = np.linspace(
+            config.min_total_sobol_indice,
+            config.max_total_sobol_indice,
+            num=config.num_x_ticks,
+        )
+        axis.set_yticks(y_ticks)
         if subfigure_counter in config.subfigure_indices_with_yaxis:
             y_label = config.yaxis_label_total_indice
             axis.set_ylabel(y_label, **config.font)
             axis.yaxis.set_major_locator(MaxNLocator(nbins=config.num_y_ticks))
         else:
-            axis.yaxis.set_visible(False)
+            axis.set_yticklabels([])
 
         # axis
         axis.tick_params(
@@ -410,18 +472,22 @@ def plot_sobol_indice_paths_linka(
         output_index: int, subfigure_counter: int
     ) -> int:
 
-        def split_indices_results(indice_results: PDDataFrame) -> list[NPArray]:
-            indice_results_np = indice_results.to_numpy()
-            return np.split(indice_results_np, 5, axis=0)
+        def split_indices_results(results: NPArray) -> list[NPArray]:
+            return np.split(results, 5, axis=0)
 
-        parameter_names, indice_results = read_indices_results(
+        parameter_names, results_ = read_indices_results(
             indice_label=total_indice_label,
             output_index=output_index,
             relevant_parameter_indices=relevant_parameter_indices,
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
         )
-        indice_results_sets = split_indices_results(indice_results)
+        results = filter_indice_results_for_test_case(
+            indice_results=results_,
+            test_case_identifier=test_case_identifier_biaxial_tension,
+            parameter_names=parameter_names,
+        )
+        results_sets = split_indices_results(results)
 
         def plot_one_indice_development_for_bt(
             results: NPArray, ratio_index: int, subfigure_counter: int
@@ -455,18 +521,27 @@ def plot_sobol_indice_paths_linka(
 
             # x axis
             x_ticks = np.linspace(min_input, max_input, num=config.num_x_ticks)
-            x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
             axis.set_xticks(x_ticks)
-            axis.set_xticklabels(x_tick_labels)
-            axis.set_xlabel(config.xaxis_label_bt, **config.font)
+            if subfigure_counter in config.subfigure_indices_with_xaxis:
+                x_tick_labels = [str(round(tick, 2)) for tick in x_ticks]
+                axis.set_xticklabels(x_tick_labels)
+                axis.set_xlabel(config.xaxis_label_bt, **config.font)
+            else:
+                axis.set_xticklabels([])
 
             # y axis
+            y_ticks = np.linspace(
+                config.min_total_sobol_indice,
+                config.max_total_sobol_indice,
+                num=config.num_x_ticks,
+            )
+            axis.set_yticks(y_ticks)
             if subfigure_counter in config.subfigure_indices_with_yaxis:
                 y_label = config.yaxis_label_total_indice
                 axis.set_ylabel(y_label, **config.font)
                 axis.yaxis.set_major_locator(MaxNLocator(nbins=config.num_y_ticks))
             else:
-                axis.yaxis.set_visible(False)
+                axis.set_yticklabels([])
 
             # axis
             axis.tick_params(
@@ -486,19 +561,10 @@ def plot_sobol_indice_paths_linka(
             title = title_stress + "\n" + title_ratio
             axis.set_title(title, **config.font)
 
-            # legend
-            axes.legend(
-                fontsize=config.font_size,
-                bbox_to_anchor=(1.15, 0.95),
-                loc="upper left",
-                borderaxespad=0.0,
-                ncol=2,
-            )
-
-            subfigure_counter += subfigure_counter
+            subfigure_counter += 1
             return subfigure_counter
 
-        for ratio_index, indice_results_set in enumerate(indice_results_sets):
+        for ratio_index, indice_results_set in enumerate(results_sets):
             subfigure_counter = plot_one_indice_development_for_bt(
                 indice_results_set, ratio_index, subfigure_counter
             )
@@ -516,6 +582,15 @@ def plot_sobol_indice_paths_linka(
 
     subfigure_counter = plot_indice_developments_for_bt(
         output_index=7, subfigure_counter=subfigure_counter
+    )
+
+    # legend
+    axes[5, 0].legend(
+        fontsize=config.font_size,
+        bbox_to_anchor=(1.15, 0.95),
+        loc="upper left",
+        borderaxespad=0.0,
+        ncol=2,
     )
 
     file_name = f"{total_indice_label}.png"
@@ -711,10 +786,7 @@ def _read_indices_results(
 
     def filter_relevant_parameter_names(data_frame: PDDataFrame) -> list[str]:
         all_parameter_names = data_frame.columns[1:].tolist()
-        relevant_parameter_names = [
-            all_parameter_names[index] for index in relevant_parameter_indices
-        ]
-        return relevant_parameter_names
+        return [all_parameter_names[index] for index in relevant_parameter_indices]
 
     def filter_relevant_results(
         data_frame: PDDataFrame, parameter_names: list[str]
