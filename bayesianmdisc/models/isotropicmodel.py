@@ -120,7 +120,6 @@ class LibrarySEF:
         self._num_additional_ogden_terms = len(self._additional_ogden_terms)
         self._num_ogden_terms = self._determine_number_of_ogden_terms()
         self._ogden_exponents = self._determine_ogden_exponents()
-        print(self._ogden_exponents)
         self._num_ln_feature_terms = 1
         (
             self._num_mr_parameters,

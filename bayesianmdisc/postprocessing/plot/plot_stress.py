@@ -341,7 +341,7 @@ def plot_model_stresses_treloar(
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axis.text(
             0.68,
-            0.18,
+            0.22,
             text,
             transform=axis.transAxes,
             fontsize=config.font_size,
@@ -1651,7 +1651,7 @@ def plot_gp_stresses_treloar(
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axis.text(
             0.69,
-            0.08,
+            0.09,
             text,
             transform=axis.transAxes,
             fontsize=config.font_size,

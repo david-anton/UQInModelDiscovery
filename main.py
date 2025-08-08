@@ -69,7 +69,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_synthetic_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -96,9 +96,9 @@ if data_set_label == data_set_label_treloar:
 
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-2
-    list_num_wasserstein_iterations = [20_000, 10_000]
+    list_num_wasserstein_iterations = [10_000, 5_000]  # [20_000, 10_000]
     if strain_energy_function_type == "library":
-        total_sobol_index_thresshold = 1e-2
+        total_sobol_index_thresshold = 1e-4
     elif strain_energy_function_type == "cann":
         total_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_linka:
