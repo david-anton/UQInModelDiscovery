@@ -65,7 +65,7 @@ class IndicesDevelopmentPlotterConfigTreloar:
         self.yaxis_label_total_indice = "total Sobol indice [-]"
 
         # results
-        self.color_map = "tab20b"
+        self.color_map = "tab10"
         self.marker_list = [
             "o",
             "v",
@@ -294,7 +294,7 @@ class IndicesDevelopmentPlotterConfigLinka:
         self.yaxis_label_total_indice = "total Sobol indice [-]"
 
         # results
-        self.color_map = "tab20b"
+        self.color_map = "tab10"
         self.marker_list = [
             "o",
             "v",
@@ -587,7 +587,7 @@ def plot_sobol_indice_paths_linka(
     # legend
     axes[5, 0].legend(
         fontsize=config.font_size,
-        bbox_to_anchor=(1.15, 0.95),
+        bbox_to_anchor=(1.15, 0.96),
         loc="upper left",
         borderaxespad=0.0,
         ncol=2,

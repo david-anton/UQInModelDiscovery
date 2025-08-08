@@ -791,7 +791,7 @@ class ModelStressPlotterConfigLinka:
         self.label_size = 7
         # font size in legend
         self.font_size = 7
-        self.ratio_font_size = 5
+        self.plot_textboxes_font_size = 5
         self.font: Dict[str, Any] = {"size": self.font_size}
 
         # figure size
@@ -1081,11 +1081,11 @@ def plot_model_stresses_linka(
                 )
                 text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
                 axis.text(
-                    0.04,
-                    0.57,
+                    0.03,
+                    0.55,
                     text,
                     transform=axis.transAxes,
-                    fontsize=plotter_config.ratio_font_size,
+                    fontsize=plotter_config.plot_textboxes_font_size,
                     verticalalignment="top",
                     bbox=text_properties,
                 )
@@ -1130,11 +1130,11 @@ def plot_model_stresses_linka(
             )
             text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
             axis.text(
-                0.04,
-                0.94,
+                0.03,
+                0.93,
                 text,
                 transform=axis.transAxes,
-                fontsize=plotter_config.font_size,
+                fontsize=plotter_config.plot_textboxes_font_size,
                 verticalalignment="top",
                 bbox=text_properties,
             )
@@ -1208,7 +1208,7 @@ def plot_model_stresses_linka(
 
                 axis.text(
                     x_position_text,
-                    0.92,
+                    0.90,
                     text,
                     transform=axis.transAxes,
                     fontsize=plotter_config.font_size,
@@ -1946,11 +1946,11 @@ def plot_gp_stresses_linka(
                 )
                 text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
                 axis.text(
-                    0.04,
-                    0.77,
+                    0.03,
+                    0.75,
                     text,
                     transform=axis.transAxes,
-                    fontsize=plotter_config.ratio_font_size,
+                    fontsize=plotter_config.plot_textboxes_font_size,
                     verticalalignment="top",
                     bbox=text_properties,
                 )
@@ -1968,11 +1968,11 @@ def plot_gp_stresses_linka(
             text = "\n".join((r"$C_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),))
             text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
             axis.text(
-                0.04,
-                0.94,
+                0.03,
+                0.93,
                 text,
                 transform=axis.transAxes,
-                fontsize=plotter_config.font_size,
+                fontsize=plotter_config.plot_textboxes_font_size,
                 verticalalignment="top",
                 bbox=text_properties,
             )
@@ -1989,7 +1989,7 @@ def plot_gp_stresses_linka(
                 axis.legend(
                     handles=legend_handles,
                     fontsize=plotter_config.font_size,
-                    bbox_to_anchor=(1.15, 0.95),
+                    bbox_to_anchor=(1.15, 0.94),
                     loc="upper left",
                     borderaxespad=0.0,
                 )
