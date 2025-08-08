@@ -4,10 +4,7 @@ from typing import cast
 
 import torch
 
-from bayesianmdisc.bayes.distributions import (
-    DistributionProtocol,
-    sample_and_analyse_distribution,
-)
+from bayesianmdisc.bayes.distributions import DistributionProtocol
 from bayesianmdisc.customtypes import GPModel, NPArray, Tensor
 from bayesianmdisc.data import (
     DataSetProtocol,
@@ -45,6 +42,7 @@ from bayesianmdisc.models import (
     OutputSelectorLinka,
     OutputSelectorProtocol,
     OutputSelectorTreloar,
+    ParameterNames,
     create_isotropic_model,
     load_model_state,
     save_model_state,
@@ -65,6 +63,7 @@ from bayesianmdisc.postprocessing.plot import (
     plot_model_stresses_treloar,
     plot_sobol_indice_paths_linka,
     plot_sobol_indice_paths_treloar,
+    TrueParameters,
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
@@ -98,7 +97,7 @@ if data_set_label == data_set_label_treloar:
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [20_000, 10_000]
     if strain_energy_function_type == "library":
-        total_sobol_index_thresshold = 1e-4
+        total_sobol_index_thresshold = 1e-3
     elif strain_energy_function_type == "cann":
         total_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_linka:
@@ -165,6 +164,27 @@ output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
 
 
+def plot_parameter_histograms(
+    parameter_names: tuple[str, ...],
+    true_parameters: TrueParameters,
+    parameter_samples: NPArray,
+    subdirectory_name: str,
+    output_directory: str,
+) -> None:
+
+    def join_output_subdirectory() -> str:
+        return os.path.join(output_directory, subdirectory_name)
+
+    output_subdirectory = join_output_subdirectory()
+    plot_histograms(
+        parameter_names=parameter_names,
+        true_parameters=true_parameters,
+        samples=parameter_samples,
+        output_subdirectory=output_subdirectory,
+        project_directory=project_directory,
+    )
+
+
 def plot_gp_stresses(
     gaussian_process: GaussianProcess,
     data_set_label: str,
@@ -207,7 +227,7 @@ def plot_gp_stresses(
 
 def plot_model_stresses(
     model: ModelProtocol,
-    model_parameter_samples: NPArray,
+    parameter_samples: NPArray,
     data_set_label: str,
     subdirectory_name: str,
     output_directory: str,
@@ -221,7 +241,7 @@ def plot_model_stresses(
     def plot_treloar() -> None:
         plot_model_stresses_treloar(
             model=cast(IsotropicModel, model),
-            parameter_samples=model_parameter_samples,
+            parameter_samples=parameter_samples,
             inputs=from_torch_to_numpy(inputs),
             outputs=from_torch_to_numpy(outputs),
             test_cases=from_torch_to_numpy(test_cases),
@@ -241,7 +261,7 @@ def plot_model_stresses(
 
             plot_model_stresses_kawabata(
                 model=isotropic_model,
-                parameter_samples=model_parameter_samples,
+                parameter_samples=parameter_samples,
                 inputs=from_torch_to_numpy(inputs),
                 outputs=from_torch_to_numpy(outputs),
                 test_cases=from_torch_to_numpy(test_cases),
@@ -257,7 +277,7 @@ def plot_model_stresses(
     def plot_kawabata() -> None:
         plot_model_stresses_kawabata(
             model=cast(IsotropicModel, model),
-            parameter_samples=model_parameter_samples,
+            parameter_samples=parameter_samples,
             inputs=from_torch_to_numpy(inputs),
             outputs=from_torch_to_numpy(outputs),
             test_cases=from_torch_to_numpy(test_cases),
@@ -271,7 +291,7 @@ def plot_model_stresses(
 
         plot_model_stresses_linka(
             model=cast(OrthotropicCANN, model),
-            parameter_samples=model_parameter_samples,
+            parameter_samples=parameter_samples,
             inputs=from_torch_to_numpy(inputs),
             test_cases=from_torch_to_numpy(test_cases),
             outputs=from_torch_to_numpy(outputs),
@@ -318,6 +338,18 @@ def plot_sobol_indices_results(
             output_subdirectory=output_subdirectory,
             project_directory=project_directory,
         )
+
+
+def select_reduced_parameter_samples(
+    parameter_samples_full: NPArray,
+    parameter_names_full: ParameterNames,
+    parameter_names_reduced,
+) -> NPArray:
+    reduced_indices = [
+        parameter_names_full.index(parameter_name)
+        for parameter_name in parameter_names_reduced
+    ]
+    return parameter_samples_full[:, reduced_indices]
 
 
 inputs, test_cases, outputs = data_set.read_data()
@@ -510,35 +542,31 @@ if retrain_models:
                 )
             return distribution
 
-        num_parameters = model.num_parameters
-        parameter_names = model.parameter_names
-
         gaussian_process = create_gp()
-        # if is_first_step:
-        #     select_gp_prior()
-        #     save_gp(gaussian_process, output_directory, project_directory, device)
-        # else:
-        #     load_gp(gaussian_process, output_directory, project_directory, device)
         select_gp_prior()
         infer_gp_posterior()
         parameter_distribution = extract_parameter_distribution()
 
-        parameter_moments, parameter_samples = sample_and_analyse_distribution(
-            parameter_distribution, num_samples_parameter_distribution
+        num_parameters_full = model.num_parameters
+        parameter_names_full = model.parameter_names
+        true_model_parameters_full = tuple(None for _ in range(num_parameters_full))
+        parameter_samples_full = (
+            parameter_distribution.sample(num_samples_parameter_distribution)
+            .detach()
+            .cpu()
+            .numpy()
         )
 
-        plot_histograms(
-            parameter_names=parameter_names,
-            true_parameters=tuple(None for _ in range(num_parameters)),
-            moments=parameter_moments,
-            samples=parameter_samples,
-            algorithm_name="nf",
-            output_subdirectory=output_subdirectory_parameters,
-            project_directory=project_directory,
+        plot_parameter_histograms(
+            parameter_names=parameter_names_full,
+            true_parameters=true_model_parameters_full,
+            parameter_samples=parameter_samples_full,
+            subdirectory_name="parameters_full",
+            output_directory=output_directory_step,
         )
         plot_model_stresses(
             model=model,
-            model_parameter_samples=parameter_samples,
+            parameter_samples=parameter_samples_full,
             data_set_label=data_set_label,
             subdirectory_name="model_full",
             output_directory=output_directory_step,
@@ -556,15 +584,34 @@ if retrain_models:
             project_directory=project_directory,
             device=device,
         )
+
+        num_parameters_reduced = model.get_number_of_active_parameters()
+        parameter_names_reduced = model.get_active_parameter_names()
+        true_model_parameters_reduced = tuple(
+            None for _ in range(num_parameters_reduced)
+        )
+        parameter_samples_reduced = select_reduced_parameter_samples(
+            parameter_samples_full=parameter_samples_full,
+            parameter_names_full=parameter_names_full,
+            parameter_names_reduced=parameter_names_reduced,
+        )
+
         plot_sobol_indices_results(
             relevant_parameter_indices=model.get_active_parameter_indices(),
             data_set_label=data_set_label,
             output_subdirectory=output_subdirectory_sensitivities,
             project_directory=project_directory,
         )
+        plot_parameter_histograms(
+            parameter_names=parameter_names_reduced,
+            true_parameters=true_model_parameters_reduced,
+            parameter_samples=parameter_samples_reduced,
+            subdirectory_name="parameters_reduced",
+            output_directory=output_directory_step,
+        )
         plot_model_stresses(
             model=model,
-            model_parameter_samples=parameter_samples,
+            parameter_samples=parameter_samples_full,
             data_set_label=data_set_label,
             subdirectory_name="model_selected",
             output_directory=output_directory_step,
@@ -595,9 +642,6 @@ else:
             )
             load_model_state(model, input_directory_step, project_directory, device)
 
-        num_parameters = model.num_parameters
-        parameter_names = model.parameter_names
-
         def load_parameter_distribution() -> DistributionProtocol:
             return load_normalizing_flow_parameter_distribution(
                 model=model,
@@ -607,22 +651,27 @@ else:
             )
 
         parameter_distribution = load_parameter_distribution()
-        parameter_moments, parameter_samples = sample_and_analyse_distribution(
-            parameter_distribution, num_samples_parameter_distribution
+
+        num_parameters_full = model.num_parameters
+        parameter_names_full = model.parameter_names
+        true_model_parameters_full = tuple(None for _ in range(num_parameters_full))
+        parameter_samples_full = (
+            parameter_distribution.sample(num_samples_parameter_distribution)
+            .detach()
+            .cpu()
+            .numpy()
         )
 
-        plot_histograms(
-            parameter_names=parameter_names,
-            true_parameters=tuple(None for _ in range(num_parameters)),
-            moments=parameter_moments,
-            samples=parameter_samples,
-            algorithm_name="nf",
-            output_subdirectory=output_subdirectory_parameters,
-            project_directory=project_directory,
+        plot_parameter_histograms(
+            parameter_names=parameter_names_full,
+            true_parameters=true_model_parameters_full,
+            parameter_samples=parameter_samples_full,
+            subdirectory_name="parameters_full",
+            output_directory=output_directory_step,
         )
         plot_model_stresses(
             model=model,
-            model_parameter_samples=parameter_samples,
+            parameter_samples=parameter_samples_full,
             data_set_label=data_set_label,
             subdirectory_name="model_full",
             output_directory=output_directory_step,
@@ -640,15 +689,35 @@ else:
             project_directory=project_directory,
             device=device,
         )
+
+        num_parameters_reduced = model.get_number_of_active_parameters()
+        parameter_names_reduced = model.get_active_parameter_names()
+        true_model_parameters_reduced = tuple(
+            None for _ in range(num_parameters_reduced)
+        )
+        parameter_samples_reduced = select_reduced_parameter_samples(
+            parameter_samples_full=parameter_samples_full,
+            parameter_names_full=parameter_names_full,
+            parameter_names_reduced=parameter_names_reduced,
+        )
+
         plot_sobol_indices_results(
             relevant_parameter_indices=model.get_active_parameter_indices(),
             data_set_label=data_set_label,
             output_subdirectory=output_subdirectory_sensitivities,
             project_directory=project_directory,
         )
+
+        plot_parameter_histograms(
+            parameter_names=parameter_names_reduced,
+            true_parameters=true_model_parameters_reduced,
+            parameter_samples=parameter_samples_reduced,
+            subdirectory_name="parameters_reduced",
+            output_directory=output_directory_step,
+        )
         plot_model_stresses(
             model=model,
-            model_parameter_samples=parameter_samples,
+            parameter_samples=parameter_samples_full,
             data_set_label=data_set_label,
             subdirectory_name="model_selected",
             output_directory=output_directory_step,

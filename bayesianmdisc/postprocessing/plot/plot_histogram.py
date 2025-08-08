@@ -1,261 +1,236 @@
 from typing import Any, Dict, TypeAlias, Union
+import math
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 import numpy as np
-import scipy.stats
 from matplotlib.ticker import ScalarFormatter
 
 from bayesianmdisc.customtypes import NPArray
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.statistics.utility import (
-    MomentsMultivariateNormal,
-    MomentsUnivariateNormal,
     determine_quantiles_from_samples,
+    determine_moments_of_univariate_normal_distribution,
 )
 
 TrueParameter: TypeAlias = Union[float, None]
-TrueParametersTuple: TypeAlias = tuple[TrueParameter, ...]
+TrueParameters: TypeAlias = tuple[TrueParameter, ...]
+FigureLayout = tuple[int, int]
+FigureSize = tuple[float, float]
 
 
 credible_interval = 0.95
-
-cm_in_inches = 1 / 2.54  # centimeters in inches
-
-
-class UnivariateNormalPlotterConfig:
-    def __init__(self) -> None:
-        # font sizes
-        self.label_size = 14
-        # font size in legend
-        self.font_size = 14
-        self.font: Dict[str, Any] = {"size": self.font_size}
-
-        # title pad
-        self.title_pad = 10
-
-        # truth
-        self.truth_color = "tab:orange"
-        self.truth_linestyle = "solid"
-
-        # histogram
-        self.hist_bins = 128
-        self.hist_color = "tab:cyan"
-
-        # moments
-        self.mean_color = "tab:red"
-        self.mean_linestyle = "solid"
-
-        # kde
-        self.kde_color = "tab:blue"
-        self.kde_linestyle = "solid"
-
-        # major ticks
-        self.major_tick_label_size = 12
-        self.major_ticks_size = self.font_size
-        self.major_ticks_width = 2
-
-        # minor ticks
-        self.minor_tick_label_size = 12
-        self.minor_ticks_size = 12
-        self.minor_ticks_width = 1
-
-        # scientific notation
-        self.scientific_notation_size = self.font_size
-
-        # save options
-        self.dpi = 300
-        self.figure_size = (16 * cm_in_inches, 12 * cm_in_inches)
-        self.file_format = "pdf"
+cm_to_inch = 1 / 2.54
 
 
 class ScalarFormatterForceFormat(ScalarFormatter):
     def _set_format(self):
-        self.format = "%1.2f"
+        self.format = "%1.1f"
+
+
+class HistogramsPlotterConfig:
+    def __init__(self) -> None:
+        # font sizes
+        self.label_size = 7
+        # font size in legend
+        self.font_size = 7
+        self.font: Dict[str, Any] = {"size": self.font_size}
+        # figure size
+        self.pad_subplots_width = 0.8
+        self.pad_subplots_hight = 1.6
+        self.additional_height_when_legend_at_bottom = 1.0 * cm_to_inch
+
+        # ticks
+        self.num_x_ticks = 5
+        self.num_y_ticks = 5
+
+        # major ticks
+        self.major_tick_label_size = 7
+        self.major_ticks_size = 7
+        self.major_ticks_width = 2
+
+        # minor ticks
+        self.minor_tick_label_size = 7
+        self.minor_ticks_size = 7
+        self.minor_ticks_width = 1
+
+        # histogram
+        self.hist_bins = 64  # 128
+        self.hist_color = "tab:cyan"
+        self.hist_label = "samples"
+
+        # moments
+        self.mean_color = "tab:red"
+        self.mean_linestyle = "solid"
+        self.mean_linewidth = 1.0
+        self.mean_label = "mean"
+
+        # truth
+        self.truth_color = "tab:orange"
+        self.truth_linestyle = "solid"
+        self.truth_label = "truth"
+
+        # scientific notation
+        self.scientific_notation_size = 6
+
+        # save options
+        self.dpi = 300
 
 
 def plot_histograms(
     parameter_names: tuple[str, ...],
-    true_parameters: TrueParametersTuple,
-    moments: MomentsMultivariateNormal,
+    true_parameters: TrueParameters,
     samples: NPArray,
-    algorithm_name: str,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
 ) -> None:
+    config = HistogramsPlotterConfig()
     num_parameters = len(parameter_names)
-    if num_parameters == 1:
-        parameter_name = parameter_names[0]
-        true_parameter = true_parameters[0]
-        means = moments.mean
-        if moments.covariance.ndim == 2:
-            covariance = moments.covariance[0]
-        else:
-            covariance = moments.covariance
-        mean_univariate = means[0]
-        std_univariate = np.sqrt(covariance[0])
-        moments_univariate = MomentsUnivariateNormal(
-            mean=mean_univariate, standard_deviation=std_univariate
-        )
-        config = UnivariateNormalPlotterConfig()
-        plot_univariate_distribution(
-            parameter_name,
-            true_parameter,
-            moments_univariate,
+    if num_parameters <= 4:
+        num_columns = 2
+    else:
+        num_columns = 3
+    fig_layout, fig_size = _define_figure_layout_and_size(
+        num_parameters, num_columns, config
+    )
+
+    file_name = f"parameter_histograms.png"
+    figure, axes = plt.subplots(fig_layout[0], fig_layout[1], figsize=fig_size)
+    axes = axes.flatten()
+    figure.tight_layout(
+        w_pad=config.pad_subplots_width, h_pad=config.pad_subplots_hight
+    )
+
+    def plot_one_histogram(
+        parameter_name: str,
+        true_parameter: TrueParameter,
+        samples: NPArray,
+        subplot_index: int,
+    ) -> None:
+        axis = axes[subplot_index]
+
+        axis.hist(
             samples,
-            algorithm_name,
-            output_subdirectory,
-            project_directory,
-            config,
+            bins=config.hist_bins,
+            density=True,
+            color=config.hist_color,
+            label=config.hist_label,
+        )
+
+        # mean
+        moments = determine_moments_of_univariate_normal_distribution(samples)
+        mean = moments.mean
+        axis.axvline(
+            x=mean,
+            color=config.mean_color,
+            linestyle=config.mean_linestyle,
+            linewidth=config.mean_linewidth,
+            label=config.mean_label,
+        )
+
+        # credible interval
+        min_quantile_np, max_quantile_np = determine_quantiles_from_samples(
+            samples, credible_interval
+        )
+        min_quantile = float(min_quantile_np)
+        max_quantile = float(max_quantile_np)
+
+        # truth
+        if true_parameter is not None:
+            axis.axvline(
+                x=true_parameter,
+                color=config.truth_color,
+                linestyle=config.truth_linestyle,
+                label=config.truth_label,
+            )
+
+        # x axis
+        x_ticks = [min_quantile, mean, max_quantile]
+        axis.set_xticks(x_ticks)
+        axis.xaxis.set_major_formatter(ScalarFormatterForceFormat())
+
+        # y axis
+        axis.yaxis.set_major_locator(MaxNLocator(nbins=config.num_y_ticks))
+        if subplot_index % num_columns == 0:
+            axis.set_ylabel("probability density", **config.font)
+
+        # axis
+        axis.tick_params(
+            axis="both", which="minor", labelsize=config.minor_tick_label_size
+        )
+        axis.tick_params(
+            axis="both", which="major", labelsize=config.major_tick_label_size
+        )
+        axis.ticklabel_format(
+            axis="both",
+            style="scientific",
+            scilimits=(0, 0),
+            useOffset=False,
+        )
+        axis.yaxis.get_offset_text().set_fontsize(config.scientific_notation_size)
+        axis.xaxis.get_offset_text().set_fontsize(config.scientific_notation_size)
+
+        # title
+        axis.set_title(parameter_name, **config.font)
+
+    splitted_parameter_samples = _split_samples(samples)
+    num_subplots = len(axes)
+
+    for parameter_name, true_parameter, parameter_samples, subplot_index in zip(
+        parameter_names,
+        true_parameters,
+        splitted_parameter_samples,
+        range(num_parameters),
+    ):
+        plot_one_histogram(
+            parameter_name, true_parameter, parameter_samples, subplot_index
+        )
+
+    for subplot_index in range(num_parameters, num_subplots):
+        axes[subplot_index].axis("off")
+
+    # legend
+    if _are_all_subfigures_used(num_parameters, num_columns):
+        figure.legend(
+            *axes[0].get_legend_handles_labels(),
+            fontsize=config.font_size,
+            loc="outside lower center",
+            bbox_to_anchor=(0.5, -0.08),
+            ncol=2,
         )
     else:
-        plot_multivariate_distribution(
-            parameter_names,
-            true_parameters,
-            moments,
-            samples,
-            algorithm_name,
-            output_subdirectory,
-            project_directory,
+        axes[num_parameters - 1].legend(
+            fontsize=config.font_size,
+            bbox_to_anchor=(1.15, 0.96),
+            loc="upper left",
+            borderaxespad=0.0,
         )
 
-
-def plot_multivariate_distribution(
-    parameter_names: tuple[str, ...],
-    true_parameters: TrueParametersTuple,
-    moments: MomentsMultivariateNormal,
-    samples: NPArray,
-    algorithm_name: str,
-    output_subdirectory: str,
-    project_directory: ProjectDirectory,
-) -> None:
-    num_parameters = len(parameter_names)
-    means = moments.mean
-    covariance = moments.covariance
-
-    for parameter_idx in range(num_parameters):
-        parameter_name = parameter_names[parameter_idx]
-        true_parameter = true_parameters[parameter_idx]
-        mean_univariate = means[parameter_idx]
-        std_univariate = np.sqrt(covariance[parameter_idx, parameter_idx])
-        moments_univariate = MomentsUnivariateNormal(
-            mean=mean_univariate, standard_deviation=std_univariate
-        )
-        samples_univariate = samples[:, parameter_idx]
-        config = UnivariateNormalPlotterConfig()
-        plot_univariate_distribution(
-            parameter_name,
-            true_parameter,
-            moments_univariate,
-            samples_univariate,
-            algorithm_name,
-            output_subdirectory,
-            project_directory,
-            config,
-        )
-
-
-def plot_univariate_distribution(
-    parameter_name: str,
-    true_parameter: TrueParameter,
-    moments: MomentsUnivariateNormal,
-    samples: NPArray,
-    algorithm_name: str,
-    output_subdirectory: str,
-    project_directory: ProjectDirectory,
-    config: UnivariateNormalPlotterConfig,
-) -> None:
-    _plot_univariate_distribution_histogram(
-        parameter_name=parameter_name,
-        true_parameter=true_parameter,
-        moments=moments,
-        samples=samples,
-        algorithm_name=algorithm_name,
-        output_subdirectory=output_subdirectory,
-        project_directory=project_directory,
-        config=config,
-    )
-
-
-def _plot_univariate_distribution_histogram(
-    parameter_name: str,
-    true_parameter: TrueParameter,
-    moments: MomentsUnivariateNormal,
-    samples: NPArray,
-    algorithm_name: str,
-    output_subdirectory: str,
-    project_directory: ProjectDirectory,
-    config: UnivariateNormalPlotterConfig,
-) -> None:
-    title = "Posterior probability density"
-    mean = moments.mean
-    min_quantile_np, max_quantile_np = determine_quantiles_from_samples(
-        samples, credible_interval
-    )
-    min_quantile = float(min_quantile_np)
-    max_quantile = float(max_quantile_np)
-
-    figure, axes = plt.subplots(figsize=config.figure_size)
-    # Truth
-    if true_parameter is not None:
-        axes.axvline(
-            x=true_parameter,
-            color=config.truth_color,
-            linestyle=config.truth_linestyle,
-            label="truth",
-        )
-
-    # Histogram
-    _, bin_edges, _ = axes.hist(
-        samples,
-        bins=config.hist_bins,
-        density=True,
-        color=config.hist_color,
-        label="samples",
-    )
-
-    # # KDE
-    # min_bin_edge = np.amin(bin_edges)
-    # max_bin_edge = np.amax(bin_edges)
-    # x = np.linspace(start=min_bin_edge, stop=max_bin_edge, num=1024, endpoint=True)
-    # kde = scipy.stats.gaussian_kde(dataset=samples, bw_method="scott")
-    # kde_bandwith = kde.factor
-    # y = kde.pdf(x)
-    # axes.plot(
-    #     x,
-    #     y,
-    #     color=config.kde_color,
-    #     linestyle=config.kde_linestyle,
-    #     label=f"KDE (bw={round(kde_bandwith,2)})",
-    # )
-
-    # Ticks
-    x_ticks = [min_quantile, mean, max_quantile]
-    axes.axvline(
-        x=mean,
-        color=config.mean_color,
-        linestyle=config.mean_linestyle,
-        label="mean",
-    )
-
-    axes.set_xticks(x_ticks)
-    axes.set_title(title, pad=config.title_pad, **config.font)
-    axes.legend(fontsize=config.font_size, loc="best")
-    axes.set_xlabel(parameter_name, **config.font)
-    axes.set_ylabel("probability density", **config.font)
-    axes.tick_params(axis="both", which="minor", labelsize=config.minor_tick_label_size)
-    axes.tick_params(axis="both", which="major", labelsize=config.major_tick_label_size)
-    axes.xaxis.set_major_formatter(ScalarFormatterForceFormat())
-    axes.ticklabel_format(
-        axis="both",
-        style="scientific",
-        scilimits=(0, 0),
-        useOffset=False,
-    )
-    file_name = f"histogram_{parameter_name}_{algorithm_name}.{config.file_format}"
     output_path = project_directory.create_output_file_path(
         file_name=file_name, subdir_name=output_subdirectory
     )
-    figure.savefig(
-        output_path, format=config.file_format, dpi=config.dpi
-    )  # bbox_inches="tight"
-    plt.close()
+    figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
+    plt.clf()
+
+
+def _define_figure_layout_and_size(
+    num_parameters: int, num_columns: int, config: HistogramsPlotterConfig
+) -> tuple[FigureLayout, FigureSize]:
+    width = 16 * cm_to_inch
+    height_per_row = 4 * cm_to_inch
+
+    num_rows = int(math.ceil(num_parameters / num_columns))
+    figure_layout = (num_rows, num_columns)
+    height = num_rows * height_per_row
+    if _are_all_subfigures_used(num_parameters, num_columns):
+        height += config.additional_height_when_legend_at_bottom
+    figure_size = (width, height)
+    return figure_layout, figure_size
+
+
+def _split_samples(samples: NPArray) -> tuple[NPArray, ...]:
+    return np.unstack(samples, axis=1)
+
+
+def _are_all_subfigures_used(num_parameters: int, num_columns: int) -> bool:
+    return num_parameters % num_columns == 0
