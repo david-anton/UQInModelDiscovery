@@ -1,4 +1,4 @@
-from .plot_histogram import plot_histograms
+from .plot_histogram import plot_histograms, TrueParameters
 from .plot_history import (
     HistoryPlotterConfig,
     plot_loss_history,
@@ -18,6 +18,7 @@ from .plot_stress import (
 
 __all__ = [
     "plot_histograms",
+    "TrueParameters",
     "HistoryPlotterConfig",
     "plot_loss_history",
     "plot_statistical_loss_history",

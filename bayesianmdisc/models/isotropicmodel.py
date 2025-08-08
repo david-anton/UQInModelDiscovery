@@ -120,16 +120,12 @@ class LibrarySEF:
         self._num_additional_ogden_terms = len(self._additional_ogden_terms)
         self._num_ogden_terms = self._determine_number_of_ogden_terms()
         self._ogden_exponents = self._determine_ogden_exponents()
-        # self._num_ln_feature_terms = 1
         (
             self._num_mr_parameters,
             self._num_ogden_parameters,
-            # self._num_ln_feature_parameters,
         ) = self._determine_number_of_parameters()
         self._initial_num_parameters = (
-            self._num_mr_parameters
-            + self._num_ogden_parameters
-            # + self._num_ln_feature_parameters
+            self._num_mr_parameters + self._num_ogden_parameters
         )
         self._initial_parameter_names = self._init_parameter_names()
         self._scale_all_parameters = 1.0
@@ -282,7 +278,7 @@ class LibrarySEF:
 
     def _determine_number_of_parameters(
         self,
-    ) -> tuple[int, int]:  # tuple[int, int, int]:
+    ) -> tuple[int, int]:
 
         def determine_number_of_mr_parameters() -> int:
             num_parameters = 0
@@ -293,13 +289,9 @@ class LibrarySEF:
         def determine_number_of_ogden_parameters() -> int:
             return self._num_ogden_terms
 
-        # def determine_number_of_ln_feature_parameters() -> int:
-        #     return self._num_ln_feature_terms
-
         num_mr_parameters = determine_number_of_mr_parameters()
         num_ogden_parameters = determine_number_of_ogden_parameters()
-        # num_ln_feature_parameters = determine_number_of_ln_feature_parameters()
-        return num_mr_parameters, num_ogden_parameters  # , num_ln_feature_parameters
+        return num_mr_parameters, num_ogden_parameters
 
     def _init_parameter_names(self) -> ParameterNames:
 
@@ -309,7 +301,7 @@ class LibrarySEF:
                 for m in range(n + 1):
                     exponent_I_1 = m
                     exponent_I_2 = n - m
-                    parameter_name = f"C_{exponent_I_1}_{exponent_I_2}"
+                    parameter_name = f"GMR ({exponent_I_1}, {exponent_I_2})"
                     if exponent_I_1 == 1 and exponent_I_2 == 0:
                         parameter_name = parameter_name + " (NH)"
                     elif exponent_I_1 == 0 and exponent_I_2 == 1:
@@ -320,16 +312,12 @@ class LibrarySEF:
         def compose_ogden_parameter_names() -> ParameterNames:
             parameter_names = []
             for exponent in self._ogden_exponents:
-                parameter_names += [f"Ogden ({round(exponent,3)})"]
+                parameter_names += [f"GO ({int(exponent)})"]
             return tuple(parameter_names)
-
-        # def compose_ln_feature_parameter_name() -> ParameterNames:
-        #     return ("ln_I2",)
 
         mr_parameter_names = compose_mr_parameter_names()
         ogden_parameter_names = compose_ogden_parameter_names()
-        # ln_feature_parameter_name = compose_ln_feature_parameter_name()
-        return mr_parameter_names + ogden_parameter_names  # + ln_feature_parameter_name
+        return mr_parameter_names + ogden_parameter_names
 
     def _init_parameter_scales(self) -> ParameterScales:
         return torch.full(
@@ -344,9 +332,6 @@ class LibrarySEF:
     def _calculate_strain_energy(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
     ) -> StrainEnergy:
-        # mr_parameters, ogden_parameters, ln_feature_parameters = self._split_parameters(
-        #     parameters
-        # )
         mr_parameters, ogden_parameters = self._split_parameters(parameters)
         mr_strain_energy_terms = self._calculate_mr_strain_energy_terms(
             deformation_gradient, mr_parameters
@@ -354,14 +339,7 @@ class LibrarySEF:
         ogden_strain_energy_terms = self._calculate_ogden_strain_energy_terms(
             deformation_gradient, ogden_parameters
         )
-        # ln_feature_strain_energy_term = self._calculate_ln_feature_strain_energy_terms(
-        #     deformation_gradient, ln_feature_parameters
-        # )
-        return (
-            mr_strain_energy_terms
-            + ogden_strain_energy_terms
-            # + ln_feature_strain_energy_term
-        )
+        return mr_strain_energy_terms + ogden_strain_energy_terms
 
     def _split_parameters(self, parameters: Parameters) -> SplittedParameters:
         return torch.split(
@@ -369,7 +347,6 @@ class LibrarySEF:
             [
                 self._num_mr_parameters,
                 self._num_ogden_parameters,
-                # self._num_ln_feature_parameters,
             ],
         )
 
@@ -403,14 +380,6 @@ class LibrarySEF:
 
         weighted_terms = parameters * terms
         return torch.sum(weighted_terms)
-
-    # def _calculate_ln_feature_strain_energy_terms(
-    #     self, deformation_gradient: DeformationGradient, parameters: Parameters
-    # ) -> StrainEnergy:
-    #     _, I_2 = calculate_invariants(deformation_gradient, self._device)
-    #     three = torch.tensor(3.0, device=self._device)
-    #     ln_feature_parameter = parameters[0]
-    #     return ln_feature_parameter * torch.log(I_2 / three)
 
 
 class CANNSEF:
