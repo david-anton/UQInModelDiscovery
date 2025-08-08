@@ -22,9 +22,7 @@ from bayesianmdisc.testcases import (
     test_case_identifier_uniaxial_tension,
 )
 
-# first_indices_label = "first_sobol_indices"
 total_indice_label = "total_sobol_indices"
-# indice_labels = [first_indices_label, total_indices_label]
 pd_column_lable_test_cases = "test cases"
 
 cm_to_inch = 1 / 2.54
@@ -62,7 +60,7 @@ class IndicesDevelopmentPlotterConfigTreloar:
 
         # labels
         self.xaxis_label = "stretch " + r"$\lambda$" + " [-]"
-        self.yaxis_label_total_indice = "total Sobol indice [-]"
+        self.yaxis_label_total_indice = "total Sobol' indice [-]"
 
         # results
         self.color_map = "tab10"
@@ -598,161 +596,6 @@ def plot_sobol_indice_paths_linka(
         file_name=file_name, subdir_name=output_subdirectory
     )
     figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
-
-
-# class IndicesStatisticsPlotterConfigTreloar:
-#     def __init__(self) -> None:
-#         # label size
-#         self.label_size = 7
-#         # font size in legend
-#         self.font_size = 7
-#         self.font: Dict[str, Any] = {"size": self.font_size}
-
-#         # major ticks
-#         self.major_tick_label_size = 12
-#         self.major_ticks_size = self.font_size
-#         self.major_ticks_width = 2
-
-#         # minor ticks
-#         self.minor_tick_label_size = 12
-#         self.minor_ticks_size = 12
-#         self.minor_ticks_width = 1
-
-#         # labels
-#         self.xaxis_label = "Sobol indice [-]"
-
-#         # bars
-#         self.bar_width = 0.3
-#         self.bar_colors_first_indices = "tab:blue"
-#         self.bar_colors_total_indices = "tab:cyan"
-
-#         # errors
-#         self.error_bar_color = "black"
-#         self.error_bar_cap_size = 4
-
-#         # scientific notation
-#         self.scientific_notation_size = self.font_size
-
-#         # save options
-#         self.dpi = 300
-
-
-# def plot_sobol_indice_statistics(
-#     relevant_parameter_indices: list[int],
-#     num_outputs: int,
-#     output_subdirectory: str,
-#     project_directory: ProjectDirectory,
-# ) -> None:
-
-#     def plot_statistics_for_one_output(output_index: int) -> None:
-
-#         config = IndicesStatisticsPlotterConfigTreloar()
-
-#         parameter_names, first_indices_results_df = read_indices_results(
-#             indice_label=first_indices_label,
-#             output_index=output_index,
-#             relevant_parameter_indices=relevant_parameter_indices,
-#             output_subdirectory=output_subdirectory,
-#             project_directory=project_directory,
-#         )
-#         first_indices_results = filter_all_indices_results(
-#             first_indices_results_df, parameter_names
-#         )
-#         parameter_names, total_indices_results_df = read_indices_results(
-#             indice_label=total_indices_label,
-#             output_index=output_index,
-#             relevant_parameter_indices=relevant_parameter_indices,
-#             output_subdirectory=output_subdirectory,
-#             project_directory=project_directory,
-#         )
-#         total_indices_results = filter_all_indices_results(
-#             total_indices_results_df, parameter_names
-#         )
-
-#         # statistics
-#         def calculate_statistics(indices_results: NPArray) -> tuple[NPArray, NPArray]:
-#             num_results = len(indices_results)
-#             means = np.mean(indices_results, axis=0)
-#             stder = np.std(indices_results, axis=0) / np.sqrt(num_results)
-#             return means, stder
-
-#         first_indices_mean, first_indices_stder = calculate_statistics(
-#             first_indices_results
-#         )
-#         total_indices_mean, total_indices_stder = calculate_statistics(
-#             total_indices_results
-#         )
-
-#         indices_labels = ["first Sobol indice (S1)", "total Sobol indice (ST)"]
-#         colors = [config.bar_colors_first_indices, config.bar_colors_total_indices]
-#         indices_means = [first_indices_mean, total_indices_mean]
-#         indices_stder = [first_indices_stder, total_indices_stder]
-
-#         figure, axes = plt.subplots()
-
-#         # bars and error bars
-#         y = np.arange(len(parameter_names))
-#         bar_width = config.bar_width
-#         multiplier = 0
-
-#         for index, label in enumerate(indices_labels):
-#             means = indices_means[index]
-#             stder = indices_stder[index]
-
-#             offset = bar_width * multiplier
-#             y_with_offset = y + offset
-#             color = colors[index]
-
-#             axes.barh(
-#                 y_with_offset,
-#                 means,
-#                 color=color,
-#                 height=bar_width,
-#                 align="center",
-#                 label=label,
-#             )
-#             if index == 1:
-#                 axes.errorbar(
-#                     means,
-#                     y_with_offset,
-#                     xerr=stder,
-#                     ecolor=config.error_bar_color,
-#                     capsize=config.error_bar_cap_size,
-#                     linestyle="None",
-#                     label="standard error",
-#                 )
-#             else:
-#                 axes.errorbar(
-#                     means,
-#                     y_with_offset,
-#                     xerr=stder,
-#                     ecolor=config.error_bar_color,
-#                     capsize=config.error_bar_cap_size,
-#                     linestyle="None",
-#                 )
-
-#             multiplier += 1
-
-#         # legend
-#         axes.legend(
-#             fontsize=config.font_size,
-#             loc="center right",
-#         )
-
-#         # axis labels
-#         axes.set_xlabel(config.xaxis_label, **config.font)
-#         yticks = y + offset / 2
-#         axes.set_yticks(yticks, parameter_names)
-
-#         # saving
-#         file_name = f"sobol_indices_statistics_output_{output_index}.png"
-#         output_path = project_directory.create_output_file_path(
-#             file_name=file_name, subdir_name=output_subdirectory
-#         )
-#         figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
-
-#     for output_index in range(num_outputs):
-#         plot_statistics_for_one_output(output_index)
 
 
 def read_indices_results(

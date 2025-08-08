@@ -1,4 +1,4 @@
-from .base import ModelProtocol
+from .base import ModelProtocol, ParameterNames
 from .base_outputselection import OutputSelectorProtocol
 from .isotropicmodel import (
     IsotropicModel,
@@ -14,6 +14,7 @@ from .utility import load_model_state, save_model_state
 
 __all__ = [
     "ModelProtocol",
+    "ParameterNames",
     "OrthotropicCANN",
     "IsotropicModel",
     "select_model_through_backward_elimination",
