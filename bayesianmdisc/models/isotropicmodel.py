@@ -344,9 +344,10 @@ class LibrarySEF:
     def _calculate_strain_energy(
         self, deformation_gradient: DeformationGradient, parameters: Parameters
     ) -> StrainEnergy:
-        mr_parameters, ogden_parameters, ln_feature_parameters = self._split_parameters(
-            parameters
-        )
+        # mr_parameters, ogden_parameters, ln_feature_parameters = self._split_parameters(
+        #     parameters
+        # )
+        mr_parameters, ogden_parameters = self._split_parameters(parameters)
         mr_strain_energy_terms = self._calculate_mr_strain_energy_terms(
             deformation_gradient, mr_parameters
         )
