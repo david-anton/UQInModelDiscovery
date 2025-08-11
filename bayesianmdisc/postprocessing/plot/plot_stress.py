@@ -1152,70 +1152,6 @@ def plot_model_stresses_linka(
             )
             mean_model_output_list += [mean_model_output]
 
-            if subfigure_counter == 5:
-                # legend
-                model_credible_interval = Patch(
-                    facecolor=plotter_config.model_color,
-                    alpha=plotter_config.model_credible_interval_alpha,
-                    label=plotter_config.model_credible_interval_label,
-                )
-                # data_legend_handles, _ = axis.get_legend_handles_labels()
-                # legend_handles = data_legend_handles.insert(3, model_credible_interval)
-                # axis.legend(
-                #     handles=legend_handles,
-                #     fontsize=plotter_config.font_size,
-                #     bbox_to_anchor=(1.15, 0.95),
-                #     loc="upper left",
-                #     borderaxespad=0.0,
-                # )
-                legend_handles, _ = axis.get_legend_handles_labels()
-                legend_handles.insert(3, model_credible_interval)
-                axis.legend(
-                    handles=legend_handles,
-                    fontsize=plotter_config.font_size,
-                    bbox_to_anchor=(1.15, 0.95),
-                    loc="upper left",
-                    borderaxespad=0.0,
-                )
-
-                total_coverage = np.mean(np.array(coverage_list))
-                total_data_outputs = np.concatenate(data_output_list, axis=0)
-                total_mean_model_outputs = np.concatenate(
-                    mean_model_output_list, axis=0
-                )
-                total_r_squared = coefficient_of_determination(
-                    total_mean_model_outputs, total_data_outputs
-                )
-                total_rmse = root_mean_squared_error(
-                    total_mean_model_outputs, total_data_outputs
-                )
-                text = "\n".join(
-                    (
-                        "Total "
-                        + r"$C_{95\%}=$"
-                        + r"${0}\%$".format(round(total_coverage, 2)),
-                        "Total "
-                        + r"$R^{2}=$"
-                        + r"${0}$".format(round(total_r_squared, 4)),
-                        "Total " + r"$RMSE=$" + r"${0}$".format(round(total_rmse, 4)),
-                    )
-                )
-                text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
-                if plot_four_term_model:
-                    x_position_text = 2.8
-                else:
-                    x_position_text = 2.18
-
-                axis.text(
-                    x_position_text,
-                    0.90,
-                    text,
-                    transform=axis.transAxes,
-                    fontsize=plotter_config.font_size,
-                    verticalalignment="top",
-                    bbox=text_properties,
-                )
-
             subfigure_counter += 1
             return (
                 subfigure_counter,
@@ -1275,6 +1211,58 @@ def plot_model_stresses_linka(
                 mean_model_output_list,
             )
         )
+
+    def add_legend() -> None:
+        subfigure_indices = data_config.subfigure_indices[5]
+        axis = axes[subfigure_indices[0], subfigure_indices[1]]
+        model_credible_interval = Patch(
+            facecolor=plotter_config.model_color,
+            alpha=plotter_config.model_credible_interval_alpha,
+            label=plotter_config.model_credible_interval_label,
+        )
+        legend_handles, _ = axis.get_legend_handles_labels()
+        legend_handles.insert(3, model_credible_interval)
+        axis.legend(
+            handles=legend_handles,
+            fontsize=plotter_config.font_size,
+            bbox_to_anchor=(1.15, 0.95),
+            loc="upper left",
+            borderaxespad=0.0,
+        )
+
+        total_coverage = np.mean(np.array(coverage_list))
+        total_data_outputs = np.concatenate(data_output_list, axis=0)
+        total_mean_model_outputs = np.concatenate(mean_model_output_list, axis=0)
+        total_r_squared = coefficient_of_determination(
+            total_mean_model_outputs, total_data_outputs
+        )
+        total_rmse = root_mean_squared_error(
+            total_mean_model_outputs, total_data_outputs
+        )
+        text = "\n".join(
+            (
+                "Total " + r"$C_{95\%}=$" + r"${0}\%$".format(round(total_coverage, 2)),
+                "Total " + r"$R^{2}=$" + r"${0}$".format(round(total_r_squared, 4)),
+                "Total " + r"$RMSE=$" + r"${0}$".format(round(total_rmse, 4)),
+            )
+        )
+        text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+        if plot_four_term_model:
+            x_position_text = 2.8
+        else:
+            x_position_text = 2.18
+
+        axis.text(
+            x_position_text,
+            0.90,
+            text,
+            transform=axis.transAxes,
+            fontsize=plotter_config.font_size,
+            verticalalignment="top",
+            bbox=text_properties,
+        )
+
+    add_legend()
 
     output_path = project_directory.create_output_file_path(
         file_name=file_name, subdir_name=output_subdirectory
@@ -1977,42 +1965,6 @@ def plot_gp_stresses_linka(
                 bbox=text_properties,
             )
 
-            # legend + overall coverage
-            if subfigure_counter == 5:
-                model_credible_interval = Patch(
-                    facecolor=plotter_config.model_color,
-                    alpha=plotter_config.model_credible_interval_alpha,
-                    label=plotter_config.model_credible_interval_label,
-                )
-                data_legend_handles, _ = axis.get_legend_handles_labels()
-                legend_handles = data_legend_handles + [model_credible_interval]
-                axis.legend(
-                    handles=legend_handles,
-                    fontsize=plotter_config.font_size,
-                    bbox_to_anchor=(1.15, 0.94),
-                    loc="upper left",
-                    borderaxespad=0.0,
-                )
-
-                total_coverage = np.mean(np.array(coverage_list))
-                text = "\n".join(
-                    (
-                        "Total "
-                        + r"$C_{95\%}=$"
-                        + r"${0}\%$".format(round(total_coverage, 2)),
-                    )
-                )
-                text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
-                axis.text(
-                    2.18,
-                    0.92,
-                    text,
-                    transform=axis.transAxes,
-                    fontsize=plotter_config.font_size,
-                    verticalalignment="top",
-                    bbox=text_properties,
-                )
-
             subfigure_counter += 1
             return subfigure_counter, coverage_list
 
@@ -2055,6 +2007,41 @@ def plot_gp_stresses_linka(
             subfigure_counter,
             coverage_list,
         )
+
+    def add_legend() -> None:
+        subfigure_indices = data_config.subfigure_indices[5]
+        axis = axes[subfigure_indices[0], subfigure_indices[1]]
+        model_credible_interval = Patch(
+            facecolor=plotter_config.model_color,
+            alpha=plotter_config.model_credible_interval_alpha,
+            label=plotter_config.model_credible_interval_label,
+        )
+        data_legend_handles, _ = axis.get_legend_handles_labels()
+        legend_handles = data_legend_handles + [model_credible_interval]
+        axis.legend(
+            handles=legend_handles,
+            fontsize=plotter_config.font_size,
+            bbox_to_anchor=(1.15, 0.94),
+            loc="upper left",
+            borderaxespad=0.0,
+        )
+
+        total_coverage = np.mean(np.array(coverage_list))
+        text = "\n".join(
+            ("Total " + r"$C_{95\%}=$" + r"${0}\%$".format(round(total_coverage, 2)),)
+        )
+        text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+        axis.text(
+            2.18,
+            0.92,
+            text,
+            transform=axis.transAxes,
+            fontsize=plotter_config.font_size,
+            verticalalignment="top",
+            bbox=text_properties,
+        )
+
+    add_legend()
 
     output_path = project_directory.create_output_file_path(
         file_name=file_name, subdir_name=output_subdirectory
