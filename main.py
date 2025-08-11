@@ -97,7 +97,7 @@ if data_set_label == data_set_label_treloar:
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [20_000, 10_000]
     if strain_energy_function_type == "library":
-        total_sobol_index_thresshold = 1e-3
+        total_sobol_index_thresshold = 1e-4
     elif strain_energy_function_type == "cann":
         total_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_linka:
@@ -561,8 +561,8 @@ if retrain_models:
             parameter_names=parameter_names_full,
             true_parameters=true_model_parameters_full,
             parameter_samples=parameter_samples_full,
-            subdirectory_name="parameters_full",
-            output_directory=output_directory_step,
+            subdirectory_name="full",
+            output_directory=output_subdirectory_parameters,
         )
         plot_model_stresses(
             model=model,
@@ -606,8 +606,8 @@ if retrain_models:
             parameter_names=parameter_names_reduced,
             true_parameters=true_model_parameters_reduced,
             parameter_samples=parameter_samples_reduced,
-            subdirectory_name="parameters_reduced",
-            output_directory=output_directory_step,
+            subdirectory_name="reduced",
+            output_directory=output_subdirectory_parameters,
         )
         plot_model_stresses(
             model=model,
@@ -666,8 +666,8 @@ else:
             parameter_names=parameter_names_full,
             true_parameters=true_model_parameters_full,
             parameter_samples=parameter_samples_full,
-            subdirectory_name="parameters_full",
-            output_directory=output_directory_step,
+            subdirectory_name="full",
+            output_directory=output_subdirectory_parameters,
         )
         plot_model_stresses(
             model=model,
@@ -712,8 +712,8 @@ else:
             parameter_names=parameter_names_reduced,
             true_parameters=true_model_parameters_reduced,
             parameter_samples=parameter_samples_reduced,
-            subdirectory_name="parameters_reduced",
-            output_directory=output_directory_step,
+            subdirectory_name="reduced",
+            output_directory=output_subdirectory_parameters,
         )
         plot_model_stresses(
             model=model,
