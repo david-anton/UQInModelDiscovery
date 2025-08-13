@@ -301,18 +301,18 @@ class LibrarySEF:
                 for m in range(n + 1):
                     exponent_I_1 = m
                     exponent_I_2 = n - m
-                    parameter_name = f"GMR ({exponent_I_1}, {exponent_I_2})"
+                    parameter_name = f"MR ({exponent_I_1}, {exponent_I_2})"
                     if exponent_I_1 == 1 and exponent_I_2 == 0:
                         parameter_name = parameter_name + " (NH)"
                     elif exponent_I_1 == 0 and exponent_I_2 == 1:
-                        parameter_name = parameter_name + " (MR)"
+                        parameter_name = parameter_name  # + " (MR)"
                     parameter_names += [parameter_name]
             return tuple(parameter_names)
 
         def compose_ogden_parameter_names() -> ParameterNames:
             parameter_names = []
             for exponent in self._ogden_exponents:
-                parameter_names += [f"GO ({int(exponent)})"]
+                parameter_names += [f"O ({int(exponent)})"]
             return tuple(parameter_names)
 
         mr_parameter_names = compose_mr_parameter_names()
