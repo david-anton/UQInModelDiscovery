@@ -1212,7 +1212,7 @@ def plot_model_stresses_linka(
             )
         )
 
-    def add_legend() -> None:
+    def add_legend_and_total_metrics() -> None:
         subfigure_indices = data_config.subfigure_indices[5]
         axis = axes[subfigure_indices[0], subfigure_indices[1]]
         model_credible_interval = Patch(
@@ -1262,7 +1262,7 @@ def plot_model_stresses_linka(
             bbox=text_properties,
         )
 
-    add_legend()
+    add_legend_and_total_metrics()
 
     output_path = project_directory.create_output_file_path(
         file_name=file_name, subdir_name=output_subdirectory
@@ -2008,7 +2008,7 @@ def plot_gp_stresses_linka(
             coverage_list,
         )
 
-    def add_legend() -> None:
+    def add_legend_and_total_metrics() -> None:
         subfigure_indices = data_config.subfigure_indices[5]
         axis = axes[subfigure_indices[0], subfigure_indices[1]]
         model_credible_interval = Patch(
@@ -2021,7 +2021,7 @@ def plot_gp_stresses_linka(
         axis.legend(
             handles=legend_handles,
             fontsize=plotter_config.font_size,
-            bbox_to_anchor=(1.15, 0.94),
+            bbox_to_anchor=(1.15, 0.95),
             loc="upper left",
             borderaxespad=0.0,
         )
@@ -2033,7 +2033,7 @@ def plot_gp_stresses_linka(
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axis.text(
             2.18,
-            0.92,
+            0.90,
             text,
             transform=axis.transAxes,
             fontsize=plotter_config.font_size,
@@ -2041,7 +2041,7 @@ def plot_gp_stresses_linka(
             bbox=text_properties,
         )
 
-    add_legend()
+    add_legend_and_total_metrics()
 
     output_path = project_directory.create_output_file_path(
         file_name=file_name, subdir_name=output_subdirectory
