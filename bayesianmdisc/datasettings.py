@@ -89,13 +89,13 @@ class LinkasModelParameters:
 
 def create_four_terms_linka_model_parameters() -> LinkasModelParameters:
     parameter_names = (
-        "W_2_7 (l2, I_2, p2, I)",
-        "W_1_12 (l1, I_4f, p2, exp)",
-        "W_2_12 (l2, I_4f, p2, exp)",
-        "W_1_20 (l1, I_4n, p2, exp)",
-        "W_2_20 (l2, I_4n, p2, exp)",
-        "W_1_24 (l1, I_8fs, p2, exp)",
-        "W_2_24 (l2, I_8fs, p2, exp)",
+        "c_2_7",
+        "w_1_12",
+        "c_2_12",
+        "w_1_20",
+        "c_2_20",
+        "w_1_24",
+        "c_2_24",
     )
     parameter_values = (5.162, 21.151, 0.081, 4.371, 0.315, 0.508, 0.486)
     return LinkasModelParameters(names=parameter_names, values=parameter_values)

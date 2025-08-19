@@ -354,17 +354,19 @@ class OrthotropicCANN:
                 # first layer
                 for power in power_term_names:
                     for activation in activation_names[1:]:
-                        parameter_names += [
-                            f"W_1_{2 *first_layer_index} (l1, {invariant}, {power}, {activation})"
-                        ]
+                        # parameter_names += [
+                        #     f"W_1_{2 *first_layer_index} (l1, {invariant}, {power}, {activation})"
+                        # ]
+                        parameter_names += [f"w_1_{2 *first_layer_index}"]
                         first_layer_index += 1
 
                 # second layer
                 for power in power_term_names:
                     for activation in activation_names:
-                        parameter_names += [
-                            f"W_2_{second_layer_index} (l2, {invariant}, {power}, {activation})"
-                        ]
+                        parameter_names += [f"c_2_{second_layer_index}"]
+                        # parameter_names += [
+                        #     f"W_2_{second_layer_index} (l2, {invariant}, {power}, {activation})"
+                        # ]
                         second_layer_index += 1
 
             return tuple(parameter_names), first_layer_index, second_layer_index
