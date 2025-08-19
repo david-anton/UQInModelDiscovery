@@ -68,7 +68,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_synthetic_linka
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -158,7 +158,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}_noaddednoise"
+output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -356,8 +356,8 @@ inputs, test_cases, outputs = data_set.read_data()
 noise_stddevs = determine_heteroscedastic_noise(
     relative_noise_stddevs, min_absolute_noise_stddev, outputs
 )
-# if data_set_label == data_set_label_synthetic_linka:
-#     outputs = add_noise_to_data(noise_stddevs, outputs, device)
+if data_set_label == data_set_label_synthetic_linka:
+    outputs = add_noise_to_data(noise_stddevs, outputs, device)
 
 
 validate_data(inputs, test_cases, outputs, noise_stddevs)
