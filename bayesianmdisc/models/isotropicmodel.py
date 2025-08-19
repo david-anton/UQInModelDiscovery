@@ -301,18 +301,18 @@ class LibrarySEF:
                 for m in range(n + 1):
                     exponent_I_1 = m
                     exponent_I_2 = n - m
-                    parameter_name = f"MR ({exponent_I_1}, {exponent_I_2})"
-                    if exponent_I_1 == 1 and exponent_I_2 == 0:
-                        parameter_name = parameter_name + " (NH)"
-                    elif exponent_I_1 == 0 and exponent_I_2 == 1:
-                        parameter_name = parameter_name  # + " (MR)"
+                    parameter_name = f"c ({exponent_I_1}, {exponent_I_2})"
+                    # if exponent_I_1 == 1 and exponent_I_2 == 0:
+                    #     parameter_name = parameter_name + " (NH)"
+                    # elif exponent_I_1 == 0 and exponent_I_2 == 1:
+                    #     parameter_name = parameter_name  # + " (MR)"
                     parameter_names += [parameter_name]
             return tuple(parameter_names)
 
         def compose_ogden_parameter_names() -> ParameterNames:
             parameter_names = []
             for exponent in self._ogden_exponents:
-                parameter_names += [f"O ({int(exponent)})"]
+                parameter_names += [f"c ({int(exponent)})"]
             return tuple(parameter_names)
 
         mr_parameter_names = compose_mr_parameter_names()
@@ -539,17 +539,19 @@ class CANNSEF:
             # first layer
             for power in power_term_names:
                 for activation in activation_names[1:]:
-                    parameter_names += [
-                        f"W_1_{2 *first_layer_index} (l1, {invariant}, {power}, {activation})"
-                    ]
+                    # parameter_names += [
+                    #     f"W_1_{2 *first_layer_index} (l1, {invariant}, {power}, {activation})"
+                    # ]
+                    parameter_names += [f"w (1, {2 *first_layer_index})"]
                     first_layer_index += 1
 
             # second layer
             for power in power_term_names:
                 for activation in activation_names:
-                    parameter_names += [
-                        f"W_2_{second_layer_index} (l2, {invariant}, {power}, {activation})"
-                    ]
+                    # parameter_names += [
+                    #     f"W_2_{second_layer_index} (l2, {invariant}, {power}, {activation})"
+                    # ]
+                    parameter_names += [f"c (2, {second_layer_index})"]
                     second_layer_index += 1
 
         return tuple(parameter_names)
