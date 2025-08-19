@@ -1,4 +1,4 @@
-from .plot_histogram import plot_histograms, TrueParameters
+from .plot_histogram import TrueParameters, plot_histograms
 from .plot_history import (
     HistoryPlotterConfig,
     plot_loss_history,

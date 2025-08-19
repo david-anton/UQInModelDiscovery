@@ -1,16 +1,15 @@
-from typing import Any, Dict, TypeAlias, Union
 import math
+from typing import Any, Dict, TypeAlias, Union
 
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
 import numpy as np
-from matplotlib.ticker import ScalarFormatter
+from matplotlib.ticker import MaxNLocator, ScalarFormatter
 
 from bayesianmdisc.customtypes import NPArray
 from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.statistics.utility import (
-    determine_quantiles_from_samples,
     determine_moments_of_univariate_normal_distribution,
+    determine_quantiles_from_samples,
 )
 
 TrueParameter: TypeAlias = Union[float, None]

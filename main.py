@@ -55,6 +55,7 @@ from bayesianmdisc.parameterextraction import (
     save_normalizing_flow_parameter_distribution,
 )
 from bayesianmdisc.postprocessing.plot import (
+    TrueParameters,
     plot_gp_stresses_linka,
     plot_gp_stresses_treloar,
     plot_histograms,
@@ -63,7 +64,6 @@ from bayesianmdisc.postprocessing.plot import (
     plot_model_stresses_treloar,
     plot_sobol_indice_paths_linka,
     plot_sobol_indice_paths_treloar,
-    TrueParameters,
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
