@@ -113,7 +113,7 @@ elif data_set_label == data_set_label_linka:
     use_only_squared_anisotropic_invariants = True
     model = OrthotropicCANN(device, use_only_squared_anisotropic_invariants)
 
-    relative_noise_stddevs = 10e-2
+    relative_noise_stddevs = 5e-2  # 10e-2
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [20_000, 10_000]
     total_sobol_index_thresshold = 1e-2
@@ -356,8 +356,8 @@ inputs, test_cases, outputs = data_set.read_data()
 noise_stddevs = determine_heteroscedastic_noise(
     relative_noise_stddevs, min_absolute_noise_stddev, outputs
 )
-# if data_set_label == data_set_label_synthetic_linka:
-#     outputs = add_noise_to_data(noise_stddevs, outputs, device)
+if data_set_label == data_set_label_synthetic_linka:
+    outputs = add_noise_to_data(noise_stddevs, outputs, device)
 
 
 validate_data(inputs, test_cases, outputs, noise_stddevs)
