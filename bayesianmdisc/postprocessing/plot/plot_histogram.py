@@ -39,6 +39,9 @@ class HistogramsPlotterConfig:
         self.pad_subplots_hight = 1.6
         self.additional_height_when_legend_at_bottom = 1.0 * cm_to_inch
 
+        # axis labels
+        self.y_axis_label = "probability density [-]"
+
         # ticks
         self.num_x_ticks = 5
         self.num_y_ticks = 5
@@ -71,6 +74,9 @@ class HistogramsPlotterConfig:
 
         # scientific notation
         self.scientific_notation_size = 6
+
+        # others
+        self.max_ratio_of_distance_less_and_greater_mean = 4
 
         # save options
         self.dpi = 300
@@ -144,6 +150,26 @@ def plot_histograms(
             )
 
         # x axis
+        min_sample = float(np.amin(samples))
+        max_sample = float(np.amax(samples))
+        distance_min_to_mean = mean - min_sample
+        distance_mean_to_max = max_sample - mean
+
+        distance_ratio_less_mean_to_greater_mean = (
+            distance_mean_to_max / distance_min_to_mean
+        )
+
+        if (
+            distance_ratio_less_mean_to_greater_mean
+            > config.max_ratio_of_distance_less_and_greater_mean
+        ):
+            max_x = mean + (
+                config.max_ratio_of_distance_less_and_greater_mean
+                * distance_min_to_mean
+            )
+            min_x = mean - (1.15 * distance_min_to_mean)
+            axis.set_xlim(left=min_x, right=max_x)
+
         x_ticks = [min_quantile, mean, max_quantile]
         axis.set_xticks(x_ticks)
         axis.xaxis.set_major_formatter(ScalarFormatterForceFormat())
@@ -151,7 +177,7 @@ def plot_histograms(
         # y axis
         axis.yaxis.set_major_locator(MaxNLocator(nbins=config.num_y_ticks))
         if subplot_index % num_columns == 0:
-            axis.set_ylabel("probability density", **config.font)
+            axis.set_ylabel(config.y_axis_label, **config.font)
 
         # axis
         axis.tick_params(
