@@ -872,6 +872,7 @@ def plot_model_stresses_linka(
     coverage_list: MetricList = []
     data_output_list: OutputList = []
     mean_model_output_list: OutputList = []
+    four_term_model_output_list: OutputList = []
 
     def plot_one_data_set(
         inputs: NPArray,
@@ -883,7 +884,8 @@ def plot_model_stresses_linka(
         coverage_list: MetricList,
         data_output_list: OutputList,
         mean_model_output_list: OutputList,
-    ) -> tuple[int, MetricList, OutputList, OutputList]:
+        four_term_model_output_list: OutputList,
+    ) -> tuple[int, MetricList, OutputList, OutputList, OutputList]:
 
         def plot_one_stress(
             stress_index: int,
@@ -891,7 +893,8 @@ def plot_model_stresses_linka(
             coverage_list: MetricList,
             data_output_list: OutputList,
             mean_model_output_list: OutputList,
-        ) -> tuple[int, MetricList, OutputList, OutputList]:
+            four_term_model_output_list: OutputList,
+        ) -> tuple[int, MetricList, OutputList, OutputList, OutputList]:
             is_principal_stress = stress_index in data_config.principal_stress_indices
 
             subfigure_indices = data_config.subfigure_indices[subfigure_counter]
@@ -1018,10 +1021,10 @@ def plot_model_stresses_linka(
                 )
 
             # four term model
+            four_term_model, four_term_model_parameters = create_four_terms_linka_model(
+                device
+            )
             if plot_four_term_model:
-                four_term_model, four_term_model_parameters = (
-                    create_four_terms_linka_model(device)
-                )
                 four_term_model_output = calculate_model_predictions(
                     four_term_model,
                     four_term_model_parameters,
@@ -1151,6 +1154,14 @@ def plot_model_stresses_linka(
                 output_dim=stress_index,
             )
             mean_model_output_list += [mean_model_output]
+            four_term_model_output_metrics = calculate_model_predictions(
+                four_term_model,
+                four_term_model_parameters,
+                inputs,
+                metrics_test_cases,
+                device,
+            )[0, :, stress_index].reshape(-1, 1)
+            four_term_model_output_list += [four_term_model_output_metrics]
 
             subfigure_counter += 1
             return (
@@ -1158,6 +1169,7 @@ def plot_model_stresses_linka(
                 coverage_list,
                 data_output_list,
                 mean_model_output_list,
+                four_term_model_output_list,
             )
 
         for stress_index in stress_indices:
@@ -1166,12 +1178,14 @@ def plot_model_stresses_linka(
                 coverage_list,
                 data_output_list,
                 mean_model_output_list,
+                four_term_model_output_list,
             ) = plot_one_stress(
                 stress_index,
                 subfigure_counter,
                 coverage_list,
                 data_output_list,
                 mean_model_output_list,
+                four_term_model_output_list,
             )
 
         return (
@@ -1179,6 +1193,7 @@ def plot_model_stresses_linka(
             coverage_list,
             data_output_list,
             mean_model_output_list,
+            four_term_model_output_list,
         )
 
     input_sets, test_case_identifiers, output_sets = split_linka_inputs_and_outputs(
@@ -1198,18 +1213,23 @@ def plot_model_stresses_linka(
         data_config.stress_indices_list,
         range(data_config.num_data_sets),
     ):
-        subfigure_counter, coverage_list, data_output_list, mean_model_output_list = (
-            plot_one_data_set(
-                input_set,
-                test_case_identifier,
-                output_set,
-                stress_indices,
-                data_set_index,
-                subfigure_counter,
-                coverage_list,
-                data_output_list,
-                mean_model_output_list,
-            )
+        (
+            subfigure_counter,
+            coverage_list,
+            data_output_list,
+            mean_model_output_list,
+            four_term_model_output_list,
+        ) = plot_one_data_set(
+            input_set,
+            test_case_identifier,
+            output_set,
+            stress_indices,
+            data_set_index,
+            subfigure_counter,
+            coverage_list,
+            data_output_list,
+            mean_model_output_list,
+            four_term_model_output_list,
         )
 
     def add_legend_and_total_metrics() -> None:
@@ -1256,6 +1276,37 @@ def plot_model_stresses_linka(
             x_position_text,
             0.90,
             text,
+            transform=axis.transAxes,
+            fontsize=plotter_config.font_size,
+            verticalalignment="top",
+            bbox=text_properties,
+        )
+
+        # 4-term model (reference solution)
+        total_four_term_model_outputs = np.concatenate(
+            four_term_model_output_list, axis=0
+        )
+        total_four_term_model_r_squared = coefficient_of_determination(
+            total_four_term_model_outputs, total_data_outputs
+        )
+        total_four_term_model_rmse = root_mean_squared_error(
+            total_four_term_model_outputs, total_data_outputs
+        )
+        text_four_term_model = "\n".join(
+            (
+                "Four-term model:",
+                "Total "
+                + r"$R^{2}=$"
+                + r"${0}$".format(round(total_four_term_model_r_squared, 4)),
+                "Total "
+                + r"$RMSE=$"
+                + r"${0}$".format(round(total_four_term_model_rmse, 4)),
+            )
+        )
+        axis.text(
+            x_position_text,
+            0.38,
+            text_four_term_model,
             transform=axis.transAxes,
             fontsize=plotter_config.font_size,
             verticalalignment="top",
