@@ -1,6 +1,7 @@
 import os
 from datetime import date
 from typing import cast
+from time import perf_counter
 
 import torch
 
@@ -364,6 +365,7 @@ validate_data(inputs, test_cases, outputs, noise_stddevs)
 num_discovery_steps = len(list_num_wasserstein_iterations)
 
 if retrain_models:
+    start_time = perf_counter()
     for step in range(num_discovery_steps):
         is_first_step = step == 0
         is_last_step = step == num_discovery_steps - 1
@@ -623,6 +625,10 @@ if retrain_models:
             model.reduce_to_activated_parameters()
 
         save_model_state(model, output_directory_step, project_directory)
+
+    end_time = perf_counter()
+    run_time = end_time - start_time
+    print(f"Total run time: {run_time} s")
 else:
     for step in range(num_discovery_steps):
         is_first_step = step == 0
