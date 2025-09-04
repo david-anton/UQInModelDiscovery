@@ -69,7 +69,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_linka
+data_set_label = data_set_label_synthetic_linka
 retrain_models = True
 
 # Settings
@@ -435,7 +435,7 @@ if retrain_models:
             elif data_set_label == data_set_label_linka:
                 factor_length_scales = 0.6
             elif data_set_label == data_set_label_synthetic_linka:
-                factor_length_scales = 0.6
+                factor_length_scales = 0.4  # 0.6
 
             def optimize_hyperparameters() -> None:
                 return optimize_gp_hyperparameters(
