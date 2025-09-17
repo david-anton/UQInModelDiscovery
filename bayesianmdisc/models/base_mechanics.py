@@ -74,8 +74,12 @@ def calculate_pressure_from_incompressibility_constraint(
     strain_energy_derivatives: StrainEnergyDerivatives,
     zero_principal_stress_index: int,
 ) -> Pressure:
-    dW_dF = strain_energy_derivatives
-    F_transpose = deformation_gradient.transpose(0, 1)
-    matmul_result = torch.matmul(dW_dF, F_transpose)
+    # dW_dF = strain_energy_derivatives
+    # F_transpose = deformation_gradient.transpose(0, 1)
+    # matmul_result = torch.matmul(dW_dF, F_transpose)
+    # index = zero_principal_stress_index
+    # return matmul_result[index, index]
     index = zero_principal_stress_index
-    return matmul_result[index, index]
+    dW_dF = strain_energy_derivatives
+    F_inverse_transpose = deformation_gradient.inverse().transpose(0, 1)
+    return dW_dF[index, index] / F_inverse_transpose[index, index]
