@@ -339,8 +339,14 @@ def plot_model_stresses_treloar(
             )
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
+        if test_case_identifier == test_case_identifier_uniaxial_tension:
+            text_position_x = 0.68
+        elif test_case_identifier == test_case_identifier_equibiaxial_tension:
+            text_position_x = 0.667
+        else:
+            text_position_x = 0.663
         axis.text(
-            0.68,
+            text_position_x,
             0.22,
             text,
             transform=axis.transAxes,
@@ -1691,7 +1697,7 @@ def plot_gp_stresses_treloar(
         text = "\n".join((r"$EC_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),))
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axis.text(
-            0.68,
+            0.665,
             0.09,
             text,
             transform=axis.transAxes,
