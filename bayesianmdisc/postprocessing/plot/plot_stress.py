@@ -1691,7 +1691,7 @@ def plot_gp_stresses_treloar(
         text = "\n".join((r"$EC_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),))
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axis.text(
-            0.69,
+            0.68,
             0.09,
             text,
             transform=axis.transAxes,
