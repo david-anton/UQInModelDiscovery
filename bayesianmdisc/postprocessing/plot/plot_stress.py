@@ -10,11 +10,11 @@ from torch import vmap
 
 from bayesianmdisc.customtypes import Device, NPArray, Tensor
 from bayesianmdisc.data import interpolate_heteroscedastic_noise
-from bayesianmdisc.data.linkaheartdataset import (
+from bayesianmdisc.data.anisotropicheartdataset import (
     assemble_flattened_deformation_gradients,
     generate_principal_stretches,
 )
-from bayesianmdisc.datasettings import create_four_terms_linka_model_parameters
+from bayesianmdisc.datasettings import create_four_terms_anisotropic_model_parameters
 from bayesianmdisc.errors import PlotterError
 from bayesianmdisc.gps.base import GPMultivariateNormal
 from bayesianmdisc.gps.gp import GP
@@ -24,8 +24,8 @@ from bayesianmdisc.models import IsotropicModel, ModelProtocol, OrthotropicCANN
 from bayesianmdisc.models.base_mechanics import assemble_stretches_from_factors
 from bayesianmdisc.postprocessing.plot.utility import (
     split_kawabata_inputs_and_outputs,
-    split_linka_inputs_and_outputs,
-    split_linka_noise_stddevs,
+    split_anisotropic_inputs_and_outputs,
+    split_anisotropic_noise_stddevs,
     split_treloar_inputs_and_outputs,
     split_treloar_noise_stddevs,
 )
@@ -850,7 +850,7 @@ class ModelStressPlotterConfigLinka:
         self.dpi = 300
 
 
-def plot_model_stresses_linka(
+def plot_model_stresses_anisotropic(
     model: OrthotropicCANN,
     parameter_samples: NPArray,
     inputs: NPArray,
@@ -1027,8 +1027,8 @@ def plot_model_stresses_linka(
                 )
 
             # four term model
-            four_term_model, four_term_model_parameters = create_four_terms_linka_model(
-                device
+            four_term_model, four_term_model_parameters = (
+                create_four_terms_anisotropic_model(device)
             )
             if plot_four_term_model:
                 four_term_model_output = calculate_model_predictions(
@@ -1202,8 +1202,10 @@ def plot_model_stresses_linka(
             four_term_model_output_list,
         )
 
-    input_sets, test_case_identifiers, output_sets = split_linka_inputs_and_outputs(
-        inputs, test_cases, outputs, num_points_per_test_case
+    input_sets, test_case_identifiers, output_sets = (
+        split_anisotropic_inputs_and_outputs(
+            inputs, test_cases, outputs, num_points_per_test_case
+        )
     )
 
     for (
@@ -1777,7 +1779,7 @@ class GPStressPlotterConfigLinka(ModelStressPlotterConfigLinka):
         super().__init__()
 
 
-def plot_gp_stresses_linka(
+def plot_gp_stresses_anisotropic(
     gaussian_process: GaussianProcess,
     inputs: NPArray,
     test_cases: NPArray,
@@ -2034,10 +2036,12 @@ def plot_gp_stresses_linka(
 
         return subfigure_counter, coverage_list
 
-    input_sets, test_case_identifiers, output_sets = split_linka_inputs_and_outputs(
-        inputs, test_cases, outputs, num_points_per_test_case
+    input_sets, test_case_identifiers, output_sets = (
+        split_anisotropic_inputs_and_outputs(
+            inputs, test_cases, outputs, num_points_per_test_case
+        )
     )
-    noise_stddev_sets = split_linka_noise_stddevs(
+    noise_stddev_sets = split_anisotropic_noise_stddevs(
         noise_stddevs, num_points_per_test_case
     )
 
@@ -2275,9 +2279,11 @@ def _validate_noise_standard_deviations_and_output_dimension(
         )
 
 
-def create_four_terms_linka_model(device: Device) -> tuple[OrthotropicCANN, NPArray]:
+def create_four_terms_anisotropic_model(
+    device: Device,
+) -> tuple[OrthotropicCANN, NPArray]:
     model = OrthotropicCANN(device)
-    four_terms_model_parameters = create_four_terms_linka_model_parameters()
+    four_terms_model_parameters = create_four_terms_anisotropic_model_parameters()
     parameter_names = four_terms_model_parameters.names
     parameter_values = np.array(four_terms_model_parameters.values).reshape(1, -1)
     model.reduce_model_to_parameter_names(parameter_names)

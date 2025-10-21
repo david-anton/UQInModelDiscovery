@@ -21,8 +21,8 @@ from .testcases import (
 
 data_set_label_treloar = "treloar"
 data_set_label_kawabata = "kawabata"
-data_set_label_linka = "heart_data_linka"
-data_set_label_synthetic_linka = "synthetic_heart_data_linka"
+data_set_label_anisotropic = "heart_data_anisotropic"
+data_set_label_anisotropic_synthetic = "heart_data_anisotropic_synthetic"
 
 
 SkippedInputIndices: TypeAlias = list[int]
@@ -36,8 +36,8 @@ def determine_skipped_input_indices(
     if data_set_label == data_set_label_treloar:
         return zero_stress_inputs_treloar
     elif (
-        data_set_label == data_set_label_linka
-        or data_set_label == data_set_label_synthetic_linka
+        data_set_label == data_set_label_anisotropic
+        or data_set_label == data_set_label_anisotropic_synthetic
     ):
         num_inputs = len(inputs)
         num_points_per_data_set = int(round(num_inputs / num_data_sets_treloar))
@@ -57,7 +57,7 @@ relevant_test_cases_for_sensitivity_analysis_treloar = [
         test_case_identifier_pure_shear,
     ]
 ]
-relevant_test_cases_for_sensitivity_analysis_linka = [
+relevant_test_cases_for_sensitivity_analysis_anisotropic = [
     [test_case_identifier_biaxial_tension],
     [test_case_identifier_simple_shear_21],
     [test_case_identifier_simple_shear_31],
@@ -73,21 +73,21 @@ def determine_relevant_test_cases_for_outputs(data_set_label) -> RelevantTestCas
     if data_set_label == data_set_label_treloar:
         return relevant_test_cases_for_sensitivity_analysis_treloar
     elif (
-        data_set_label == data_set_label_linka
-        or data_set_label == data_set_label_synthetic_linka
+        data_set_label == data_set_label_anisotropic
+        or data_set_label == data_set_label_anisotropic_synthetic
     ):
-        return relevant_test_cases_for_sensitivity_analysis_linka
+        return relevant_test_cases_for_sensitivity_analysis_anisotropic
     else:
         raise DataError(f"""There is no implementation for the specified data set""")
 
 
 @dataclass
-class LinkasModelParameters:
+class AnisotropicModelParameters:
     names: tuple[str, ...]
     values: tuple[float, ...]
 
 
-def create_four_terms_linka_model_parameters() -> LinkasModelParameters:
+def create_four_terms_anisotropic_model_parameters() -> AnisotropicModelParameters:
     parameter_names = (
         "c (2, 7)",
         "w (1, 12)",
@@ -98,14 +98,14 @@ def create_four_terms_linka_model_parameters() -> LinkasModelParameters:
         "c (2, 24)",
     )
     parameter_values = (5.162, 21.151, 0.081, 4.371, 0.315, 0.508, 0.486)
-    return LinkasModelParameters(names=parameter_names, values=parameter_values)
+    return AnisotropicModelParameters(names=parameter_names, values=parameter_values)
 
 
-def assemble_input_mask_for_treloar(device: Device) -> Tensor | None:
+def assemble_input_mask_for_treloar_data(device: Device) -> Tensor | None:
     return torch.tensor([True, True, False], device=device)
 
 
-def assemble_input_masks_for_linka(
+def assemble_input_masks_for_anisotropic_data(
     device: Device,
 ) -> tuple[Tensor, ...] | tuple[None, ...]:
 

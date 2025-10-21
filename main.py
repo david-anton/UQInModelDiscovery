@@ -10,20 +10,20 @@ from bayesianmdisc.customtypes import GPModel, NPArray, Tensor
 from bayesianmdisc.data import (
     DataSetProtocol,
     KawabataDataSet,
-    LinkaHeartDataSet,
-    LinkaHeartDataSetGenerator,
+    AnisotropicHeartDataSet,
+    AnisotropicHeartDataSetGenerator,
     TreloarDataSet,
     add_noise_to_data,
     determine_heteroscedastic_noise,
     validate_data,
 )
 from bayesianmdisc.datasettings import (
-    assemble_input_mask_for_treloar,
-    assemble_input_masks_for_linka,
-    create_four_terms_linka_model_parameters,
+    assemble_input_mask_for_treloar_data,
+    assemble_input_masks_for_anisotropic_data,
+    create_four_terms_anisotropic_model_parameters,
     data_set_label_kawabata,
-    data_set_label_linka,
-    data_set_label_synthetic_linka,
+    data_set_label_anisotropic,
+    data_set_label_anisotropic_synthetic,
     data_set_label_treloar,
 )
 from bayesianmdisc.errors import MainError
@@ -57,13 +57,13 @@ from bayesianmdisc.parameterextraction import (
 )
 from bayesianmdisc.postprocessing.plot import (
     TrueParameters,
-    plot_gp_stresses_linka,
+    plot_gp_stresses_anisotropic,
     plot_gp_stresses_treloar,
     plot_histograms,
     plot_model_stresses_kawabata,
-    plot_model_stresses_linka,
+    plot_model_stresses_anisotropic,
     plot_model_stresses_treloar,
-    plot_sobol_indice_paths_linka,
+    plot_sobol_indice_paths_anisotropic,
     plot_sobol_indice_paths_treloar,
 )
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
@@ -101,9 +101,9 @@ if data_set_label == data_set_label_treloar:
         total_sobol_index_thresshold = 1e-4
     elif strain_energy_function_type == "cann":
         total_sobol_index_thresshold = 1e-2
-elif data_set_label == data_set_label_linka:
+elif data_set_label == data_set_label_anisotropic:
     input_directory = data_set_label
-    data_set = LinkaHeartDataSet(
+    data_set = AnisotropicHeartDataSet(
         input_directory=input_directory,
         file_name="CANNsHEARTdata_shear05.xlsx",
         project_directory=project_directory,
@@ -118,7 +118,7 @@ elif data_set_label == data_set_label_linka:
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [20_000, 10_000]
     total_sobol_index_thresshold = 1e-2
-elif data_set_label == data_set_label_synthetic_linka:
+elif data_set_label == data_set_label_anisotropic_synthetic:
     input_directory = data_set_label
     file_name = "CANNsHEARTdata_synthetic.xlsx"
     num_points_per_test_case = 11
@@ -127,11 +127,11 @@ elif data_set_label == data_set_label_synthetic_linka:
     model_data_generation = OrthotropicCANN(
         device, use_only_squared_anisotropic_invariants
     )
-    four_terms_model_parameters = create_four_terms_linka_model_parameters()
+    four_terms_model_parameters = create_four_terms_anisotropic_model_parameters()
     model_data_generation.reduce_model_to_parameter_names(
         four_terms_model_parameters.names
     )
-    data_generator = LinkaHeartDataSetGenerator(
+    data_generator = AnisotropicHeartDataSetGenerator(
         model=model_data_generation,
         parameters=four_terms_model_parameters.values,
         num_point_per_test_case=num_points_per_test_case,
@@ -141,7 +141,7 @@ elif data_set_label == data_set_label_synthetic_linka:
         device=device,
     )
     data_generator.generate()
-    data_set = LinkaHeartDataSet(
+    data_set = AnisotropicHeartDataSet(
         input_directory=input_directory,
         file_name=file_name,
         project_directory=project_directory,
@@ -204,8 +204,8 @@ def plot_gp_stresses(
             device=device,
         )
 
-    def plot_linka() -> None:
-        plot_gp_stresses_linka(
+    def plot_anisotropic() -> None:
+        plot_gp_stresses_anisotropic(
             gaussian_process=gaussian_process,
             inputs=from_torch_to_numpy(inputs),
             outputs=from_torch_to_numpy(outputs),
@@ -220,10 +220,10 @@ def plot_gp_stresses(
     if data_set_label == data_set_label_treloar:
         plot_treloar()
     elif (
-        data_set_label == data_set_label_linka
-        or data_set_label == data_set_label_synthetic_linka
+        data_set_label == data_set_label_anisotropic
+        or data_set_label == data_set_label_anisotropic_synthetic
     ):
-        plot_linka()
+        plot_anisotropic()
 
 
 def plot_model_stresses(
@@ -287,10 +287,10 @@ def plot_model_stresses(
             device=device,
         )
 
-    def plot_linka() -> None:
+    def plot_anisotropic() -> None:
         plot_four_term_model = True
 
-        plot_model_stresses_linka(
+        plot_model_stresses_anisotropic(
             model=cast(OrthotropicCANN, model),
             parameter_samples=parameter_samples,
             inputs=from_torch_to_numpy(inputs),
@@ -308,10 +308,10 @@ def plot_model_stresses(
     elif data_set_label == data_set_label_kawabata:
         plot_kawabata()
     elif (
-        data_set_label == data_set_label_linka
-        or data_set_label == data_set_label_synthetic_linka
+        data_set_label == data_set_label_anisotropic
+        or data_set_label == data_set_label_anisotropic_synthetic
     ):
-        plot_linka()
+        plot_anisotropic()
 
 
 def plot_sobol_indices_results(
@@ -330,10 +330,10 @@ def plot_sobol_indices_results(
             project_directory=project_directory,
         )
     elif (
-        data_set_label == data_set_label_linka
-        or data_set_label == data_set_label_synthetic_linka
+        data_set_label == data_set_label_anisotropic
+        or data_set_label == data_set_label_anisotropic_synthetic
     ):
-        plot_sobol_indice_paths_linka(
+        plot_sobol_indice_paths_anisotropic(
             relevant_parameter_indices=relevant_parameter_indices,
             num_points_per_testcase=num_points_per_test_case,
             output_subdirectory=output_subdirectory,
@@ -357,7 +357,7 @@ inputs, test_cases, outputs = data_set.read_data()
 noise_stddevs = determine_heteroscedastic_noise(
     relative_noise_stddevs, min_absolute_noise_stddev, outputs
 )
-if data_set_label == data_set_label_synthetic_linka:
+if data_set_label == data_set_label_anisotropic_synthetic:
     outputs = add_noise_to_data(noise_stddevs, outputs, device)
 
 
@@ -411,13 +411,13 @@ if retrain_models:
                 return gaussian_process
 
             if data_set_label == data_set_label_treloar:
-                input_mask = assemble_input_mask_for_treloar(device)
+                input_mask = assemble_input_mask_for_treloar_data(device)
                 return create_single_output_gp(input_mask)
             elif (
-                data_set_label == data_set_label_linka
-                or data_set_label == data_set_label_synthetic_linka
+                data_set_label == data_set_label_anisotropic
+                or data_set_label == data_set_label_anisotropic_synthetic
             ):
-                input_masks = assemble_input_masks_for_linka(device)
+                input_masks = assemble_input_masks_for_anisotropic_data(device)
                 gaussian_processes = [
                     create_single_output_gp(input_mask) for input_mask in input_masks
                 ]
@@ -432,9 +432,9 @@ if retrain_models:
             learning_rate = 2e-1
             if data_set_label == data_set_label_treloar:
                 factor_length_scales = 0.8
-            elif data_set_label == data_set_label_linka:
+            elif data_set_label == data_set_label_anisotropic:
                 factor_length_scales = 0.6
-            elif data_set_label == data_set_label_synthetic_linka:
+            elif data_set_label == data_set_label_anisotropic_synthetic:
                 factor_length_scales = 0.6
 
             def optimize_hyperparameters() -> None:
@@ -502,20 +502,24 @@ if retrain_models:
                 output_selector: OutputSelectorProtocol = OutputSelectorTreloar(
                     test_cases_extraction, cast(IsotropicModel, model), device
                 )
-            elif data_set_label == data_set_label_linka:
+            elif data_set_label == data_set_label_anisotropic:
                 lipschitz_penalty_coefficient = 100.0
-                data_set_linka = cast(LinkaHeartDataSet, data_set)
+                data_set_anisotropic = cast(AnisotropicHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
-                    data_set_linka.generate_uniform_inputs(num_points_per_test_case)
+                    data_set_anisotropic.generate_uniform_inputs(
+                        num_points_per_test_case
+                    )
                 )
                 output_selector = OutputSelectorLinka(
                     test_cases_extraction, cast(OrthotropicCANN, model), device
                 )
-            elif data_set_label == data_set_label_synthetic_linka:
+            elif data_set_label == data_set_label_anisotropic_synthetic:
                 lipschitz_penalty_coefficient = 100.0
-                data_set_linka = cast(LinkaHeartDataSet, data_set)
+                data_set_anisotropic = cast(AnisotropicHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
-                    data_set_linka.generate_uniform_inputs(num_points_per_test_case)
+                    data_set_anisotropic.generate_uniform_inputs(
+                        num_points_per_test_case
+                    )
                 )
                 output_selector = OutputSelectorLinka(
                     test_cases_extraction, cast(OrthotropicCANN, model), device

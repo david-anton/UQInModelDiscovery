@@ -365,7 +365,7 @@ class IndicesDevelopmentPlotterConfigLinka:
         self.max_total_sobol_indice = 1.0
 
 
-def plot_sobol_indice_paths_linka(
+def plot_sobol_indice_paths_anisotropic(
     relevant_parameter_indices: list[int],
     num_points_per_testcase: int,
     output_subdirectory: str,

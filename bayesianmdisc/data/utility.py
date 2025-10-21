@@ -9,7 +9,7 @@ from bayesianmdisc.customtypes import Device, NPArray, Tensor
 from bayesianmdisc.data.base import DeformationInputs, StressOutputs
 from bayesianmdisc.datasettings import (
     data_set_label_kawabata,
-    data_set_label_linka,
+    data_set_label_anisotropic,
     data_set_label_treloar,
 )
 from bayesianmdisc.errors import DataError
@@ -164,7 +164,7 @@ def split_data(
             noise_stddevs_posterior=noise_stddevs_posterior,
         )
 
-    def split_linka_data(
+    def split_anisotropic_data(
         inputs: DeformationInputs,
         test_cases: TestCases,
         outputs: StressOutputs,
@@ -218,8 +218,8 @@ def split_data(
         return split_treloar_data(inputs, test_cases, outputs, noise_stddevs)
     elif data_set_label == data_set_label_kawabata:
         return split_kawabata_data(inputs, test_cases, outputs, noise_stddevs)
-    elif data_set_label == data_set_label_linka:
-        return split_linka_data(inputs, test_cases, outputs, noise_stddevs)
+    elif data_set_label == data_set_label_anisotropic:
+        return split_anisotropic_data(inputs, test_cases, outputs, noise_stddevs)
     else:
         raise DataError(
             f"No implementation for the requested data set {data_set_label}"

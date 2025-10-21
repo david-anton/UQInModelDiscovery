@@ -60,7 +60,7 @@ row_offset = 3
 excel_sheet_name = "Sheet1"
 
 
-class LinkaHeartDataSet:
+class AnisotropicHeartDataSet:
     def __init__(
         self,
         file_name: str,
@@ -246,7 +246,7 @@ class LinkaHeartDataSet:
         )
 
 
-class LinkaHeartDataSetGenerator:
+class AnisotropicHeartDataSetGenerator:
 
     def __init__(
         self,

@@ -1,6 +1,9 @@
 from .base import DataSetProtocol
 from .kawabatadataset import KawabataDataSet
-from .linkaheartdataset import LinkaHeartDataSet, LinkaHeartDataSetGenerator
+from .anisotropicheartdataset import (
+    AnisotropicHeartDataSet,
+    AnisotropicHeartDataSetGenerator,
+)
 from .treloardataset import TreloarDataSet
 from .utility import (
     add_noise_to_data,
@@ -11,8 +14,8 @@ from .utility import (
 )
 
 __all__ = [
-    "LinkaHeartDataSet",
-    "LinkaHeartDataSetGenerator",
+    "AnisotropicHeartDataSet",
+    "AnisotropicHeartDataSetGenerator",
     "TreloarDataSet",
     "DataSetProtocol",
     "KawabataDataSet",

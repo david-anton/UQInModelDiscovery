@@ -155,7 +155,7 @@ class LinkaDataConfig:
     num_data_sets = 11
 
 
-def split_linka_inputs_and_outputs(
+def split_anisotropic_inputs_and_outputs(
     inputs: NPArray,
     test_cases: NPArray,
     outputs: NPArray,
@@ -200,7 +200,7 @@ def split_linka_inputs_and_outputs(
     return split_data_sets()
 
 
-def split_linka_noise_stddevs(
+def split_anisotropic_noise_stddevs(
     noise_stddevs: NPArray,
     num_points_per_test_case: int = 11,
 ) -> list[NPArray]:
