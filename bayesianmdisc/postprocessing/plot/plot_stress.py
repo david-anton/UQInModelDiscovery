@@ -23,9 +23,9 @@ from bayesianmdisc.io import ProjectDirectory
 from bayesianmdisc.models import IsotropicModel, ModelProtocol, OrthotropicCANN
 from bayesianmdisc.models.base_mechanics import assemble_stretches_from_factors
 from bayesianmdisc.postprocessing.plot.utility import (
-    split_kawabata_inputs_and_outputs,
     split_anisotropic_inputs_and_outputs,
     split_anisotropic_noise_stddevs,
+    split_kawabata_inputs_and_outputs,
     split_treloar_inputs_and_outputs,
     split_treloar_noise_stddevs,
 )

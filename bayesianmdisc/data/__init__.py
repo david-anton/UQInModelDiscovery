@@ -1,9 +1,9 @@
-from .base import DataSetProtocol
-from .kawabatadataset import KawabataDataSet
 from .anisotropicheartdataset import (
     AnisotropicHeartDataSet,
     AnisotropicHeartDataSetGenerator,
 )
+from .base import DataSetProtocol
+from .kawabatadataset import KawabataDataSet
 from .treloardataset import TreloarDataSet
 from .utility import (
     add_noise_to_data,

@@ -11,8 +11,8 @@ from .plot_sobol_indices import (
 from .plot_stress import (
     plot_gp_stresses_anisotropic,
     plot_gp_stresses_treloar,
-    plot_model_stresses_kawabata,
     plot_model_stresses_anisotropic,
+    plot_model_stresses_kawabata,
     plot_model_stresses_treloar,
 )
 

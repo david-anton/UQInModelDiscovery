@@ -1,17 +1,17 @@
 import os
 from datetime import date
-from typing import cast
 from time import perf_counter
+from typing import cast
 
 import torch
 
 from bayesianmdisc.bayes.distributions import DistributionProtocol
 from bayesianmdisc.customtypes import GPModel, NPArray, Tensor
 from bayesianmdisc.data import (
-    DataSetProtocol,
-    KawabataDataSet,
     AnisotropicHeartDataSet,
     AnisotropicHeartDataSetGenerator,
+    DataSetProtocol,
+    KawabataDataSet,
     TreloarDataSet,
     add_noise_to_data,
     determine_heteroscedastic_noise,
@@ -21,9 +21,9 @@ from bayesianmdisc.datasettings import (
     assemble_input_mask_for_treloar_data,
     assemble_input_masks_for_anisotropic_data,
     create_four_terms_anisotropic_model_parameters,
-    data_set_label_kawabata,
     data_set_label_anisotropic,
     data_set_label_anisotropic_synthetic,
+    data_set_label_kawabata,
     data_set_label_treloar,
 )
 from bayesianmdisc.errors import MainError
@@ -60,8 +60,8 @@ from bayesianmdisc.postprocessing.plot import (
     plot_gp_stresses_anisotropic,
     plot_gp_stresses_treloar,
     plot_histograms,
-    plot_model_stresses_kawabata,
     plot_model_stresses_anisotropic,
+    plot_model_stresses_kawabata,
     plot_model_stresses_treloar,
     plot_sobol_indice_paths_anisotropic,
     plot_sobol_indice_paths_treloar,

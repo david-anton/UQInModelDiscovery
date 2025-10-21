@@ -8,8 +8,8 @@ from scipy.interpolate import NearestNDInterpolator
 from bayesianmdisc.customtypes import Device, NPArray, Tensor
 from bayesianmdisc.data.base import DeformationInputs, StressOutputs
 from bayesianmdisc.datasettings import (
-    data_set_label_kawabata,
     data_set_label_anisotropic,
+    data_set_label_kawabata,
     data_set_label_treloar,
 )
 from bayesianmdisc.errors import DataError
