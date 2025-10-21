@@ -155,7 +155,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{data_set_label}_lipschitzpenalty_100"
+output_directory = f"{current_date}_{data_set_label}"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -451,7 +451,7 @@ if retrain_models:
             relative_width_lipschitz_nn = 4
 
             if data_set_label == data_set_label_treloar:
-                lipschitz_penalty_coefficient = 100.0
+                lipschitz_penalty_coefficient = 10.0
                 data_set_treloar = cast(TreloarDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_treloar.generate_uniform_inputs(num_points_per_test_case)
