@@ -2,7 +2,7 @@
 #SBATCH --partition=gpu_teaching
 #SBATCH --nodes=1
 #SBATCH --time=24:00:00
-#SBATCH --job-name=BMDisc
+#SBATCH --job-name=UQMDisc
 #SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu:ampere:1
 

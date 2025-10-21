@@ -1,6 +1,6 @@
 // For format details, see https://aka.ms/devcontainer.json.
 {
-	"name": "statisticalmodeldiscovery",
+	"name": "UQInModelDiscovery",
 
 	"containerUser": "docker_user",
 
