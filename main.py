@@ -66,7 +66,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_anisotropic
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -460,7 +460,7 @@ if retrain_models:
                     test_cases_extraction, cast(IsotropicModel, model), device
                 )
             elif data_set_label == data_set_label_anisotropic:
-                lipschitz_penalty_coefficient = 10.0
+                lipschitz_penalty_coefficient = 100.0
                 data_set_anisotropic = cast(AnisotropicHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_anisotropic.generate_uniform_inputs(
@@ -471,7 +471,7 @@ if retrain_models:
                     test_cases_extraction, cast(OrthotropicCANN, model), device
                 )
             elif data_set_label == data_set_label_anisotropic_synthetic:
-                lipschitz_penalty_coefficient = 10.0
+                lipschitz_penalty_coefficient = 100.0
                 data_set_anisotropic = cast(AnisotropicHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_anisotropic.generate_uniform_inputs(
