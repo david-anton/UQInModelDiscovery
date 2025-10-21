@@ -11,7 +11,6 @@ from bayesianmdisc.data import (
     AnisotropicHeartDataSet,
     AnisotropicHeartDataSetGenerator,
     DataSetProtocol,
-    KawabataDataSet,
     TreloarDataSet,
     add_noise_to_data,
     determine_heteroscedastic_noise,
@@ -23,7 +22,6 @@ from bayesianmdisc.datasettings import (
     create_four_terms_anisotropic_model_parameters,
     data_set_label_anisotropic,
     data_set_label_anisotropic_synthetic,
-    data_set_label_kawabata,
     data_set_label_treloar,
 )
 from bayesianmdisc.errors import MainError
@@ -61,7 +59,6 @@ from bayesianmdisc.postprocessing.plot import (
     plot_gp_stresses_treloar,
     plot_histograms,
     plot_model_stresses_anisotropic,
-    plot_model_stresses_kawabata,
     plot_model_stresses_treloar,
     plot_sobol_indice_paths_anisotropic,
     plot_sobol_indice_paths_treloar,
@@ -79,7 +76,6 @@ device = get_device()
 set_default_dtype(torch.float64)
 set_seed(0)
 
-# Set up
 current_date = date.today().strftime("%Y%m%d")
 if data_set_label == data_set_label_treloar:
     input_directory = data_set_label
@@ -114,7 +110,7 @@ elif data_set_label == data_set_label_anisotropic:
     use_only_squared_anisotropic_invariants = True
     model = OrthotropicCANN(device, use_only_squared_anisotropic_invariants)
 
-    relative_noise_stddevs = 5e-2  # 10e-2
+    relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [20_000, 10_000]
     total_sobol_index_thresshold = 1e-2
@@ -150,7 +146,7 @@ elif data_set_label == data_set_label_anisotropic_synthetic:
 
     model = OrthotropicCANN(device, use_only_squared_anisotropic_invariants)
 
-    relative_noise_stddevs = 5e-2  # 10e-2
+    relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [20_000, 10_000]
     total_sobol_index_thresshold = 1e-2
@@ -159,7 +155,7 @@ num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
 
 
-output_directory = f"{current_date}_{input_directory}_relnoise{relative_noise_stddevs}_minnoise{min_absolute_noise_stddev}_threshold{total_sobol_index_thresshold}"
+output_directory = f"{current_date}_{data_set_label}"
 output_subdirectory_name_gp = "gp"
 output_subdirectory_name_parameters = "parameters"
 output_subdirectory_name_sensitivities = "sensitivity_analysis"
@@ -251,45 +247,8 @@ def plot_model_stresses(
             device=device,
         )
 
-        def _plot_kawabata() -> None:
-            input_directory = data_set_label_kawabata
-            data_set = KawabataDataSet(input_directory, project_directory, device)
-            output_subdirectory_kawabata = os.path.join(output_subdirectory, "kawabata")
-
-            inputs, test_cases, outputs = data_set.read_data()
-            isotropic_model = cast(IsotropicModel, model)
-            isotropic_model.set_output_dimension(2)
-
-            plot_model_stresses_kawabata(
-                model=isotropic_model,
-                parameter_samples=parameter_samples,
-                inputs=from_torch_to_numpy(inputs),
-                outputs=from_torch_to_numpy(outputs),
-                test_cases=from_torch_to_numpy(test_cases),
-                output_subdirectory=output_subdirectory_kawabata,
-                project_directory=project_directory,
-                device=device,
-            )
-
-            isotropic_model.set_output_dimension(1)
-
-        _plot_kawabata()
-
-    def plot_kawabata() -> None:
-        plot_model_stresses_kawabata(
-            model=cast(IsotropicModel, model),
-            parameter_samples=parameter_samples,
-            inputs=from_torch_to_numpy(inputs),
-            outputs=from_torch_to_numpy(outputs),
-            test_cases=from_torch_to_numpy(test_cases),
-            output_subdirectory=output_subdirectory,
-            project_directory=project_directory,
-            device=device,
-        )
-
     def plot_anisotropic() -> None:
         plot_four_term_model = True
-
         plot_model_stresses_anisotropic(
             model=cast(OrthotropicCANN, model),
             parameter_samples=parameter_samples,
@@ -305,8 +264,6 @@ def plot_model_stresses(
 
     if data_set_label == data_set_label_treloar:
         plot_treloar()
-    elif data_set_label == data_set_label_kawabata:
-        plot_kawabata()
     elif (
         data_set_label == data_set_label_anisotropic
         or data_set_label == data_set_label_anisotropic_synthetic
@@ -503,7 +460,7 @@ if retrain_models:
                     test_cases_extraction, cast(IsotropicModel, model), device
                 )
             elif data_set_label == data_set_label_anisotropic:
-                lipschitz_penalty_coefficient = 100.0
+                lipschitz_penalty_coefficient = 10.0
                 data_set_anisotropic = cast(AnisotropicHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_anisotropic.generate_uniform_inputs(
@@ -514,7 +471,7 @@ if retrain_models:
                     test_cases_extraction, cast(OrthotropicCANN, model), device
                 )
             elif data_set_label == data_set_label_anisotropic_synthetic:
-                lipschitz_penalty_coefficient = 100.0
+                lipschitz_penalty_coefficient = 10.0
                 data_set_anisotropic = cast(AnisotropicHeartDataSet, data_set)
                 inputs_extraction, test_cases_extraction = (
                     data_set_anisotropic.generate_uniform_inputs(
