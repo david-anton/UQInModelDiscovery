@@ -48,8 +48,8 @@ from bayesianmdisc.models import (
     select_model_through_sobol_sensitivity_analysis,
 )
 from bayesianmdisc.normalizingflows import NormalizingFlowDistribution
-from bayesianmdisc.parameterextraction import (
-    extract_gp_inducing_parameter_distribution,
+from bayesianmdisc.parameterdistillation import (
+    distill_parameter_distribution_from_gp,
     load_normalizing_flow_parameter_distribution,
     save_normalizing_flow_parameter_distribution,
 )
@@ -482,7 +482,7 @@ if retrain_models:
                     test_cases_extraction, cast(OrthotropicCANN, model), device
                 )
 
-            distribution = extract_gp_inducing_parameter_distribution(
+            distribution = distill_parameter_distribution_from_gp(
                 gp=gaussian_process,
                 model=model,
                 output_selector=output_selector,

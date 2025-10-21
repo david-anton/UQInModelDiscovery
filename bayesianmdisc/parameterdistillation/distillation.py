@@ -23,7 +23,7 @@ from bayesianmdisc.normalizingflows import (
     NormalizingFlowDistribution,
     NormalizingFlowProtocol,
 )
-from bayesianmdisc.parameterextraction.parameterdistributions import (
+from bayesianmdisc.parameterdistillation.parameterdistributions import (
     NormalizingFlowParameterDistribution,
     ParameterDistribution,
     create_parameter_distribution,
@@ -153,7 +153,7 @@ def _create_lr_scheduler(
     return torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=decay_rate)
 
 
-def extract_gp_inducing_parameter_distribution(
+def distill_parameter_distribution_from_gp(
     gp: GaussianProcess,
     model: ModelProtocol,
     output_selector: OutputSelectorProtocol,
