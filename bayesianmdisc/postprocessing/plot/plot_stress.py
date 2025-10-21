@@ -344,7 +344,7 @@ def plot_model_stresses_treloar(
         elif test_case_identifier == test_case_identifier_equibiaxial_tension:
             text_position_x = 0.667
         else:
-            text_position_x = 0.663
+            text_position_x = 0.664
         axis.text(
             text_position_x,
             0.22,
