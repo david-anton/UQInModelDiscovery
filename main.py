@@ -38,7 +38,7 @@ from bayesianmdisc.models import (
     IsotropicModel,
     ModelProtocol,
     OrthotropicCANN,
-    OutputSelectorLinka,
+    OutputSelectorAnisotropic,
     OutputSelectorProtocol,
     OutputSelectorTreloar,
     ParameterNames,
@@ -467,7 +467,7 @@ if retrain_models:
                         num_points_per_test_case
                     )
                 )
-                output_selector = OutputSelectorLinka(
+                output_selector = OutputSelectorAnisotropic(
                     test_cases_extraction, cast(OrthotropicCANN, model), device
                 )
             elif data_set_label == data_set_label_anisotropic_synthetic:
@@ -478,7 +478,7 @@ if retrain_models:
                         num_points_per_test_case
                     )
                 )
-                output_selector = OutputSelectorLinka(
+                output_selector = OutputSelectorAnisotropic(
                     test_cases_extraction, cast(OrthotropicCANN, model), device
                 )
 

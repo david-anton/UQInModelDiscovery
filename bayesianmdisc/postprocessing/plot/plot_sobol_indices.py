@@ -211,7 +211,7 @@ def plot_sobol_indice_paths_treloar(
     figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
 
 
-class IndicesDevelopmentPlotterConfigLinka:
+class IndicesDevelopmentPlotterConfigAnisotropic:
     def __init__(self) -> None:
         # label size
         self.label_size = 7
@@ -372,7 +372,7 @@ def plot_sobol_indice_paths_anisotropic(
     project_directory: ProjectDirectory,
 ) -> None:
 
-    config = IndicesDevelopmentPlotterConfigLinka()
+    config = IndicesDevelopmentPlotterConfigAnisotropic()
     figure, axes = plt.subplots(6, 3, figsize=config.figure_size)
     figure.tight_layout(
         h_pad=config.pad_subplots_hight, w_pad=config.pad_subplots_width

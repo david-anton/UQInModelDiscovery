@@ -151,7 +151,7 @@ def split_kawabata_inputs_and_outputs(
 
 
 @dataclass
-class LinkaDataConfig:
+class AnisotropicDataConfig:
     num_data_sets = 11
 
 
@@ -165,7 +165,7 @@ def split_anisotropic_inputs_and_outputs(
     list[int],
     list[NPArray],
 ]:
-    config = LinkaDataConfig()
+    config = AnisotropicDataConfig()
     num_data_sets = config.num_data_sets
     num_points_per_set = num_points_per_test_case
     num_data_points = int(round(num_data_sets * num_points_per_set))
@@ -204,7 +204,7 @@ def split_anisotropic_noise_stddevs(
     noise_stddevs: NPArray,
     num_points_per_test_case: int = 11,
 ) -> list[NPArray]:
-    config = LinkaDataConfig()
+    config = AnisotropicDataConfig()
     num_data_sets = config.num_data_sets
     num_points_per_set = num_points_per_test_case
     num_data_points = int(round(num_data_sets * num_points_per_set))

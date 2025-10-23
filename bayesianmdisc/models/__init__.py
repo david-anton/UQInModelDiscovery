@@ -9,7 +9,7 @@ from .modelselection import (
     select_model_through_backward_elimination,
     select_model_through_sobol_sensitivity_analysis,
 )
-from .orthotropicmodel import OrthotropicCANN, OutputSelectorLinka
+from .orthotropicmodel import OrthotropicCANN, OutputSelectorAnisotropic
 from .utility import load_model_state, save_model_state
 
 __all__ = [
@@ -23,6 +23,6 @@ __all__ = [
     "load_model_state",
     "OutputSelectorProtocol",
     "OutputSelectorTreloar",
-    "OutputSelectorLinka",
+    "OutputSelectorAnisotropic",
     "create_isotropic_model",
 ]

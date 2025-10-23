@@ -690,7 +690,7 @@ def plot_model_stresses_kawabata(
     plt.clf()
 
 
-class LinkaDataConfig:
+class AnisotropicDataConfig:
     def __init__(self) -> None:
         self.num_data_sets_simple_shear = 6
         self.num_data_sets_biaxial_tension = 5
@@ -791,7 +791,7 @@ class LinkaDataConfig:
         self.subfigure_indices_with_xaxis = [0, 1, 2, 3, 4, 5, 14, 15]
 
 
-class ModelStressPlotterConfigLinka:
+class ModelStressPlotterConfigAnisotropic:
     def __init__(self) -> None:
         # label size
         self.label_size = 7
@@ -862,8 +862,8 @@ def plot_model_stresses_anisotropic(
     device: Device,
     plot_four_term_model: bool = False,
 ) -> None:
-    plotter_config = ModelStressPlotterConfigLinka()
-    data_config = LinkaDataConfig()
+    plotter_config = ModelStressPlotterConfigAnisotropic()
+    data_config = AnisotropicDataConfig()
     num_model_inputs = 256
     num_model_samples = 16
 
@@ -1774,7 +1774,7 @@ def plot_gp_stresses_treloar(
     plt.clf()
 
 
-class GPStressPlotterConfigLinka(ModelStressPlotterConfigLinka):
+class GPStressPlotterConfigAnisotropic(ModelStressPlotterConfigAnisotropic):
     def __init__(self) -> None:
         super().__init__()
 
@@ -1790,8 +1790,8 @@ def plot_gp_stresses_anisotropic(
     project_directory: ProjectDirectory,
     device: Device,
 ) -> None:
-    plotter_config = GPStressPlotterConfigLinka()
-    data_config = LinkaDataConfig()
+    plotter_config = GPStressPlotterConfigAnisotropic()
+    data_config = AnisotropicDataConfig()
     num_gp_samples = 8
     num_gp_inputs = 256
 

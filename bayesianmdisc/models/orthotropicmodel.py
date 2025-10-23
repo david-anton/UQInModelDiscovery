@@ -728,7 +728,7 @@ class OrthotropicCANN:
         )
 
 
-class OutputSelectorLinka:
+class OutputSelectorAnisotropic:
 
     def __init__(
         self, test_cases: TestCases, model: OrthotropicCANN, device: Device
