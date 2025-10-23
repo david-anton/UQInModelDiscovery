@@ -283,8 +283,8 @@ def plot_model_stresses_treloar(
         axis.yaxis.set_major_locator(MaxNLocator(nbins=config.num_y_ticks))
 
         # axis labels
-        axis.set_xlabel("stretch [-]", **config.font)
-        axis.set_ylabel("stress [kPa]", **config.font)
+        axis.set_xlabel(r"$\lambda$" + " [-]", **config.font)
+        axis.set_ylabel(r"$P_{11}$" + " [kPa]", **config.font)
         axis.tick_params(
             axis="both", which="minor", labelsize=config.minor_tick_label_size
         )
@@ -368,8 +368,8 @@ def plot_model_stresses_treloar(
         axis_all.set_xticklabels(x_tick_labels)
 
         # axis labels
-        axis_all.set_xlabel("stretch [-]", **config.font)
-        axis_all.set_ylabel("stress [kPa]", **config.font)
+        axis_all.set_xlabel(r"$\lambda$" + " [-]", **config.font)
+        axis_all.set_ylabel(r"$P_{11}$" + " [kPa]", **config.font)
         axis_all.tick_params(
             axis="both", which="minor", labelsize=config.minor_tick_label_size
         )
@@ -1671,8 +1671,8 @@ def plot_gp_stresses_treloar(
         axis.yaxis.set_major_locator(MaxNLocator(nbins=config.num_y_ticks))
 
         # axis labels
-        axis.set_xlabel("stretch [-]", **config.font)
-        axis.set_ylabel("stress [kPa]", **config.font)
+        axis.set_xlabel(r"$\lambda$" + " [-]", **config.font)
+        axis.set_ylabel(r"$P_{11}$" + " [kPa]", **config.font)
         axis.tick_params(
             axis="both", which="minor", labelsize=config.minor_tick_label_size
         )
@@ -1721,8 +1721,8 @@ def plot_gp_stresses_treloar(
         axis_all.set_xticklabels(x_tick_labels)
 
         # axis labels
-        axis_all.set_xlabel("stretch [-]", **config.font)
-        axis_all.set_ylabel("stress [kPa]", **config.font)
+        axis_all.set_xlabel(r"$\lambda$" + " [-]", **config.font)
+        axis_all.set_ylabel(r"$P_{11}$" + " [kPa]", **config.font)
         axis_all.tick_params(
             axis="both", which="minor", labelsize=config.minor_tick_label_size
         )
