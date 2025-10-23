@@ -66,7 +66,7 @@ from bayesianmdisc.postprocessing.plot import (
 from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
 from bayesianmdisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_treloar
+data_set_label = data_set_label_anisotropic_synthetic
 retrain_models = True
 
 # Settings
