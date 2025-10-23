@@ -443,7 +443,7 @@ if retrain_models:
                 output_subdirectory=output_subdirectory_gp,
             )
 
-        def extract_parameter_distribution() -> DistributionProtocol:
+        def distill_parameter_distribution() -> DistributionProtocol:
             num_func_samples = 32
             num_points_per_test_case = 32
             num_iters_lipschitz = 10
@@ -508,7 +508,7 @@ if retrain_models:
         gaussian_process = create_gp()
         select_gp_prior()
         infer_gp_posterior()
-        parameter_distribution = extract_parameter_distribution()
+        parameter_distribution = distill_parameter_distribution()
 
         num_parameters_full = model.num_parameters
         parameter_names_full = model.parameter_names
