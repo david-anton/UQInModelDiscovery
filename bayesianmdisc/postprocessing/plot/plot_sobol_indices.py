@@ -60,7 +60,7 @@ class IndicesDevelopmentPlotterConfigTreloar:
 
         # labels
         self.xaxis_label = "stretch " + r"$\lambda$" + " [-]"
-        self.yaxis_label_total_indice = "total Sobol' indice [-]"
+        self.yaxis_label_total_indice = "total Sobol' indices [-]"
 
         # results
         self.color_map = "tab10"
@@ -289,7 +289,7 @@ class IndicesDevelopmentPlotterConfigLinka:
             r"$\gamma_{sn}$" + " [-]",
         ]
         self.xaxis_label_bt = r"$\lambda$" + " [-]"
-        self.yaxis_label_total_indice = "total Sobol indice [-]"
+        self.yaxis_label_total_indice = "total Sobol' indices [-]"
 
         # results
         self.color_map = "tab10"

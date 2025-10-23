@@ -398,9 +398,9 @@ def plot_model_stresses_treloar(
         )
         text = "\n".join(
             (
-                "Total " + r"$EC_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
-                "Total " + r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
-                "Total " + r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
+                "total " + r"$EC_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),
+                "total " + r"$R^{2}=$" + r"${0}$".format(round(r_squared, 4)),
+                "total " + r"$RMSE=$" + r"${0}$".format(round(rmse, 4)),
             )
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
@@ -829,7 +829,7 @@ class ModelStressPlotterConfigLinka:
         self.model_color = "tab:blue"
         self.model_mean_label = "mean"
         # four term model
-        self.four_term_model_label = "four-term-model (Martonová et al., 2024)"
+        self.four_term_model_label = "four-term model (Martonová et al., 2024)"
         self.four_term_model_color = "tab:red"
         self.four_term_model_linestyle = (0, (5, 5))  # "dashed"
         self.four_term_model_linewidth = 1.0
@@ -1269,11 +1269,11 @@ def plot_model_stresses_anisotropic(
         )
         text = "\n".join(
             (
-                "Total "
+                "total "
                 + r"$EC_{95\%}=$"
                 + r"${0}\%$".format(round(total_coverage, 2)),
-                "Total " + r"$R^{2}=$" + r"${0}$".format(round(total_r_squared, 4)),
-                "Total " + r"$RMSE=$" + r"${0}$".format(round(total_rmse, 4)),
+                "total " + r"$R^{2}=$" + r"${0}$".format(round(total_r_squared, 4)),
+                "total " + r"$RMSE=$" + r"${0}$".format(round(total_rmse, 4)),
             )
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
@@ -1304,11 +1304,11 @@ def plot_model_stresses_anisotropic(
         )
         text_four_term_model = "\n".join(
             (
-                "Four-term model:",
-                "Total "
+                "four-term model:",
+                "total "
                 + r"$R^{2}=$"
                 + r"${0}$".format(round(total_four_term_model_r_squared, 4)),
-                "Total "
+                "total "
                 + r"$RMSE=$"
                 + r"${0}$".format(round(total_four_term_model_rmse, 4)),
             )
@@ -1743,7 +1743,7 @@ def plot_gp_stresses_treloar(
             device,
         )
         text = "\n".join(
-            ("Total " + r"$EC_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),)
+            ("total " + r"$EC_{95\%}=$" + r"${0}\%$".format(round(coverage, 2)),)
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axis_all.text(
@@ -2091,7 +2091,7 @@ def plot_gp_stresses_anisotropic(
 
         total_coverage = np.mean(np.array(coverage_list))
         text = "\n".join(
-            ("Total " + r"$EC_{95\%}=$" + r"${0}\%$".format(round(total_coverage, 2)),)
+            ("total " + r"$EC_{95\%}=$" + r"${0}\%$".format(round(total_coverage, 2)),)
         )
         text_properties = dict(boxstyle="square", facecolor="white", alpha=1.0)
         axis.text(
