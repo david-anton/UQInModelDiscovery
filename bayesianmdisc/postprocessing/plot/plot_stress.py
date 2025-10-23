@@ -46,8 +46,8 @@ GaussianProcess: TypeAlias = GP | IndependentMultiOutputGP
 MetricList: TypeAlias = list[float]
 OutputList: TypeAlias = list[NPArray]
 
-credible_interval = 0.95
-factor_stddev_credible_interval = 1.96
+interval = 0.95
+factor_stddev_interval = 1.96
 cm_to_inch = 1 / 2.54
 
 ################################################################################
@@ -102,9 +102,9 @@ class ModelStressPlotterConfigTreloar:
         self.model_mean_label_ebt = "mean EBT"
         self.model_mean_label_ps = "mean PS"
         self.model_mean_linewidth = 1.0
-        # credible interval
-        self.model_credible_interval_label = "95%-credible interval"
-        self.model_credible_interval_alpha = 0.4
+        # interval
+        self.model_interval_label = "centered 95%-interval"
+        self.model_interval_alpha = 0.4
         # samples
         self.model_samples_label_ut = "samples UT"
         self.model_samples_label_ebt = "samples EBT"
@@ -150,7 +150,7 @@ def plot_model_stresses_treloar(
             data_color = config.data_color_ut
             data_label = config.data_label_ut
             model_color_mean = config.model_color_ut
-            model_color_credible_interval = config.model_color_ut
+            model_color_interval = config.model_color_ut
             model_label_mean = config.model_mean_label_ut
             model_label_samples = config.model_samples_label_ut
         elif test_case_identifier == test_case_identifier_equibiaxial_tension:
@@ -159,7 +159,7 @@ def plot_model_stresses_treloar(
             data_color = config.data_color_ebt
             data_label = config.data_label_ebt
             model_color_mean = config.model_color_ebt
-            model_color_credible_interval = config.model_color_ebt
+            model_color_interval = config.model_color_ebt
             model_label_mean = config.model_mean_label_ebt
             model_label_samples = config.model_samples_label_ebt
         else:
@@ -168,7 +168,7 @@ def plot_model_stresses_treloar(
             data_color = config.data_color_ps
             data_label = config.data_label_ps
             model_color_mean = config.model_color_ps
-            model_color_credible_interval = config.model_color_ps
+            model_color_interval = config.model_color_ps
             model_label_mean = config.model_mean_label_ps
             model_label_samples = config.model_samples_label_ps
 
@@ -231,8 +231,8 @@ def plot_model_stresses_treloar(
             model_stretches_plot,
             min_quantiles_plot,
             max_quantiles_plot,
-            color=model_color_credible_interval,
-            alpha=config.model_credible_interval_alpha,
+            color=model_color_interval,
+            alpha=config.model_interval_alpha,
         )
         axis_all.plot(
             model_stretches_plot,
@@ -245,8 +245,8 @@ def plot_model_stresses_treloar(
             model_stretches_plot,
             min_quantiles_plot,
             max_quantiles_plot,
-            color=model_color_credible_interval,
-            alpha=config.model_credible_interval_alpha,
+            color=model_color_interval,
+            alpha=config.model_interval_alpha,
         )
 
         samples = sample_from_model(
@@ -293,14 +293,14 @@ def plot_model_stresses_treloar(
         )
 
         # legend
-        model_credible_interval = Patch(
-            facecolor=model_color_credible_interval,
-            alpha=config.model_credible_interval_alpha,
-            label=config.model_credible_interval_label,
+        model_interval = Patch(
+            facecolor=model_color_interval,
+            alpha=config.model_interval_alpha,
+            label=config.model_interval_label,
         )
         data_legend_handles, _ = axis.get_legend_handles_labels()
         legend_handles = data_legend_handles + [
-            model_credible_interval,
+            model_interval,
         ]
         axis.legend(handles=legend_handles, fontsize=config.font_size, loc="upper left")
 
@@ -458,9 +458,9 @@ class ModelStressPlotterConfigKawabata:
         self.data_marker_size = 5
         # model
         self.model_label = "model"
-        # credible interval
-        self.model_credible_interval_label = "95%-credible interval"
-        self.model_credible_interval_alpha = 0.4
+        # interval
+        self.model_interval_label = "centered 95%-interval"
+        self.model_interval_alpha = 0.4
 
         # legend
         self.legend_color = "gray"
@@ -572,7 +572,7 @@ def plot_model_stresses_kawabata(
                 min_quantiles_plot,
                 max_quantiles_plot,
                 color=color,
-                alpha=config.model_credible_interval_alpha,
+                alpha=config.model_interval_alpha,
             )
 
         # axis ticks
@@ -607,16 +607,16 @@ def plot_model_stresses_kawabata(
             label="data",
         )
         model_mean = Line2D([], [], color=config.legend_color, label="mean")
-        model_credible_interval = Patch(
+        model_interval = Patch(
             facecolor=config.legend_color,
-            alpha=config.model_credible_interval_alpha,
-            label=config.model_credible_interval_label,
+            alpha=config.model_interval_alpha,
+            label=config.model_interval_label,
         )
         data_legend_handles, _ = axes.get_legend_handles_labels()
         legend_handles = [
             data_point,
             model_mean,
-            model_credible_interval,
+            model_interval,
         ] + data_legend_handles
         axes.legend(
             handles=legend_handles,
@@ -834,9 +834,9 @@ class ModelStressPlotterConfigLinka:
         self.four_term_model_linestyle = (0, (5, 5))  # "dashed"
         self.four_term_model_linewidth = 1.0
         self.four_term_model_alpha = 0.8
-        # credible interval
-        self.model_credible_interval_label = "95%-credible interval"
-        self.model_credible_interval_alpha = 0.4
+        # interval
+        self.model_interval_label = "centered 95%-interval"
+        self.model_interval_alpha = 0.4
         # samples
         self.model_samples_label = "samples"
         self.model_samples_color = "tab:gray"
@@ -996,7 +996,7 @@ def plot_model_stresses_anisotropic(
                 min_quantile_model_stresses,
                 max_quantile_model_stresses,
                 color=plotter_config.model_color,
-                alpha=plotter_config.model_credible_interval_alpha,
+                alpha=plotter_config.model_interval_alpha,
             )
 
             samples = sample_from_model(
@@ -1243,13 +1243,13 @@ def plot_model_stresses_anisotropic(
     def add_legend_and_total_metrics() -> None:
         subfigure_indices = data_config.subfigure_indices[5]
         axis = axes[subfigure_indices[0], subfigure_indices[1]]
-        model_credible_interval = Patch(
+        model_interval = Patch(
             facecolor=plotter_config.model_color,
-            alpha=plotter_config.model_credible_interval_alpha,
-            label=plotter_config.model_credible_interval_label,
+            alpha=plotter_config.model_interval_alpha,
+            label=plotter_config.model_interval_label,
         )
         legend_handles, _ = axis.get_legend_handles_labels()
-        legend_handles.insert(3, model_credible_interval)
+        legend_handles.insert(3, model_interval)
         axis.legend(
             handles=legend_handles,
             fontsize=plotter_config.font_size,
@@ -1417,7 +1417,7 @@ def calculate_model_quantiles(
         device=device,
     )
     min_quantiles, max_quantiles = determine_quantiles_from_samples(
-        prediction_samples, credible_interval
+        prediction_samples, interval
     )
 
     if output_dim is not None:
@@ -1448,7 +1448,7 @@ def calclulate_model_coverage(
         prediction_samples = prediction_samples[:, :, output_dim]
         outputs = outputs[:, output_dim]
 
-    return model_coverage_test(prediction_samples, outputs, credible_interval)
+    return model_coverage_test(prediction_samples, outputs, interval)
 
 
 def calculate_coefficient_of_determinant(
@@ -1530,7 +1530,7 @@ def plot_gp_stresses_treloar(
             data_color = config.data_color_ut
             data_label = config.data_label_ut
             gp_color = config.model_color_ut
-            gp_color_credible_interval = config.model_color_ut
+            gp_color_interval = config.model_color_ut
             gp_label_mean = config.model_mean_label_ut
             gp_label_samples = config.model_samples_label_ut
         elif test_case_identifier == test_case_identifier_equibiaxial_tension:
@@ -1539,7 +1539,7 @@ def plot_gp_stresses_treloar(
             data_color = config.data_color_ebt
             data_label = config.data_label_ebt
             gp_color = config.model_color_ebt
-            gp_color_credible_interval = config.model_color_ebt
+            gp_color_interval = config.model_color_ebt
             gp_label_mean = config.model_mean_label_ebt
             gp_label_samples = config.model_samples_label_ebt
         else:
@@ -1548,7 +1548,7 @@ def plot_gp_stresses_treloar(
             data_color = config.data_color_ps
             data_label = config.data_label_ps
             gp_color = config.model_color_ps
-            gp_color_credible_interval = config.model_color_ps
+            gp_color_interval = config.model_color_ps
             gp_label_mean = config.model_mean_label_ps
             gp_label_samples = config.model_samples_label_ps
 
@@ -1624,8 +1624,8 @@ def plot_gp_stresses_treloar(
             gp_stretches_plot,
             min_quantiles_plot,
             max_quantiles_plot,
-            color=gp_color_credible_interval,
-            alpha=config.model_credible_interval_alpha,
+            color=gp_color_interval,
+            alpha=config.model_interval_alpha,
         )
         axis_all.plot(
             gp_stretches_plot,
@@ -1638,8 +1638,8 @@ def plot_gp_stresses_treloar(
             gp_stretches_plot,
             min_quantiles_plot,
             max_quantiles_plot,
-            color=gp_color_credible_interval,
-            alpha=config.model_credible_interval_alpha,
+            color=gp_color_interval,
+            alpha=config.model_interval_alpha,
         )
 
         samples = sample_from_gp(
@@ -1681,14 +1681,14 @@ def plot_gp_stresses_treloar(
         )
 
         # legend
-        model_credible_interval = Patch(
-            facecolor=gp_color_credible_interval,
-            alpha=config.model_credible_interval_alpha,
-            label=config.model_credible_interval_label,
+        model_interval = Patch(
+            facecolor=gp_color_interval,
+            alpha=config.model_interval_alpha,
+            label=config.model_interval_label,
         )
         data_legend_handles, _ = axis.get_legend_handles_labels()
         legend_handles = data_legend_handles + [
-            model_credible_interval,
+            model_interval,
         ]
         axis.legend(handles=legend_handles, fontsize=config.font_size, loc="upper left")
 
@@ -1924,7 +1924,7 @@ def plot_gp_stresses_anisotropic(
                 min_quantiles_plot,
                 max_quantiles_plot,
                 color=plotter_config.model_color,
-                alpha=plotter_config.model_credible_interval_alpha,
+                alpha=plotter_config.model_interval_alpha,
             )
 
             samples = sample_from_gp(
@@ -2074,13 +2074,13 @@ def plot_gp_stresses_anisotropic(
     def add_legend_and_total_metrics() -> None:
         subfigure_indices = data_config.subfigure_indices[5]
         axis = axes[subfigure_indices[0], subfigure_indices[1]]
-        model_credible_interval = Patch(
+        model_interval = Patch(
             facecolor=plotter_config.model_color,
-            alpha=plotter_config.model_credible_interval_alpha,
-            label=plotter_config.model_credible_interval_label,
+            alpha=plotter_config.model_interval_alpha,
+            label=plotter_config.model_interval_label,
         )
         data_legend_handles, _ = axis.get_legend_handles_labels()
-        legend_handles = data_legend_handles + [model_credible_interval]
+        legend_handles = data_legend_handles + [model_interval]
         axis.legend(
             handles=legend_handles,
             fontsize=plotter_config.font_size,
@@ -2147,8 +2147,8 @@ def calculate_gp_quantiles(
     )
     means_torch = predictive_distribution.mean
     stddevs_torch = predictive_distribution.stddev
-    min_quantiles_torch = means_torch - factor_stddev_credible_interval * stddevs_torch
-    max_quantiles_torch = means_torch + factor_stddev_credible_interval * stddevs_torch
+    min_quantiles_torch = means_torch - factor_stddev_interval * stddevs_torch
+    max_quantiles_torch = means_torch + factor_stddev_interval * stddevs_torch
     min_quantiles = from_torch_to_numpy(min_quantiles_torch)
     max_quantiles = from_torch_to_numpy(max_quantiles_torch)
     return min_quantiles, max_quantiles
