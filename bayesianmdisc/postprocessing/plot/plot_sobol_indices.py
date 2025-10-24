@@ -59,7 +59,7 @@ class IndicesDevelopmentPlotterConfigTreloar:
         self.title_ps = "pure shear (PS)"
 
         # labels
-        self.xaxis_label = "stretch " + r"$\lambda$" + " [-]"
+        self.xaxis_label = r"$\lambda$" + " [-]"
         self.yaxis_label_total_indice = "total Sobol' indices [-]"
 
         # results
@@ -248,21 +248,6 @@ class IndicesDevelopmentPlotterConfigAnisotropic:
         ]
         self.title_bt_prefix_sigma_ff = r"$\sigma_{ff}$"
         self.title_bt_prefix_sigma_nn = r"$\sigma_{nn}$"
-        # self.title_bt_ratios = [
-        #     ", ".join(
-        #         (
-        #             r"$\lambda_{f}=1+%.2f(\lambda-1)$" % (stretch_ratio_fiber,),
-        #             r"$\lambda_{n}=1+%.2f(\lambda-1)$" % (stretch_ratio_normal,),
-        #         )
-        #     )
-        #     for stretch_ratio_fiber, stretch_ratio_normal in [
-        #         (1.0, 1.0),
-        #         (1.0, 0.75),
-        #         (0.75, 1.0),
-        #         (1.0, 0.5),
-        #         (0.5, 1.0),
-        #     ]
-        # ]
         self.title_bt_ratios = [
             ", ".join(
                 (
