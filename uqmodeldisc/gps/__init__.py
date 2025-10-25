@@ -1,0 +1,23 @@
+from typing import TypeAlias
+
+from uqmodeldisc.gps.gp import (
+    GP,
+    create_scaled_matern_gaussian_process,
+    create_scaled_rbf_gaussian_process,
+)
+from uqmodeldisc.gps.multioutputgp import IndependentMultiOutputGP
+from uqmodeldisc.gps.training import condition_gp, optimize_gp_hyperparameters
+from uqmodeldisc.gps.utility import load_gp, save_gp
+
+GaussianProcess: TypeAlias = GP | IndependentMultiOutputGP
+
+__all__ = [
+    "GaussianProcess",
+    "create_scaled_matern_gaussian_process",
+    "create_scaled_rbf_gaussian_process",
+    "IndependentMultiOutputGP",
+    "condition_gp",
+    "optimize_gp_hyperparameters",
+    "load_gp",
+    "save_gp",
+]

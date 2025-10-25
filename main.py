@@ -5,9 +5,9 @@ from typing import cast
 
 import torch
 
-from bayesianmdisc.bayes.distributions import DistributionProtocol
-from bayesianmdisc.customtypes import GPModel, NPArray, Tensor
-from bayesianmdisc.data import (
+from uqmodeldisc.bayes.distributions import DistributionProtocol
+from uqmodeldisc.customtypes import GPModel, NPArray, Tensor
+from uqmodeldisc.data import (
     AnisotropicHeartDataSet,
     AnisotropicHeartDataSetGenerator,
     DataSetProtocol,
@@ -16,7 +16,7 @@ from bayesianmdisc.data import (
     determine_heteroscedastic_noise,
     validate_data,
 )
-from bayesianmdisc.datasettings import (
+from uqmodeldisc.datasettings import (
     assemble_input_mask_for_treloar_data,
     assemble_input_masks_for_anisotropic_data,
     create_four_terms_anisotropic_model_parameters,
@@ -24,8 +24,8 @@ from bayesianmdisc.datasettings import (
     data_set_label_anisotropic_synthetic,
     data_set_label_treloar,
 )
-from bayesianmdisc.errors import MainError
-from bayesianmdisc.gps import (
+from uqmodeldisc.errors import MainError
+from uqmodeldisc.gps import (
     GP,
     GaussianProcess,
     IndependentMultiOutputGP,
@@ -33,8 +33,8 @@ from bayesianmdisc.gps import (
     create_scaled_rbf_gaussian_process,
     optimize_gp_hyperparameters,
 )
-from bayesianmdisc.io import ProjectDirectory
-from bayesianmdisc.models import (
+from uqmodeldisc.io import ProjectDirectory
+from uqmodeldisc.models import (
     IsotropicModel,
     ModelProtocol,
     OrthotropicCANN,
@@ -47,13 +47,13 @@ from bayesianmdisc.models import (
     save_model_state,
     select_model_through_sobol_sensitivity_analysis,
 )
-from bayesianmdisc.normalizingflows import NormalizingFlowDistribution
-from bayesianmdisc.parameterdistillation import (
+from uqmodeldisc.normalizingflows import NormalizingFlowDistribution
+from uqmodeldisc.parameterdistillation import (
     distill_parameter_distribution_from_gp,
     load_normalizing_flow_parameter_distribution,
     save_normalizing_flow_parameter_distribution,
 )
-from bayesianmdisc.postprocessing.plot import (
+from uqmodeldisc.postprocessing.plot import (
     TrueParameters,
     plot_gp_stresses_anisotropic,
     plot_gp_stresses_treloar,
@@ -63,8 +63,8 @@ from bayesianmdisc.postprocessing.plot import (
     plot_sobol_indice_paths_anisotropic,
     plot_sobol_indice_paths_treloar,
 )
-from bayesianmdisc.settings import Settings, get_device, set_default_dtype, set_seed
-from bayesianmdisc.utility import from_torch_to_numpy
+from uqmodeldisc.settings import Settings, get_device, set_default_dtype, set_seed
+from uqmodeldisc.utility import from_torch_to_numpy
 
 data_set_label = data_set_label_treloar
 retrain_models = True
