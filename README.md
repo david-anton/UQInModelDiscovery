@@ -1,1 +1,6 @@
-BayesianModelDiscovery has been developed at the Institute of Applied Mechanics (IAM) at Technische Universität Braunschweig.
+# **UQInModelDiscovery**: Uncertainty Quantification in Model Discovery
+
+The research code **UQInModelDiscovery** provides a framework for uncertainty quantification in model discovery by distilling interpretable material constitutive models from Gaussian process posteriors.
+
+More information will follow.
+
