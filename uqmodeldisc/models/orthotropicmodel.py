@@ -164,6 +164,10 @@ class OrthotropicCANN:
         )
         mask_parameters(expanded_parameter_indices, self._parameter_mask, False)
 
+    def deactivate_all_parameters(self) -> None:
+        parameter_indices = list(range(self._num_parameters))
+        self.deactivate_parameters(parameter_indices)
+
     def activate_parameters(self, parameter_indices: ParameterIndices) -> None:
         expanded_parameter_indices = self._expand_parameter_indices_by_coupled_indices(
             parameter_indices
@@ -219,7 +223,7 @@ class OrthotropicCANN:
             parameter_names_of_interest=parameter_names,
             model_parameter_names=self._parameter_names,
         )
-        self._deactivate_all_parameters()
+        self.deactivate_all_parameters()
         self.activate_parameters(active_parameter_indices)
         self.reduce_to_activated_parameters()
 
@@ -532,10 +536,6 @@ class OrthotropicCANN:
                 expanded_parameter_indices += [parameter_index]
 
         return expanded_parameter_indices
-
-    def _deactivate_all_parameters(self) -> None:
-        parameter_indices = list(range(self._num_parameters))
-        self.deactivate_parameters(parameter_indices)
 
     def _validate_inputs(
         self, inputs: DeformationInputs, test_cases: TestCases, parameters: Parameters

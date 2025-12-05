@@ -759,6 +759,9 @@ class IsotropicModel:
     def deactivate_parameters(self, parameter_indices: ParameterIndices) -> None:
         self._strain_energy_function.deactivate_parameters(parameter_indices)
 
+    def deactivate_all_parameters(self) -> None:
+        self._strain_energy_function.deactivate_all_parameters()
+
     def activate_parameters(self, parameter_indices: ParameterIndices) -> None:
         self._strain_energy_function.activate_parameters(parameter_indices)
 
@@ -864,9 +867,6 @@ class IsotropicModel:
         F_22 = stretches[1]
         F_33 = stretches[2]
         return F_11, F_22, F_33
-
-    def _deactivate_all_parameters(self) -> None:
-        self._strain_energy_function.deactivate_all_parameters()
 
 
 def create_strain_energy_function(
