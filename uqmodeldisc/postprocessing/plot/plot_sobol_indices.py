@@ -9,8 +9,14 @@ from uqmodeldisc.customtypes import Device, NPArray, PDDataFrame
 from uqmodeldisc.io import ProjectDirectory
 from uqmodeldisc.io.readerswriters import CSVDataReader
 from uqmodeldisc.models import ModelProtocol
-from uqmodeldisc.postprocessing.plot.plot_stress import calclulate_model_coverage
-from uqmodeldisc.postprocessing.plot.utility import split_treloar_inputs_and_outputs
+from uqmodeldisc.postprocessing.plot.plot_stress import (
+    calclulate_model_coverage,
+    AnisotropicDataConfig,
+)
+from uqmodeldisc.postprocessing.plot.utility import (
+    split_treloar_inputs_and_outputs,
+    split_anisotropic_inputs_and_outputs,
+)
 from uqmodeldisc.testcases import (
     map_test_case_identifiers_to_labels,
     test_case_identifier_biaxial_tension,
@@ -30,7 +36,7 @@ pd_column_lable_test_cases = "test cases"
 cm_to_inch = 1 / 2.54
 
 
-class IndicesPlotterConfigTreloar:
+class IndicesPlotterConfig:
     def __init__(self) -> None:
         # label size
         self.label_size = 7
@@ -98,7 +104,7 @@ def plot_sobol_indices_treloar(
     num_parameters = parameter_samples.shape[1]
     parameter_indices = list(range(num_parameters))
     sorted_parameter_names, sorted_averaged_sobol_indices, sorted_parameter_indices = (
-        determine_sorted_averaged_sobol_indices(
+        determine_sorted_averaged_sobol_indices_treloar(
             indice_label=total_indice_label,
             output_index=output_index,
             parameter_indices=parameter_indices,
@@ -106,7 +112,7 @@ def plot_sobol_indices_treloar(
             project_directory=project_directory,
         )
     )
-    coverages = calculate_model_coverages(
+    coverages = calculate_model_coverages_treloar(
         model=model,
         parameter_samples=parameter_samples,
         sorted_parameter_indices=sorted_parameter_indices,
@@ -117,7 +123,72 @@ def plot_sobol_indices_treloar(
         output_dim=output_index,
     )
 
-    config = IndicesPlotterConfigTreloar()
+    config = IndicesPlotterConfig()
+
+    _plot_sobol_indices(
+        sorted_parameter_names=sorted_parameter_names,
+        sorted_averaged_sobol_indices=sorted_averaged_sobol_indices,
+        coverages=coverages,
+        config=config,
+        output_subdirectory=output_subdirectory,
+        project_directory=project_directory,
+    )
+
+
+def plot_sobol_indices_anisotropic(
+    model: ModelProtocol,
+    parameter_samples: NPArray,
+    inputs: NPArray,
+    test_cases: NPArray,
+    outputs: NPArray,
+    num_points_per_test_case: int,
+    device: Device,
+    output_subdirectory: str,
+    project_directory: ProjectDirectory,
+) -> None:
+    num_parameters = parameter_samples.shape[1]
+    parameter_indices = list(range(num_parameters))
+    sorted_parameter_names, sorted_averaged_sobol_indices, sorted_parameter_indices = (
+        determine_sorted_averaged_sobol_indices_anisotropic(
+            indice_label=total_indice_label,
+            output_indices=list(range(model.output_dim)),
+            parameter_indices=parameter_indices,
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+        )
+    )
+    coverages = calculate_model_coverages_anisotropic(
+        model=model,
+        parameter_samples=parameter_samples,
+        sorted_parameter_indices=sorted_parameter_indices,
+        inputs=inputs,
+        test_cases=test_cases,
+        outputs=outputs,
+        num_points_per_test_case=num_points_per_test_case,
+        device=device,
+    )
+
+    config = IndicesPlotterConfig()
+
+    _plot_sobol_indices(
+        sorted_parameter_names=sorted_parameter_names,
+        sorted_averaged_sobol_indices=sorted_averaged_sobol_indices,
+        coverages=coverages,
+        config=config,
+        output_subdirectory=output_subdirectory,
+        project_directory=project_directory,
+    )
+
+
+def _plot_sobol_indices(
+    sorted_parameter_names: list[str],
+    sorted_averaged_sobol_indices: NPArray,
+    coverages: NPArray,
+    config: IndicesPlotterConfig,
+    output_subdirectory: str,
+    project_directory: ProjectDirectory,
+) -> None:
+
     figure, axes1 = plt.subplots()
     axes2 = axes1.twinx()
 
@@ -132,7 +203,7 @@ def plot_sobol_indices_treloar(
     axes1.plot(sorted_parameter_names, coverages)
 
     # x axis
-    axes1.set_xticklabels(sorted_parameter_names, rotation=30)
+    axes1.set_xticklabels(sorted_parameter_names, rotation=20)
 
     # y axis
     axes1.set_ylim(config.min_total_sobol_indice, config.max_total_sobol_indice)
@@ -188,14 +259,14 @@ def plot_sobol_indices_treloar(
     plt.clf()
 
 
-def determine_sorted_averaged_sobol_indices(
+def determine_sorted_averaged_sobol_indices_treloar(
     indice_label: str,
     output_index: int,
     parameter_indices: list[int],
     output_subdirectory: str,
     project_directory: ProjectDirectory,
 ) -> tuple[list[str], NPArray, NPArray]:
-    parameter_names, averaged_sobol_indices = _calculate_averaged_sobol_indices(
+    parameter_names, averaged_sobol_indices = _calculate_averaged_sobol_indices_treloar(
         indice_label=indice_label,
         output_index=output_index,
         parameter_indices=parameter_indices,
@@ -208,7 +279,29 @@ def determine_sorted_averaged_sobol_indices(
     )
 
 
-def _calculate_averaged_sobol_indices(
+def determine_sorted_averaged_sobol_indices_anisotropic(
+    indice_label: str,
+    output_indices: list[int],
+    parameter_indices: list[int],
+    output_subdirectory: str,
+    project_directory: ProjectDirectory,
+) -> tuple[list[str], NPArray, NPArray]:
+    parameter_names, averaged_sobol_indices = (
+        _calculate_averaged_sobol_indices_anisotropic(
+            indice_label=indice_label,
+            output_indices=output_indices,
+            parameter_indices=parameter_indices,
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+        )
+    )
+    return _sort_averaged_sobol_indices_in_descending_order(
+        parameter_names=parameter_names,
+        averaged_sobol_indices=averaged_sobol_indices,
+    )
+
+
+def _calculate_averaged_sobol_indices_treloar(
     indice_label: str,
     output_index: int,
     parameter_indices: list[int],
@@ -227,6 +320,31 @@ def _calculate_averaged_sobol_indices(
     return parameter_names, averaged_indice_results
 
 
+def _calculate_averaged_sobol_indices_anisotropic(
+    indice_label: str,
+    output_indices: list[int],
+    parameter_indices: list[int],
+    output_subdirectory: str,
+    project_directory: ProjectDirectory,
+) -> tuple[list[str], NPArray]:
+    indice_results_list = []
+
+    for output_index in output_indices:
+        parameter_names, _indice_results_pd_frame = read_indices_results(
+            indice_label=indice_label,
+            output_index=output_index,
+            relevant_parameter_indices=parameter_indices,
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+        )
+        _indice_results = _indice_results_pd_frame.iloc[:, 1:].to_numpy()
+        indice_results_list += [_indice_results]
+
+    indice_results = np.concatenate(indice_results_list, axis=0)
+    averaged_indice_results = np.mean(indice_results, axis=0)
+    return parameter_names, averaged_indice_results
+
+
 def _sort_averaged_sobol_indices_in_descending_order(
     parameter_names: list[str], averaged_sobol_indices: NPArray
 ) -> tuple[list[str], NPArray, NPArray]:
@@ -236,7 +354,7 @@ def _sort_averaged_sobol_indices_in_descending_order(
     return sorted_parameter_names, sorted_averaged_sobol_indices, sorted_indices
 
 
-def calculate_model_coverages(
+def calculate_model_coverages_treloar(
     model: ModelProtocol,
     parameter_samples: NPArray,
     sorted_parameter_indices: NPArray,
@@ -244,7 +362,7 @@ def calculate_model_coverages(
     test_cases: NPArray,
     outputs: NPArray,
     device: Device,
-    output_dim: Optional[int] = None,
+    output_dim: int,
 ) -> NPArray:
     originally_selected_parameter_indices = model.get_active_parameter_indices()
     num_total_parameters = parameter_samples.shape[1]
@@ -262,6 +380,62 @@ def calculate_model_coverages(
             device=device,
             output_dim=output_dim,
         )
+
+    coverages = []
+    for num_active_parameters in range(1, num_total_parameters + 1):
+        coverages += [_calculate_model_coverage(num_active_parameters)]
+
+    model.deactivate_all_parameters()
+    model.activate_parameters(originally_selected_parameter_indices)
+    return np.array(coverages)
+
+
+def calculate_model_coverages_anisotropic(
+    model: ModelProtocol,
+    parameter_samples: NPArray,
+    sorted_parameter_indices: NPArray,
+    inputs: NPArray,
+    test_cases: NPArray,
+    outputs: NPArray,
+    num_points_per_test_case: int,
+    device: Device,
+) -> NPArray:
+    originally_selected_parameter_indices = model.get_active_parameter_indices()
+    num_total_parameters = parameter_samples.shape[1]
+
+    input_sets, test_case_identifiers, output_sets = (
+        split_anisotropic_inputs_and_outputs(
+            inputs, test_cases, outputs, num_points_per_test_case
+        )
+    )
+    data_config = AnisotropicDataConfig()
+    output_indices_list = data_config.stress_indices_list
+
+    def _calculate_model_coverage(num_active_parameters: int) -> float:
+        active_parameter_indices = sorted_parameter_indices[:num_active_parameters]
+        model.deactivate_all_parameters()
+        model.activate_parameters([int(i) for i in active_parameter_indices])
+
+        _coverages = []
+        for (
+            inputs,
+            test_case_identifier,
+            outputs,
+            output_indices,
+        ) in zip(input_sets, test_case_identifiers, output_sets, output_indices_list):
+            test_cases = np.full((len(inputs),), test_case_identifier)
+            for output_index in output_indices:
+                _coverage = calclulate_model_coverage(
+                    model=model,
+                    parameter_samples=parameter_samples,
+                    inputs=inputs,
+                    test_cases=test_cases,
+                    outputs=outputs,
+                    device=device,
+                    output_dim=output_index,
+                )
+                _coverages += [_coverage]
+        return np.mean(np.array(_coverages))
 
     coverages = []
     for num_active_parameters in range(1, num_total_parameters + 1):
