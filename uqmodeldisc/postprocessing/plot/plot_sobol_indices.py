@@ -1,13 +1,15 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from matplotlib.ticker import MaxNLocator
 
-from uqmodeldisc.customtypes import NPArray, PDDataFrame
+from uqmodeldisc.customtypes import Device, NPArray, PDDataFrame
 from uqmodeldisc.io import ProjectDirectory
 from uqmodeldisc.io.readerswriters import CSVDataReader
+from uqmodeldisc.models import ModelProtocol
+from uqmodeldisc.postprocessing.plot.plot_stress import calclulate_model_coverage
 from uqmodeldisc.postprocessing.plot.utility import split_treloar_inputs_and_outputs
 from uqmodeldisc.testcases import (
     map_test_case_identifiers_to_labels,
@@ -28,7 +30,249 @@ pd_column_lable_test_cases = "test cases"
 cm_to_inch = 1 / 2.54
 
 
-class IndicesDevelopmentPlotterConfigTreloar:
+class IndicesPlotterConfigTreloar:
+    def __init__(self) -> None:
+        # label size
+        self.label_size = 7
+        # font size in legend
+        self.font_size = 7
+        self.font: Dict[str, Any] = {"size": self.font_size}
+        # figure size
+        self.figure_size = (16 * cm_to_inch, 6 * cm_to_inch)
+        self.pad_subplots_width = 0.0
+
+        # major ticks
+        self.major_tick_label_size = 7
+        self.major_ticks_size = 7
+        self.major_ticks_width = 2
+
+        # minor ticks
+        self.minor_tick_label_size = 7
+        self.minor_ticks_size = 7
+        self.minor_ticks_width = 1
+
+        # labels
+        self.yaxis_label_sensitivity = "averaged total Sobol' indices [-]"
+        self.yaxis_label_coverage = "estimated coverage [%]"
+
+        # bars
+        self.sensitivity_color = "tab:blue"
+        self.sensitivity_alpha = 0.6
+
+        # coverage
+        self.coverage_color = "tab:red"
+        self.coverage_alpha = 0.8
+        self.coverage_marker = "o"
+        self.coverage_linestyle = "dashed"
+        self.coverage_markersize = 4
+        self.coverage_linewidth = 1.0
+
+        # legend
+        self.legend_label_sensitivity = "averaged total Sobol' indices"
+        self.legend_label_coverage = "estimated coverage"
+
+        # scientific notation
+        self.scientific_notation_size = self.font_size
+
+        # save options
+        self.dpi = 300
+
+        # limits
+        self.min_total_sobol_indice = 1e-6
+        self.max_total_sobol_indice = 1.0
+        self.min_coverage = 0.0
+        self.max_coverage = 100.0
+
+
+def plot_sobol_indices_treloar(
+    model: ModelProtocol,
+    parameter_samples: NPArray,
+    inputs: NPArray,
+    test_cases: NPArray,
+    outputs: NPArray,
+    device: Device,
+    output_subdirectory: str,
+    project_directory: ProjectDirectory,
+) -> None:
+    output_index = 0
+    num_parameters = parameter_samples.shape[1]
+    parameter_indices = list(range(num_parameters))
+    sorted_parameter_names, sorted_averaged_sobol_indices, sorted_parameter_indices = (
+        determine_sorted_averaged_sobol_indices(
+            indice_label=total_indice_label,
+            output_index=output_index,
+            parameter_indices=parameter_indices,
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+        )
+    )
+    coverages = calculate_model_coverages(
+        model=model,
+        parameter_samples=parameter_samples,
+        sorted_parameter_indices=sorted_parameter_indices,
+        inputs=inputs,
+        test_cases=test_cases,
+        outputs=outputs,
+        device=device,
+        output_dim=output_index,
+    )
+
+    config = IndicesPlotterConfigTreloar()
+    figure, axes1 = plt.subplots()
+    axes2 = axes1.twinx()
+
+    # Sobol indices plot
+    axes1.bar(
+        sorted_parameter_names,
+        sorted_averaged_sobol_indices,
+        color=config.sensitivity_color,
+        alpha=config.sensitivity_alpha,
+        label=config.legend_label_sensitivity,
+    )
+    axes1.plot(sorted_parameter_names, coverages)
+
+    # x axis
+    axes1.set_xticklabels(sorted_parameter_names, rotation=30)
+
+    # y axis
+    axes1.set_ylim(config.min_total_sobol_indice, config.max_total_sobol_indice)
+    axes1.set_yscale("log")
+    axes1.set_ylabel(config.yaxis_label_sensitivity, **config.font)
+
+    # axis
+    axes1.tick_params(
+        axis="both", which="minor", labelsize=config.minor_tick_label_size
+    )
+    axes1.tick_params(
+        axis="both", which="major", labelsize=config.major_tick_label_size
+    )
+
+    # Coverages plot
+    axes2.plot(
+        sorted_parameter_names,
+        coverages,
+        color=config.coverage_color,
+        alpha=config.coverage_alpha,
+        marker=config.coverage_marker,
+        markersize=config.coverage_markersize,
+        linestyle=config.coverage_linestyle,
+        linewidth=config.coverage_linewidth,
+        label=config.legend_label_coverage,
+    )
+
+    # y axis
+    axes2.yaxis.tick_right()
+    y_ticks = [0, 50, 95, 100]
+    axes2.set_yticks(y_ticks)
+    axes2.set_yticklabels([str(tick) for tick in y_ticks], **config.font)
+    axes2.set_ylim(config.min_coverage, config.max_coverage)
+    axes2.set_ylabel(config.yaxis_label_coverage, **config.font)
+    axes2.yaxis.set_label_position("right")
+    axes2.get_xaxis().set_visible(False)
+
+    # legend
+    axes1_legend_handles, _ = axes1.get_legend_handles_labels()
+    axes2_legend_handles, _ = axes2.get_legend_handles_labels()
+    legend_handles = axes1_legend_handles + axes2_legend_handles
+    axes1.legend(
+        handles=legend_handles,
+        fontsize=config.font_size,
+        loc="lower right",
+    )
+
+    file_name = f"{total_indice_label}.png"
+    output_path = project_directory.create_output_file_path(
+        file_name=file_name, subdir_name=output_subdirectory
+    )
+    figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
+    plt.clf()
+
+
+def determine_sorted_averaged_sobol_indices(
+    indice_label: str,
+    output_index: int,
+    parameter_indices: list[int],
+    output_subdirectory: str,
+    project_directory: ProjectDirectory,
+) -> tuple[list[str], NPArray, NPArray]:
+    parameter_names, averaged_sobol_indices = _calculate_averaged_sobol_indices(
+        indice_label=indice_label,
+        output_index=output_index,
+        parameter_indices=parameter_indices,
+        output_subdirectory=output_subdirectory,
+        project_directory=project_directory,
+    )
+    return _sort_averaged_sobol_indices_in_descending_order(
+        parameter_names=parameter_names,
+        averaged_sobol_indices=averaged_sobol_indices,
+    )
+
+
+def _calculate_averaged_sobol_indices(
+    indice_label: str,
+    output_index: int,
+    parameter_indices: list[int],
+    output_subdirectory: str,
+    project_directory: ProjectDirectory,
+) -> tuple[list[str], NPArray]:
+    parameter_names, indice_results_pd_frame = read_indices_results(
+        indice_label=indice_label,
+        output_index=output_index,
+        relevant_parameter_indices=parameter_indices,
+        output_subdirectory=output_subdirectory,
+        project_directory=project_directory,
+    )
+    indice_results = indice_results_pd_frame.iloc[:, 1:].to_numpy()
+    averaged_indice_results = np.mean(indice_results, axis=0)
+    return parameter_names, averaged_indice_results
+
+
+def _sort_averaged_sobol_indices_in_descending_order(
+    parameter_names: list[str], averaged_sobol_indices: NPArray
+) -> tuple[list[str], NPArray, NPArray]:
+    sorted_indices = np.flip(np.argsort(averaged_sobol_indices, axis=0))
+    sorted_parameter_names = [parameter_names[i] for i in sorted_indices]
+    sorted_averaged_sobol_indices = averaged_sobol_indices[sorted_indices]
+    return sorted_parameter_names, sorted_averaged_sobol_indices, sorted_indices
+
+
+def calculate_model_coverages(
+    model: ModelProtocol,
+    parameter_samples: NPArray,
+    sorted_parameter_indices: NPArray,
+    inputs: NPArray,
+    test_cases: NPArray,
+    outputs: NPArray,
+    device: Device,
+    output_dim: Optional[int] = None,
+) -> NPArray:
+    originally_selected_parameter_indices = model.get_active_parameter_indices()
+    num_total_parameters = parameter_samples.shape[1]
+
+    def _calculate_model_coverage(num_active_parameters: int) -> float:
+        active_parameter_indices = sorted_parameter_indices[:num_active_parameters]
+        model.deactivate_all_parameters()
+        model.activate_parameters([int(i) for i in active_parameter_indices])
+        return calclulate_model_coverage(
+            model=model,
+            parameter_samples=parameter_samples,
+            inputs=inputs,
+            test_cases=test_cases,
+            outputs=outputs,
+            device=device,
+            output_dim=output_dim,
+        )
+
+    coverages = []
+    for num_active_parameters in range(1, num_total_parameters + 1):
+        coverages += [_calculate_model_coverage(num_active_parameters)]
+
+    model.deactivate_all_parameters()
+    model.activate_parameters(originally_selected_parameter_indices)
+    return np.array(coverages)
+
+
+class IndicesPathsPlotterConfigTreloar:
     def __init__(self) -> None:
         # label size
         self.label_size = 7
@@ -121,7 +365,7 @@ def plot_sobol_indice_paths_treloar(
     )
     input_sets = remove_first_inputs(input_sets)
 
-    config = IndicesDevelopmentPlotterConfigTreloar()
+    config = IndicesPathsPlotterConfigTreloar()
     figure, axes = plt.subplots(1, 3, figsize=config.figure_size, sharey=True)
     figure.tight_layout(w_pad=config.pad_subplots_width)
 
@@ -204,14 +448,14 @@ def plot_sobol_indice_paths_treloar(
         ncol=6,
     )
 
-    file_name = f"{total_indice_label}.png"
+    file_name = f"{total_indice_label}_paths.png"
     output_path = project_directory.create_output_file_path(
         file_name=file_name, subdir_name=output_subdirectory
     )
     figure.savefig(output_path, bbox_inches="tight", dpi=config.dpi)
 
 
-class IndicesDevelopmentPlotterConfigAnisotropic:
+class IndicesPathsPlotterConfigAnisotropic:
     def __init__(self) -> None:
         # label size
         self.label_size = 7
@@ -357,7 +601,7 @@ def plot_sobol_indice_paths_anisotropic(
     project_directory: ProjectDirectory,
 ) -> None:
 
-    config = IndicesDevelopmentPlotterConfigAnisotropic()
+    config = IndicesPathsPlotterConfigAnisotropic()
     figure, axes = plt.subplots(6, 3, figsize=config.figure_size)
     figure.tight_layout(
         h_pad=config.pad_subplots_hight, w_pad=config.pad_subplots_width
@@ -576,7 +820,7 @@ def plot_sobol_indice_paths_anisotropic(
         ncol=2,
     )
 
-    file_name = f"{total_indice_label}.png"
+    file_name = f"{total_indice_label}_path.png"
     output_path = project_directory.create_output_file_path(
         file_name=file_name, subdir_name=output_subdirectory
     )

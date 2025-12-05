@@ -7,6 +7,7 @@ from .plot_history import (
 from .plot_sobol_indices import (
     plot_sobol_indice_paths_anisotropic,
     plot_sobol_indice_paths_treloar,
+    plot_sobol_indices_treloar,
 )
 from .plot_stress import (
     plot_gp_stresses_anisotropic,
@@ -29,4 +30,5 @@ __all__ = [
     "plot_gp_stresses_anisotropic",
     "plot_sobol_indice_paths_treloar",
     "plot_sobol_indice_paths_anisotropic",
+    "plot_sobol_indices_treloar",
 ]
