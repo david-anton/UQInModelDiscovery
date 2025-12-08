@@ -1,9 +1,10 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from matplotlib.ticker import MaxNLocator
+import matplotlib.patches as mpatches
 
 from uqmodeldisc.customtypes import Device, NPArray, PDDataFrame
 from uqmodeldisc.io import ProjectDirectory
@@ -58,12 +59,14 @@ class IndicesPlotterConfig:
         self.minor_ticks_width = 1
 
         # labels
+        self.xaxis_label = "material parameters"
         self.yaxis_label_sensitivity = "averaged total Sobol' indices [-]"
         self.yaxis_label_coverage = "estimated coverage [%]"
 
         # bars
         self.sensitivity_color = "tab:blue"
         self.sensitivity_alpha = 0.6
+        self.sensitivity_bar_label_padding = -9.0
 
         # coverage
         self.coverage_color = "tab:red"
@@ -122,6 +125,11 @@ def plot_sobol_indices_treloar(
         device=device,
         output_dim=output_index,
     )
+    num_model_terms = count_model_terms(
+        model=model,
+        sorted_parameter_indices=sorted_parameter_indices,
+        is_model_nonlinear=False,
+    )
 
     config = IndicesPlotterConfig()
 
@@ -129,6 +137,7 @@ def plot_sobol_indices_treloar(
         sorted_parameter_names=sorted_parameter_names,
         sorted_averaged_sobol_indices=sorted_averaged_sobol_indices,
         coverages=coverages,
+        num_model_terms=num_model_terms,
         config=config,
         output_subdirectory=output_subdirectory,
         project_directory=project_directory,
@@ -167,6 +176,11 @@ def plot_sobol_indices_anisotropic(
         num_points_per_test_case=num_points_per_test_case,
         device=device,
     )
+    num_model_terms = count_model_terms(
+        model=model,
+        sorted_parameter_indices=sorted_parameter_indices,
+        is_model_nonlinear=True,
+    )
 
     config = IndicesPlotterConfig()
 
@@ -174,6 +188,7 @@ def plot_sobol_indices_anisotropic(
         sorted_parameter_names=sorted_parameter_names,
         sorted_averaged_sobol_indices=sorted_averaged_sobol_indices,
         coverages=coverages,
+        num_model_terms=num_model_terms,
         config=config,
         output_subdirectory=output_subdirectory,
         project_directory=project_directory,
@@ -184,6 +199,7 @@ def _plot_sobol_indices(
     sorted_parameter_names: list[str],
     sorted_averaged_sobol_indices: NPArray,
     coverages: NPArray,
+    num_model_terms: NPArray,
     config: IndicesPlotterConfig,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
@@ -200,10 +216,10 @@ def _plot_sobol_indices(
         alpha=config.sensitivity_alpha,
         label=config.legend_label_sensitivity,
     )
-    axes1.plot(sorted_parameter_names, coverages)
 
     # x axis
-    axes1.set_xticklabels(sorted_parameter_names, rotation=20)
+    axes1.set_xticklabels(sorted_parameter_names, rotation=60)
+    axes1.set_xlabel(config.xaxis_label, **config.font)
 
     # y axis
     axes1.set_ylim(config.min_total_sobol_indice, config.max_total_sobol_indice)
@@ -241,6 +257,41 @@ def _plot_sobol_indices(
     axes2.yaxis.set_label_position("right")
     axes2.get_xaxis().set_visible(False)
 
+    # number model terms
+    x_coordinate = 0.0
+    is_annotated = False
+    for parameter in range(len(sorted_parameter_names)):
+        if sorted_averaged_sobol_indices[parameter] >= config.min_total_sobol_indice:
+            axes2.annotate(
+                num_model_terms[parameter],
+                xy=(x_coordinate, 2.5),
+                xycoords="data",
+                va="center",
+                ha="center",
+                **config.font,
+            )
+        else:
+            if not is_annotated:
+                x_coordinate = x_coordinate - 0.5
+                arrow_length = 1.5
+                arrow = mpatches.FancyArrowPatch(
+                    (x_coordinate, 2.5),
+                    (x_coordinate + arrow_length, 2.5),
+                    arrowstyle="->,head_width=.1",
+                    mutation_scale=10,
+                )
+                axes2.add_patch(arrow)
+                axes2.annotate(
+                    "number of model terms",
+                    (3.0, 0.5),
+                    xycoords=arrow,
+                    ha="center",
+                    va="center",
+                    **config.font,
+                )
+            is_annotated = True
+        x_coordinate += 1
+
     # legend
     axes1_legend_handles, _ = axes1.get_legend_handles_labels()
     axes2_legend_handles, _ = axes2.get_legend_handles_labels()
@@ -248,7 +299,7 @@ def _plot_sobol_indices(
     axes1.legend(
         handles=legend_handles,
         fontsize=config.font_size,
-        loc="lower right",
+        loc="center right",
     )
 
     file_name = f"{total_indice_label}.png"
@@ -444,6 +495,48 @@ def calculate_model_coverages_anisotropic(
     model.deactivate_all_parameters()
     model.activate_parameters(originally_selected_parameter_indices)
     return np.array(coverages)
+
+
+def count_model_terms(
+    model: ModelProtocol, sorted_parameter_indices: NPArray, is_model_nonlinear: bool
+) -> NPArray:
+    originally_selected_parameter_indices = model.get_active_parameter_indices()
+    num_total_parameters = model.num_parameters
+    model.activate_parameters(list(range(num_total_parameters)))
+    parameter_names = model.get_active_parameter_names()
+
+    sorted_parameter_names = [parameter_names[i] for i in sorted_parameter_indices]
+
+    def filter_parameter_name(parameter_name: str) -> str:
+        if is_model_nonlinear:
+            return parameter_name[5:]
+        else:
+            return parameter_name
+
+    num_terms = 0
+    num_terms_list: list[int] = []
+    checked_parameter_names: list[str] = []
+    for parameter_name in sorted_parameter_names:
+        is_new_model_term = True
+        for checked_parameter_name in checked_parameter_names:
+
+            def is_equal(parameter_name: str, checked_parameter_name: str) -> bool:
+                _parameter_name = filter_parameter_name(parameter_name)
+                _checked_parameter_name = filter_parameter_name(checked_parameter_name)
+                return _parameter_name == _checked_parameter_name
+
+            if is_equal(parameter_name, checked_parameter_name):
+                is_new_model_term = False
+                continue
+
+        if is_new_model_term:
+            num_terms += 1
+        num_terms_list += [num_terms]
+        checked_parameter_names += [parameter_name]
+
+    model.deactivate_all_parameters()
+    model.activate_parameters(originally_selected_parameter_indices)
+    return np.array(num_terms_list)
 
 
 class IndicesPathsPlotterConfigTreloar:
