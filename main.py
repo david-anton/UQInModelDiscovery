@@ -96,7 +96,7 @@ if data_set_label == data_set_label_treloar:
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [20_000, 10_000]
     if strain_energy_function_type == "library":
-        total_sobol_index_thresshold = 1e-4
+        total_sobol_index_thresshold = 1e-3  # 1e-4
     elif strain_energy_function_type == "cann":
         total_sobol_index_thresshold = 1e-2
 elif data_set_label == data_set_label_anisotropic:
@@ -115,7 +115,7 @@ elif data_set_label == data_set_label_anisotropic:
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [20_000, 10_000]
-    total_sobol_index_thresshold = 1e-2
+    total_sobol_index_thresshold = 1e-3  # 1e-2
 elif data_set_label == data_set_label_anisotropic_synthetic:
     input_directory = data_set_label
     file_name = "CANNsHEARTdata_synthetic.xlsx"
@@ -151,7 +151,7 @@ elif data_set_label == data_set_label_anisotropic_synthetic:
     relative_noise_stddevs = 5e-2
     min_absolute_noise_stddev = 1e-2
     list_num_wasserstein_iterations = [20_000, 10_000]
-    total_sobol_index_thresshold = 1e-2
+    total_sobol_index_thresshold = 1e-3  # 1e-2
 
 num_samples_parameter_distribution = 8192
 num_samples_factor_sensitivity_analysis = 4096
@@ -412,11 +412,11 @@ if retrain_models:
             num_iterations = int(1e4)
             learning_rate = 2e-1
             if data_set_label == data_set_label_treloar:
-                factor_length_scales = 0.8
+                factor_length_scales = 0.7  # 0.8
             elif data_set_label == data_set_label_anisotropic:
-                factor_length_scales = 0.6
+                factor_length_scales = 0.7  # 0.6
             elif data_set_label == data_set_label_anisotropic_synthetic:
-                factor_length_scales = 0.6
+                factor_length_scales = 0.7  # 0.6
 
             def optimize_hyperparameters() -> None:
                 return optimize_gp_hyperparameters(
