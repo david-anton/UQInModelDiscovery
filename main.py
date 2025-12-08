@@ -68,7 +68,7 @@ from uqmodeldisc.postprocessing.plot import (
 from uqmodeldisc.settings import Settings, get_device, set_default_dtype, set_seed
 from uqmodeldisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_anisotropic_synthetic
+data_set_label = data_set_label_anisotropic
 retrain_models = True
 
 # Settings
