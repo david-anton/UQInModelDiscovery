@@ -62,6 +62,8 @@ from uqmodeldisc.postprocessing.plot import (
     plot_model_stresses_treloar,
     plot_sobol_indice_paths_anisotropic,
     plot_sobol_indice_paths_treloar,
+    plot_sobol_indices_treloar,
+    plot_sobol_indices_anisotropic,
 )
 from uqmodeldisc.settings import Settings, get_device, set_default_dtype, set_seed
 from uqmodeldisc.utility import from_torch_to_numpy
@@ -273,11 +275,22 @@ def plot_model_stresses(
 
 def plot_sobol_indices_results(
     relevant_parameter_indices: list[int],
+    parameter_samples: NPArray,
     data_set_label: str,
     output_subdirectory: str,
     project_directory: ProjectDirectory,
 ) -> None:
     if data_set_label == data_set_label_treloar:
+        plot_sobol_indices_treloar(
+            model=model,
+            parameter_samples=parameter_samples,
+            inputs=from_torch_to_numpy(inputs),
+            test_cases=from_torch_to_numpy(test_cases),
+            outputs=from_torch_to_numpy(outputs),
+            device=device,
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+        )
         plot_sobol_indice_paths_treloar(
             relevant_parameter_indices=relevant_parameter_indices,
             inputs=from_torch_to_numpy(inputs),
@@ -290,6 +303,17 @@ def plot_sobol_indices_results(
         data_set_label == data_set_label_anisotropic
         or data_set_label == data_set_label_anisotropic_synthetic
     ):
+        plot_sobol_indices_anisotropic(
+            model=model,
+            parameter_samples=parameter_samples,
+            inputs=from_torch_to_numpy(inputs),
+            test_cases=from_torch_to_numpy(test_cases),
+            outputs=from_torch_to_numpy(outputs),
+            num_points_per_test_case=num_points_per_test_case,
+            device=device,
+            output_subdirectory=output_subdirectory,
+            project_directory=project_directory,
+        )
         plot_sobol_indice_paths_anisotropic(
             relevant_parameter_indices=relevant_parameter_indices,
             num_points_per_testcase=num_points_per_test_case,
@@ -561,6 +585,7 @@ if retrain_models:
 
         plot_sobol_indices_results(
             relevant_parameter_indices=model.get_active_parameter_indices(),
+            parameter_samples=parameter_samples_full,
             data_set_label=data_set_label,
             output_subdirectory=output_subdirectory_sensitivities,
             project_directory=project_directory,
@@ -670,6 +695,7 @@ else:
 
         plot_sobol_indices_results(
             relevant_parameter_indices=model.get_active_parameter_indices(),
+            parameter_samples=parameter_samples_full,
             data_set_label=data_set_label,
             output_subdirectory=output_subdirectory_sensitivities,
             project_directory=project_directory,
