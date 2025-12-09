@@ -68,7 +68,7 @@ from uqmodeldisc.postprocessing.plot import (
 from uqmodeldisc.settings import Settings, get_device, set_default_dtype, set_seed
 from uqmodeldisc.utility import from_torch_to_numpy
 
-data_set_label = data_set_label_anisotropic
+data_set_label = data_set_label_treloar
 retrain_models = True
 
 # Settings
@@ -412,11 +412,11 @@ if retrain_models:
             num_iterations = int(1e4)
             learning_rate = 2e-1
             if data_set_label == data_set_label_treloar:
-                factor_length_scales = 0.7  # 0.8
+                factor_length_scales = 0.8
             elif data_set_label == data_set_label_anisotropic:
-                factor_length_scales = 0.7  # 0.6
+                factor_length_scales = 0.6
             elif data_set_label == data_set_label_anisotropic_synthetic:
-                factor_length_scales = 0.7  # 0.6
+                factor_length_scales = 0.6
 
             def optimize_hyperparameters() -> None:
                 return optimize_gp_hyperparameters(
